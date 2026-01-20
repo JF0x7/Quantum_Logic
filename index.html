@@ -242,6 +242,7 @@
   const ctx = canvas.getContext("2d");
   const statusEl = document.getElementById("status");
   const payloadEl = document.getElementById("payload");
+  const sendBtn = document.getElementById("sendBtn");
   const startBtn = document.getElementById("startBtn");
   const flipBtn = document.getElementById("flipBtn");
   const uploadBtn = document.getElementById("uploadBtn");
@@ -333,21 +334,28 @@
       const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(data.data, data.width, data.height, { inversionAttempts: "dontInvert" });
 
-      if (code && code.data) {
-        const text = code.data.trim();
-        payloadEl.textContent = text;
+    if (code && code.data) {
+  const text = code.data.trim();
+  payloadEl.textContent = text;
 
-        if (isQtumAddress(text)) {
-          statusEl.textContent = "Qtum address detected (from image).";
-          statusEl.className = "valid";
-        } else {
-          statusEl.textContent = "QR code detected (from image).";
-          statusEl.className = "neutral";
-        }
-      } else {
-        statusEl.textContent = "No QR code found in image.";
-        statusEl.className = "invalid";
-      }
+  if (isQtumAddress(text)) {
+    statusEl.textContent = "Qtum address detected.";
+    statusEl.className = "valid";
+
+    // Show the send button
+    sendBtn.style.display = "inline-block";
+    sendBtn.onclick = () => {
+      window.location.href = `qtum:${text}`;
+    };
+
+  } else {
+    statusEl.textContent = "QR code detected.";
+    statusEl.className = "neutral";
+
+    // Hide the send button for non-Qtum QR codes
+    sendBtn.style.display = "none";
+  }
+}
     };
     img.onerror = () => {
       statusEl.textContent = "Could not read image.";
@@ -365,6 +373,7 @@
     if (currentStream) {
       await startCamera();
     }
+    <button id="sendBtn" style="display:none;">🚀 Send Qtum</button>
   };
 </script>
 
