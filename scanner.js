@@ -6,8 +6,6 @@ const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
 
 const startBtn = document.getElementById("startBtn");
-const flipBtn = document.getElementById("flipBtn");
-const uploadBtn = document.getElementById("uploadBtn");
 const fileInput = document.getElementById("fileInput");
 const sendBtn = document.getElementById("sendBtn");
 
