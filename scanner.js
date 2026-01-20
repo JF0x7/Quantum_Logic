@@ -10,7 +10,6 @@ const flipBtn = document.getElementById("flipBtn");
 const uploadBtn = document.getElementById("uploadBtn");
 const fileInput = document.getElementById("fileInput");
 const sendBtn = document.getElementById("sendBtn");
-const genBtn = document.getElementById("genBtn");
 
 let currentStream = null;
 let useFrontCamera = false;
@@ -119,11 +118,4 @@ startBtn.onclick = startCamera;
 flipBtn.onclick = () => {
   useFrontCamera = !useFrontCamera;
   startCamera();
-};
-
-genBtn.onclick = () => {
-  const newAddr = generateQtumAddress();
-  payloadEl.textContent = newAddr;
-  statusEl.textContent = "Generated Qtum address.";
-  statusEl.className = "valid";
 };
