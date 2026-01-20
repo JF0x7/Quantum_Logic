@@ -1,1 +1,129 @@
+/* ---------------------------------------------------
+   QTUM(LOG) Scanner Module
+   Handles:
+   - Camera access
+   - Camera flipping
+   - File scanning
+   - QR decoding
+   - Passing results to Identity Ledger
+--------------------------------------------------- */
 
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const startBtn = document.getElementById("startBtn");
+const flipBtn = document.getElementById("flipBtn");
+const uploadBtn = document.getElementById("uploadBtn");
+const fileInput = document.getElementById("fileInput");
+
+const payloadEl = document.getElementById("payload");
+
+let currentStream = null;
+let useFrontCamera = false;
+let scanning = false;
+
+/* Qtum address detection */
+function isQtumAddress(text) {
+  return /^Q[0-9A-Za-z]{25,40}$/.test(text.trim());
+}
+
+/* Stop camera */
+async function stopCamera() {
+  if (currentStream) {
+    currentStream.getTracks().forEach(t => t.stop());
+    currentStream = null;
+  }
+  scanning = false;
+}
+
+/* Start camera */
+async function startCamera() {
+  await stopCamera();
+
+  const constraints = {
+    video: { facingMode: useFrontCamera ? "user" : "environment" }
+  };
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    currentStream = stream;
+    video.srcObject = stream;
+    scanning = true;
+    requestAnimationFrame(scanLoop);
+  } catch (err) {
+    statusEl.textContent = "Camera error: " + err.message;
+    statusEl.className = "invalid";
+  }
+}
+
+/* Handle decoded QR text */
+function handleDecodedText(text, source) {
+  payloadEl.textContent = text;
+
+  const qtum = isQtumAddress(text);
+
+  statusEl.textContent = qtum
+    ? `Qtum‑style address detected (${source}).`
+    : `QR code detected (${source}).`;
+
+  statusEl.className = qtum ? "valid" : "neutral";
+
+  addLedgerEntry({ data: text, source, isQtum: qtum });
+}
+
+/* Camera scanning loop */
+function scanLoop() {
+  if (!scanning || !video.videoWidth) {
+    if (scanning) requestAnimationFrame(scanLoop);
+    return;
+  }
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(img.data, img.width, img.height);
+
+  if (code && code.data) {
+    handleDecodedText(code.data.trim(), "camera");
+  }
+
+  requestAnimationFrame(scanLoop);
+}
+
+/* File scanning */
+uploadBtn.onclick = () => fileInput.click();
+
+fileInput.onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const img = new Image();
+  img.onload = () => {
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(data.data, data.width, data.height);
+
+    if (code && code.data) {
+      handleDecodedText(code.data.trim(), "image");
+    } else {
+      statusEl.textContent = "No QR code found in image.";
+      statusEl.className = "invalid";
+    }
+  };
+
+  img.src = URL.createObjectURL(file);
+};
+
+/* Button actions */
+startBtn.onclick = startCamera;
+
+flipBtn.onclick = () => {
+  useFrontCamera = !useFrontCamera;
+  if (currentStream) startCamera();
+};
