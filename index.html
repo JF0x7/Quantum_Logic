@@ -1,1 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QTUM(LOG) Scanner</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: radial-gradient(circle at top, #020617 0, #000 55%);
+      color: #e0f2fe;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      text-align: center;
+    }
 
+    h1 {
+      margin: 6px 0 2px;
+      font-size: 24px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #38bdf8;
+      text-shadow: 0 0 14px #0ea5e9;
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+
+    #scannerShell {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 14px 14px 16px;
+      border-radius: 18px;
+      background: #020617;
+      border: 1px solid rgba(37, 99, 235, 0.7);
+      box-shadow:
+        0 0 30px rgba(56, 189, 248, 0.25),
+        0 0 80px rgba(59, 130, 246, 0.18);
+    }
+
+    #videoWrapper {
+      position: relative;
+      width: 100%;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #video {
+      width: 100%;
+      height: auto;
+      display: block;
+      border: none;
+    }
+
+    #canvas {
+      display: none;
+    }
+
+    #controls {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      background: linear-gradient(135deg, #1d4ed8, #22d3ee);
+      color: #e0f2fe;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.7);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    button.secondary {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      box-shadow: none;
+      color: #cbd5f5;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    #output {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(30, 64, 175, 0.9);
+      text-align: left;
+      font-size: 13px;
+    }
+
+    #status {
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    #status.valid { color: #4ade80; }
+    #status.invalid { color: #f97373; }
+    #status.neutral { color: #e0f2fe; }
+
+    #payloadLabel {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+
+    #payload {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      word-break: break-all;
+      color: #7dd3fc;
+    }
+
+    #hint {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    #qtumTag {
+      margin-top: 8px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: #a5b4fc;
+    }
+
+    #fileInput {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>QTUM(LOG) Scanner</h1>
+  <h2>Identity • Ledger • Signal</h2>
+
+  <div id="scannerShell">
+    <div id="videoWrapper">
+      <video id="video" autoplay playsinline muted></video>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <div id="controls">
+      <button id="startBtn">🔮 Enable Camera</button>
+      <button id="flipBtn" class="secondary">🔁 Flip Camera</button>
+      <button id="uploadBtn" class="secondary">📁 Scan From File</button>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div id="output">
+      <div id="status" class="neutral">Point at a QR code or choose an image…</div>
+      <div id="payloadLabel">Decoded data</div>
+      <div id="payload"></div>
+      <div id="hint">Qtum‑style addresses are detected and highlighted.</div>
+      <div id="qtumTag">QTUM(LOG) aware</div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const statusEl = document.getElementById("status");
+    const payloadEl = document.getElementById("payload");
+
+    const startBtn = document.getElementById("startBtn");
+    const flipBtn = document.getElementById("flipBtn");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const fileInput = document.getElementById("fileInput");
+
+    let currentStream = null;
+    let useFrontCamera = false;
+    let scanning = false;
+
+    function isQtumAddress(text) {
+      return /^Q[0-9A-Za-z]{25,40}$/.test(text.trim());
+    }
+
+    async function stopCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(t => t.stop());
+        currentStream = null;
+      }
+      scanning = false;
+    }
+
+    async function startCamera() {
+      await stopCamera();
+      statusEl.textContent = "Requesting camera access…";
+      statusEl.className = "neutral";
+
+      const constraints = {
+        video: {
+          facingMode: useFrontCamera ? { ideal: "user" } : { ideal: "environment" }
+        }
+      };
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        currentStream = stream;
+        video.srcObject = stream;
+        scanning = true;
+        statusEl.textContent = "Camera active. Aim at a QR code.";
+        statusEl.className = "neutral";
+        requestAnimationFrame(scanLoop);
+      } catch (err) {
+        statusEl.textContent = "Camera error: " + err.message;
+        statusEl.className = "invalid";
+      }
+    }
+
+    function handleDecodedText(text, sourceLabel) {
+      payloadEl.textContent = text;
+
+      if (isQtumAddress(text)) {
+        statusEl.textContent = `Qtum address detected (${sourceLabel}).`;
+        statusEl.className = "valid";
+      } else {
+        statusEl.textContent = `QR code detected (${sourceLabel}).`;
+        statusEl.className = "neutral";
+      }
+    }
+
+    function scanLoop() {
+      if (!scanning || !video.videoWidth || !video.videoHeight) {
+        if (scanning) requestAnimationFrame(scanLoop);
+        return;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+
+      if (code && code.data) {
+        handleDecodedText(code.data.trim(), "camera");
+      }
+
+      if (scanning) requestAnimationFrame(scanLoop);
+    }
+
+    uploadBtn.onclick = () => fileInput.click();
+
+    fileInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(data.data, data.width, data.height, { inversionAttempts: "dontInvert" });
+
+        if (code && code.data) {
+          handleDecodedText(code.data.trim(), "image");
+        } else {
+          statusEl.textContent = "No QR code found in image.";
+          statusEl.className = "invalid";
+        }
+      };
+      img.onerror = () => {
+        statusEl.textContent = "Could not read image.";
+        statusEl.className = "invalid";
+      };
+      img.src = URL.createObjectURL(file);
+    };
+
+    startBtn.onclick = () => {
+      startCamera();
+    };
+
+    flipBtn.onclick = async () => {
+      useFrontCamera = !useFrontCamera;
+      if (currentStream) {
+        await startCamera();
+      }
+    };
+  </script>
+</body>
+</html>
