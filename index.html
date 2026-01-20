@@ -3,249 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QTUM(LOG) Identity Scanner</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 20px;
-      background: radial-gradient(circle at top, #020617 0, #000 55%);
-      color: #e0f2fe;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      text-align: center;
-    }
+  <title>QTUM(LOG) Scanner</title>
 
-    h1 {
-      margin: 6px 0 2px;
-      font-size: 24px;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: #38bdf8;
-      text-shadow: 0 0 14px #0ea5e9;
-    }
-
-    h2 {
-      margin: 0 0 16px;
-      font-size: 11px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: #94a3b8;
-    }
-
-    #scannerShell {
-      max-width: 420px;
-      margin: 0 auto 18px;
-      padding: 14px 14px 16px;
-      border-radius: 18px;
-      background: #020617;
-      border: 1px solid rgba(37, 99, 235, 0.7);
-      box-shadow:
-        0 0 30px rgba(56, 189, 248, 0.25),
-        0 0 80px rgba(59, 130, 246, 0.18);
-    }
-
-    #videoWrapper {
-      position: relative;
-      width: 100%;
-      border-radius: 14px;
-      overflow: hidden;
-      background: #000;
-    }
-
-    #video {
-      width: 100%;
-      height: auto;
-      display: block;
-      border: none;
-    }
-
-    #canvas {
-      display: none;
-    }
-
-    #controls {
-      margin-top: 12px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-    }
-
-    button {
-      border: none;
-      border-radius: 999px;
-      padding: 9px 16px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      background: linear-gradient(135deg, #1d4ed8, #22d3ee);
-      color: #e0f2fe;
-      box-shadow: 0 0 14px rgba(56, 189, 248, 0.7);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    button.secondary {
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid rgba(148, 163, 184, 0.7);
-      box-shadow: none;
-      color: #cbd5f5;
-    }
-
-    button:active {
-      transform: scale(0.97);
-    }
-
-    #output {
-      margin-top: 14px;
-      padding: 12px;
-      border-radius: 12px;
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid rgba(30, 64, 175, 0.9);
-      text-align: left;
-      font-size: 13px;
-    }
-
-    #status {
-      font-weight: 500;
-      margin-bottom: 6px;
-      transition: color 0.2s, text-shadow 0.2s;
-    }
-
-    #status.valid { color: #4ade80; }
-    #status.invalid { color: #f97373; }
-    #status.neutral { color: #e0f2fe; }
-
-    #status.signal {
-      text-shadow: 0 0 12px #22c55e;
-    }
-
-    #payloadLabel {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.16em;
-      color: #64748b;
-      margin-bottom: 2px;
-    }
-
-    #payload {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 12px;
-      word-break: break-all;
-      color: #7dd3fc;
-    }
-
-    #hint {
-      margin-top: 8px;
-      font-size: 11px;
-      color: #64748b;
-    }
-
-    #qtumTag {
-      margin-top: 8px;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.18em;
-      color: #a5b4fc;
-    }
-
-    #fileInput {
-      display: none;
-    }
-
-    /* Identity Ledger */
-    #ledgerShell {
-      max-width: 420px;
-      margin: 0 auto;
-      padding: 12px 14px 14px;
-      border-radius: 16px;
-      background: #020617;
-      border: 1px solid rgba(30, 64, 175, 0.7);
-    }
-
-    #ledgerTitle {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.18em;
-      color: #94a3b8;
-      margin-bottom: 6px;
-      text-align: left;
-    }
-
-    #ledgerList {
-      max-height: 220px;
-      overflow-y: auto;
-      font-size: 11px;
-      text-align: left;
-      padding-right: 4px;
-    }
-
-    .ledger-entry {
-      padding: 6px 6px 6px 8px;
-      border-radius: 8px;
-      margin-bottom: 4px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(30, 64, 175, 0.6);
-    }
-
-    .ledger-meta {
-      display: flex;
-      justify-content: space-between;
-      gap: 6px;
-      margin-bottom: 2px;
-      color: #9ca3af;
-    }
-
-    .ledger-type {
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-size: 10px;
-    }
-
-    .ledger-source {
-      font-size: 10px;
-      opacity: 0.9;
-    }
-
-    .ledger-time {
-      font-size: 10px;
-      opacity: 0.7;
-    }
-
-    .ledger-data {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 11px;
-      word-break: break-all;
-      color: #e5e7eb;
-    }
-
-    .ledger-entry.qtum {
-      border-color: #22c55e;
-      box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
-    }
-
-    .ledger-entry.signal {
-      border-color: #22c55e;
-    }
-
-    #clearLedgerBtn {
-      margin-top: 6px;
-      font-size: 11px;
-      padding: 6px 10px;
-    }
-  </style>
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
   <h1>QTUM(LOG) Scanner</h1>
   <h2>Identity • Ledger • Signal</h2>
 
+  <!-- Scanner Container -->
   <div id="scannerShell">
     <div id="videoWrapper">
       <video id="video" autoplay playsinline muted></video>
     </div>
+
     <canvas id="canvas"></canvas>
 
+    <!-- Controls -->
     <div id="controls">
       <button id="startBtn">🔮 Enable Camera</button>
       <button id="flipBtn" class="secondary">🔁 Flip Camera</button>
@@ -253,6 +30,7 @@
       <input type="file" id="fileInput" accept="image/*">
     </div>
 
+    <!-- Output -->
     <div id="output">
       <div id="status" class="neutral">Point at a QR code or choose an image…</div>
       <div id="payloadLabel">Decoded data</div>
@@ -262,244 +40,19 @@
     </div>
   </div>
 
+  <!-- Identity Ledger -->
   <div id="ledgerShell">
     <div id="ledgerTitle">Identity Ledger</div>
     <div id="ledgerList"></div>
     <button id="clearLedgerBtn" class="secondary">🧹 Clear Local Ledger</button>
   </div>
 
+  <!-- QR Decoder Library -->
   <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
-  <script>
-    const video = document.getElementById("video");
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
 
-    const statusEl = document.getElementById("status");
-    const payloadEl = document.getElementById("payload");
+  <!-- QTUM(LOG) Modules -->
+  <script src="ledger.js"></script>
+  <script src="scanner.js"></script>
 
-    const startBtn = document.getElementById("startBtn");
-    const flipBtn = document.getElementById("flipBtn");
-    const uploadBtn = document.getElementById("uploadBtn");
-    const fileInput = document.getElementById("fileInput");
-
-    const ledgerList = document.getElementById("ledgerList");
-    const clearLedgerBtn = document.getElementById("clearLedgerBtn");
-
-    let currentStream = null;
-    let useFrontCamera = false;
-    let scanning = false;
-    let identityLedger = [];
-
-    function isQtumAddress(text) {
-      return /^Q[0-9A-Za-z]{25,40}$/.test(text.trim());
-    }
-
-    function loadLedger() {
-      try {
-        const raw = localStorage.getItem("qtumlog_identity_ledger");
-        if (raw) {
-          identityLedger = JSON.parse(raw);
-        } else {
-          identityLedger = [];
-        }
-      } catch {
-        identityLedger = [];
-      }
-      renderLedger();
-    }
-
-    function saveLedger() {
-      try {
-        localStorage.setItem("qtumlog_identity_ledger", JSON.stringify(identityLedger));
-      } catch {
-        // ignore storage errors
-      }
-    }
-
-    function addLedgerEntry({ data, source, isQtum }) {
-      const entry = {
-        data,
-        source,
-        isQtum,
-        ts: new Date().toISOString()
-      };
-      identityLedger.unshift(entry);
-      saveLedger();
-      renderLedger();
-      if (isQtum) emitSignal();
-    }
-
-    function renderLedger() {
-      ledgerList.innerHTML = "";
-      if (identityLedger.length === 0) {
-        const empty = document.createElement("div");
-        empty.style.fontSize = "11px";
-        empty.style.color = "#6b7280";
-        empty.textContent = "No identities or signals recorded yet.";
-        ledgerList.appendChild(empty);
-        return;
-      }
-
-      identityLedger.forEach(entry => {
-        const wrap = document.createElement("div");
-        wrap.className = "ledger-entry" + (entry.isQtum ? " qtum" : "");
-
-        const metaRow = document.createElement("div");
-        metaRow.className = "ledger-meta";
-
-        const typeSpan = document.createElement("span");
-        typeSpan.className = "ledger-type";
-        typeSpan.textContent = entry.isQtum ? "QTUM(LOG) SIGNAL" : "GENERIC QR";
-
-        const sourceSpan = document.createElement("span");
-        sourceSpan.className = "ledger-source";
-        sourceSpan.textContent = entry.source.toUpperCase();
-
-        const timeSpan = document.createElement("span");
-        timeSpan.className = "ledger-time";
-        const d = new Date(entry.ts);
-        timeSpan.textContent = d.toLocaleTimeString();
-
-        metaRow.appendChild(typeSpan);
-        metaRow.appendChild(sourceSpan);
-        metaRow.appendChild(timeSpan);
-
-        const dataDiv = document.createElement("div");
-        dataDiv.className = "ledger-data";
-        dataDiv.textContent = entry.data;
-
-        wrap.appendChild(metaRow);
-        wrap.appendChild(dataDiv);
-        ledgerList.appendChild(wrap);
-      });
-    }
-
-    function emitSignal() {
-      statusEl.classList.add("signal");
-      setTimeout(() => statusEl.classList.remove("signal"), 400);
-    }
-
-    async function stopCamera() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(t => t.stop());
-        currentStream = null;
-      }
-      scanning = false;
-    }
-
-    async function startCamera() {
-      await stopCamera();
-      statusEl.textContent = "Requesting camera access…";
-      statusEl.className = "neutral";
-
-      const constraints = {
-        video: {
-          facingMode: useFrontCamera ? { ideal: "user" } : { ideal: "environment" }
-        }
-      };
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        currentStream = stream;
-        video.srcObject = stream;
-        scanning = true;
-        statusEl.textContent = "Camera active. Aim at a QR code.";
-        statusEl.className = "neutral";
-        requestAnimationFrame(scanLoop);
-      } catch (err) {
-        statusEl.textContent = "Camera error: " + err.message;
-        statusEl.className = "invalid";
-      }
-    }
-
-    function handleDecodedText(text, sourceLabel) {
-      payloadEl.textContent = text;
-      const qtum = isQtumAddress(text);
-
-      if (qtum) {
-        statusEl.textContent = `Qtum‑style address detected (${sourceLabel}).`;
-        statusEl.className = "valid";
-      } else {
-        statusEl.textContent = `QR code detected (${sourceLabel}).`;
-        statusEl.className = "neutral";
-      }
-
-      addLedgerEntry({
-        data: text,
-        source: sourceLabel,
-        isQtum: qtum
-      });
-    }
-
-    function scanLoop() {
-      if (!scanning || !video.videoWidth || !video.videoHeight) {
-        if (scanning) requestAnimationFrame(scanLoop);
-        return;
-      }
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
-
-      if (code && code.data) {
-        handleDecodedText(code.data.trim(), "camera");
-      }
-
-      if (scanning) requestAnimationFrame(scanLoop);
-    }
-
-    uploadBtn.onclick = () => fileInput.click();
-
-    fileInput.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const img = new Image();
-      img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(data.data, data.width, data.height, { inversionAttempts: "dontInvert" });
-
-        if (code && code.data) {
-          handleDecodedText(code.data.trim(), "image");
-        } else {
-          statusEl.textContent = "No QR code found in image.";
-          statusEl.className = "invalid";
-        }
-      };
-      img.onerror = () => {
-        statusEl.textContent = "Could not read image.";
-        statusEl.className = "invalid";
-      };
-      img.src = URL.createObjectURL(file);
-    };
-
-    startBtn.onclick = () => {
-      startCamera();
-    };
-
-    flipBtn.onclick = async () => {
-      useFrontCamera = !useFrontCamera;
-      if (currentStream) {
-        await startCamera();
-      }
-    };
-
-    clearLedgerBtn.onclick = () => {
-      identityLedger = [];
-      saveLedger();
-      renderLedger();
-      statusEl.textContent = "Local identity ledger cleared.";
-      statusEl.className = "neutral";
-    };
-
-    loadLedger();
-  </script>
 </body>
 </html>
