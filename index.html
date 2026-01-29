@@ -235,14 +235,19 @@ button.secondary {
 <div id="cameraPrompt">
   <div id="cameraPromptBox">
     <h2>Enable Camera?</h2>
-    <p>This scanner requires camera access to read QR codes.</p>
+    <p>This scanner requires camera access to read QR codes and barcodes.</p>
     <button id="cameraPromptBtn">Allow Camera</button>
   </div>
 </div>
 
+<!-- ZXing multi-format library -->
 <script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <script>
+// ------------------------------
+// QTUM(LOG) Quantum Scanner Engine (ZXing)
+// ------------------------------
+
 let video = document.getElementById("video");
 let canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
@@ -256,6 +261,8 @@ const ledgerEl = document.getElementById("ledger");
 
 let lastScan = "";
 let scanCooldown = false;
+
+const codeReader = new ZXing.BrowserMultiFormatReader();
 
 /* CAMERA PROMPT */
 document.getElementById("cameraPromptBtn").addEventListener("click", () => {
@@ -283,7 +290,7 @@ async function startCamera() {
     statusEl.textContent = "Camera active";
     statusEl.className = "success";
 
-    scanLoop();
+    decodeLoop();
 
   } catch (err) {
     statusEl.textContent = "Camera error: " + err.name;
@@ -298,38 +305,7 @@ document.getElementById("flipBtn").addEventListener("click", () => {
   startCamera();
 });
 
-/* Scan Loop */
-function scanLoop() {
-  requestAnimationFrame(scanLoop);
-const codeReader = new ZXing.BrowserMultiFormatReader();
-
-async function startCamera() {
-  statusEl.textContent = "Requesting camera...";
-  statusEl.className = "neutral";
-
-  if (currentStream) {
-    currentStream.getTracks().forEach(t => t.stop());
-  }
-
-  const constraints = {
-    video: { facingMode: useFrontCamera ? "user" : "environment" }
-  };
-
-  try {
-    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = currentStream;
-
-    statusEl.textContent = "Camera active";
-    statusEl.className = "success";
-
-    decodeLoop();
-
-  } catch (err) {
-    statusEl.textContent = "Camera error: " + err.name;
-    statusEl.className = "error";
-  }
-}
-
+/* Decode Loop using ZXing */
 function decodeLoop() {
   codeReader.decodeFromVideoDevice(null, "video", (result, err) => {
     if (result && !scanCooldown) {
@@ -337,22 +313,8 @@ function decodeLoop() {
     }
   });
 }
-  if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
 
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const code = jsQR(imageData.data, canvas.width, canvas.height);
-
-  if (code && !scanCooldown) {
-    handleDecoded(code.data);
-  }
-}
-
-/* Handle QR */
+/* Handle decoded data */
 function handleDecoded(data) {
   if (data === lastScan) return;
 
@@ -360,7 +322,7 @@ function handleDecoded(data) {
   scanCooldown = true;
 
   payloadEl.textContent = data;
-  statusEl.textContent = "QR detected!";
+  statusEl.textContent = "Code detected!";
   statusEl.className = "success";
 
   addToLedger(data);
@@ -387,33 +349,24 @@ function addToLedger(data) {
   ledgerEl.prepend(item);
 }
 
-/* Upload Image */
+/* Upload Image decoding */
 document.getElementById("uploadBtn").addEventListener("click", () => {
   document.getElementById("fileInput").click();
 });
 
-document.getElementById("fileInput").addEventListener("change", e => {
+document.getElementById("fileInput").addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const img = new Image();
-  img.src = URL.createObjectURL(file);
+  const imgURL = URL.createObjectURL(file);
 
-  img.onload = () => {
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.drawImage(img, 0, 0);
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, canvas.width, canvas.height);
-
-    if (code) {
-      handleDecoded(code.data);
-    } else {
-      statusEl.textContent = "No QR code found in image.";
-      statusEl.className = "error";
-    }
-  };
+  try {
+    const result = await codeReader.decodeFromImageUrl(imgURL);
+    handleDecoded(result.text);
+  } catch (err) {
+    statusEl.textContent = "No barcode/QR found in image.";
+    statusEl.className = "error";
+  }
 });
 </script>
 
