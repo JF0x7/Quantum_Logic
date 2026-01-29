@@ -1,47 +1,353 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>QTUM(LOG) Quantum Scanner</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-</head>
+<meta charset="UTF-8">
+<title>QTUM(LOG) Quantum Scanner</title>
 
+<style>
+/* ------------------------------
+   QTUM(LOG) Scanner Styles
+------------------------------ */
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  color: #fff;
+  font-family: sans-serif;
+  text-align: center;
+  overflow: hidden;
+}
+
+h1 {
+  font-size: 2.4rem;
+  margin-bottom: 0;
+  color: #ff2e88;
+}
+
+h2 {
+  font-size: 1.1rem;
+  opacity: 0.7;
+  margin-top: 4px;
+  margin-bottom: 20px;
+}
+
+#scannerShell {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  position: relative;
+}
+
+#videoWrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  position: relative;
+}
+
+#video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+#controls,
+#output {
+  position: absolute;
+  bottom: 20px;
+  width: 100%;
+  text-align: center;
+  z-index: 10;
+}
+
+button {
+  background: #ff2e88;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  margin: 5px;
+}
+
+button.secondary {
+  background: #333;
+}
+
+#output {
+  margin-top: 20px;
+  text-align: left;
+  padding: 0 20px;
+}
+
+#status {
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+#status.neutral {
+  background: #222;
+}
+
+#status.success {
+  background: #1e8f4a;
+}
+
+#status.error {
+  background: #8f1e1e;
+}
+
+#payloadLabel {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+#payload {
+  background: #000;
+  padding: 10px;
+  border-radius: 6px;
+  min-height: 40px;
+  margin-bottom: 10px;
+  word-wrap: break-word;
+}
+
+#qtumTag {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+#ledgerShell {
+  background: #111;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+  box-shadow: 0 0 20px #2eff8844;
+}
+
+#ledgerTitle {
+  font-size: 1.4rem;
+  margin-bottom: 10px;
+  color: #2eff88;
+}
+
+.ledgerItem {
+  background: #000;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.ledgerPayload {
+  font-size: 1rem;
+}
+
+.ledgerTime {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.empty {
+  opacity: 0.5;
+  font-style: italic;
+}
+</style>
+
+</head>
 <body>
 
-  <h1>QTUM(LOG)</h1>
-  <h2>Quantum Scanner Engine</h2>
+<h1>QTUM(LOG)</h1>
+<h2>Quantum Scanner Engine</h2>
 
-  <div id="scannerShell">
+<div id="scannerShell">
 
-    <div id="videoWrapper">
-      <video id="video" autoplay playsinline></video>
-      <canvas id="canvas"></canvas>
-    </div>
-
-    <div id="controls">
-      <button id="startBtn">Enable Camera</button>
-      <button id="flipBtn" class="secondary">Flip Camera</button>
-      <button id="uploadBtn" class="secondary">Upload Image</button>
-      <input type="file" id="fileInput" accept="image/*" style="display:none;">
-    </div>
-
-    <div id="output">
-      <div id="status" class="neutral">Waiting for scan…</div>
-
-      <div id="payloadLabel">Decoded Payload:</div>
-      <div id="payload"></div>
-
-      <div id="qtumTag">QTUM(LOG) Quantum Scanner v1.0</div>
-    </div>
-
+  <div id="videoWrapper">
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
   </div>
 
-  <div id="ledgerShell">
-    <div id="ledgerTitle">Scan Ledger</div>
-    <div id="ledger"></div>
+  <div id="controls">
+    <button id="startBtn">Enable Camera</button>
+    <button id="flipBtn" class="secondary">Flip Camera</button>
+    <button id="uploadBtn" class="secondary">Upload Image</button>
+    <input type="file" id="fileInput" accept="image/*" style="display:none;">
   </div>
 
-  <script src="scanner.js"></script>
+  <div id="output">
+    <div id="status" class="neutral">Waiting for scan…</div>
+
+    <div id="payloadLabel">Decoded Payload:</div>
+    <div id="payload"></div>
+
+    <div id="qtumTag">QTUM(LOG) Quantum Scanner v1.0</div>
+  </div>
+
+</div>
+
+<div id="ledgerShell">
+  <div id="ledgerTitle">Scan Ledger</div>
+  <div id="ledger"></div>
+</div>
+
+<!-- jsQR inline loader -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+<script>
+// ------------------------------
+// QTUM(LOG) Quantum Scanner Engine
+// ------------------------------
+
+let video = document.getElementById("video");
+let canvas = document.getElementById("canvas");
+let ctx = canvas.getContext("2d");
+
+let currentStream = null;
+let useFrontCamera = false;
+
+const statusEl = document.getElementById("status");
+const payloadEl = document.getElementById("payload");
+const ledgerEl = document.getElementById("ledger");
+
+let lastScan = "";
+let scanCooldown = false;
+
+// Start camera
+async function startCamera() {
+  statusEl.textContent = "Requesting camera...";
+  statusEl.className = "neutral";
+
+  if (currentStream) {
+    currentStream.getTracks().forEach(t => t.stop());
+  }
+
+  const constraints = {
+    video: { facingMode: useFrontCamera ? "user" : "environment" }
+  };
+
+  try {
+    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = currentStream;
+
+    statusEl.textContent = "Camera active";
+    statusEl.className = "success";
+
+    scanLoop();
+
+  } catch (err) {
+    statusEl.textContent = "Camera error: " + err.name;
+    statusEl.className = "error";
+  }
+}
+
+document.getElementById("startBtn").addEventListener("click", startCamera);
+
+document.getElementById("flipBtn").addEventListener("click", () => {
+  useFrontCamera = !useFrontCamera;
+  startCamera();
+});
+
+// Scan loop
+function scanLoop() {
+  requestAnimationFrame(scanLoop);
+
+  if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+  if (code && !scanCooldown) {
+    handleDecoded(code.data);
+  }
+}
+
+// Handle decoded QR
+function handleDecoded(data) {
+  if (data === lastScan) return;
+
+  lastScan = data;
+  scanCooldown = true;
+
+  payloadEl.textContent = data;
+  statusEl.textContent = "QR detected!";
+  statusEl.className = "success";
+
+  addToLedger(data);
+
+  setTimeout(() => scanCooldown = false, 1500);
+}
+
+// Ledger
+function addToLedger(data) {
+  const item = document.createElement("div");
+  item.className = "ledgerItem";
+
+  const payload = document.createElement("div");
+  payload.className = "ledgerPayload";
+  payload.textContent = data;
+
+  const time = document.createElement("div");
+  time.className = "ledgerTime";
+  time.textContent = new Date().toLocaleString();
+
+  item.appendChild(payload);
+  item.appendChild(time);
+
+  ledgerEl.prepend(item);
+}
+
+// File upload scanning
+document.getElementById("uploadBtn").addEventListener("click", () => {
+  document.getElementById("fileInput").click();
+});
+
+document.getElementById("fileInput").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const img = new Image();
+  img.src = URL.createObjectURL(file);
+
+  img.onload = () => {
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+    if (code) {
+      handleDecoded(code.data);
+    } else {
+      statusEl.textContent = "No QR code found in image.";
+      statusEl.className = "error";
+    }
+  };
+});
+</script>
+
 </body>
 </html>
