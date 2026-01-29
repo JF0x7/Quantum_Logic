@@ -5,47 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QTUM(LOG) Scanner</title>
 
-  <!-- Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-  <h1>QTUM(LOG) Scanner</h1>
-  <h2>Identity • Ledger • Signal</h2>
+  <header>
+    <h1>QTUM(LOG) Scanner</h1>
+    <h2>Identity • Ledger • Signal</h2>
+  </header>
 
-  <!-- Scanner Container -->
-  <div id="scannerShell">
-    <div id="videoWrapper">
-      <video id="video" autoplay playsinline muted></video>
-    </div>
+  <main>
+    <!-- Scanner Container -->
+    <section id="scannerShell" aria-label="QR Scanner">
+      <div id="videoWrapper">
+        <video id="video" autoplay playsinline muted></video>
+      </div>
 
-    <canvas id="canvas"></canvas>
+      <canvas id="canvas" aria-hidden="true"></canvas>
 
-    <!-- Controls -->
-    <div id="controls">
-      <button id="startBtn">🔮 Enable Camera</button>
-      <button id="flipBtn" class="secondary">🔁 Flip Camera</button>
-      <button id="uploadBtn" class="secondary">📁 Scan From File</button>
-      <input type="file" id="fileInput" accept="image/*">
-    </div>
+      <!-- Controls -->
+      <div id="controls">
+        <button id="startBtn" type="button">🔮 Enable Camera</button>
+        <button id="flipBtn" type="button" class="secondary">🔁 Flip Camera</button>
+        <button id="uploadBtn" type="button" class="secondary">📁 Scan From File</button>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+      </div>
 
-    <!-- Output -->
-    <div id="output">
-      <div id="status" class="neutral">Point at a QR code or choose an image…</div>
-      <div id="payloadLabel">Decoded data</div>
-      <div id="payload"></div>
-      <div id="hint">Qtum‑style addresses are detected, logged, and signaled.</div>
-      <div id="qtumTag">QTUM(LOG) identity‑aware</div>
-    </div>
-  </div>
+      <!-- Output -->
+      <section id="output" aria-live="polite">
+        <div id="status" class="neutral">
+          Point at a QR code or choose an image…
+        </div>
+        <div id="payloadLabel">Decoded data</div>
+        <div id="payload"></div>
+        <div id="hint">Qtum‑style addresses are detected, logged, and signaled.</div>
+        <div id="qtumTag">QTUM(LOG) identity‑aware</div>
+      </section>
+    </section>
 
-  <!-- Identity Ledger -->
-  <div id="ledgerShell">
-    <div id="ledgerTitle">Identity Ledger</div>
-    <button id="clearLedgerBtn" class="secondary">🧹 Clear Local Ledger</button>
-    <div id="ledgerList"></div>
-  </div>
+    <!-- Identity Ledger -->
+    <section id="ledgerShell" aria-label="Identity Ledger">
+      <div id="ledgerHeader">
+        <div id="ledgerTitle">Identity Ledger</div>
+        <button id="clearLedgerBtn" type="button" class="secondary">
+          🧹 Clear Local Ledger
+        </button>
+      </div>
+      <div id="ledgerList"></div>
+    </section>
+  </main>
 
   <!-- QR Decoder Library -->
   <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
