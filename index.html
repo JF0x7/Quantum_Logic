@@ -1,274 +1,45 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>QTUM(LOG) Quantum Scanner</title>
-<script src="https://unpkg.com/@zxing/library@latest"></script>
-<style>
-body {
-  margin: 0;
-  background: #000;
-  color: #fff;
-  font-family: 'Segoe UI', sans-serif;
-  text-align: center;
-}
-#quantumLogo {
-  width: 90px;
-  margin: 20px auto 10px auto;
-  filter: drop-shadow(0 0 8px #ff2e88);
-}
-h1 {
-  font-size: 2.4rem;
-  color: #ff2e88;
-  text-shadow: 0 0 12px #ff2e88;
-}
-h2 {
-  font-size: 1.1rem;
-  opacity: 0.7;
-  margin-bottom: 20px;
-}
-#scannerShell {
-  height: 70vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-}
-#videoWrapper {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-#video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-#canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-#controls {
-  position: absolute;
-  bottom: 20px;
-  width: 100%;
-  z-index: 10;
-}
-button {
-  background: #ff2e88;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 1rem;
-  cursor: pointer;
-  margin: 5px;
-  box-shadow: 0 0 10px #ff2e88aa;
-}
-button.secondary {
-  background: #222;
-}
-#output {
-  margin-top: 20px;
-  text-align: left;
-  padding: 0 20px;
-}
-#status {
-  padding: 10px;
-  border-radius: 6px;
-  margin-bottom: 10px;
-}
-#status.neutral { background: #222; }
-#status.success { background: #1e8f4a; }
-#status.error { background: #8f1e1e; }
-#payload {
-  background: #000;
-  padding: 10px;
-  border-radius: 6px;
-  min-height: 40px;
-  margin-bottom: 10px;
-  word-wrap: break-word;
-  border: 1px solid #333;
-}
-#ledgerShell {
-  background: #0a0a0a;
-  padding: 20px;
-  border-radius: 12px;
-  max-width: 520px;
-  margin: 20px auto;
-  box-shadow: 0 0 20px #2eff8844;
-}
-#ledgerTitle {
-  font-size: 1.4rem;
-  margin-bottom: 10px;
-  color: #2eff88;
-  text-shadow: 0 0 10px #2eff88;
-}
-.ledgerItem {
-  background: #111;
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  border-left: 4px solid #2eff88;
-  box-shadow: 0 0 10px #2eff8844;
-}
-.ledgerPayload {
-  font-size: 1rem;
-}
-.ledgerTime {
-  font-size: 0.75rem;
-  opacity: 0.6;
-}
-</style>
+  <meta charset="UTF-8" />
+  <title>QTUM(LOG) Quantum Scanner</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
 </head>
 <body>
+  <svg id="quantumLogo" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="40" stroke="#ff2e88" stroke-width="3" fill="none"/>
+    <circle cx="50" cy="50" r="25" stroke="#2eff88" stroke-width="3" fill="none"/>
+    <circle cx="50" cy="50" r="10" fill="#ff2e88"/>
+  </svg>
 
-<svg id="quantumLogo" viewBox="0 0 100 100">
-  <circle cx="50" cy="50" r="40" stroke="#ff2e88" stroke-width="3" fill="none"/>
-  <circle cx="50" cy="50" r="25" stroke="#2eff88" stroke-width="3" fill="none"/>
-  <circle cx="50" cy="50" r="10" fill="#ff2e88"/>
-</svg>
+  <h1>QTUM(LOG)</h1>
+  <h2>Quantum Scanner Engine</h2>
 
-<h1>QTUM(LOG)</h1>
-<h2>Quantum Scanner Engine</h2>
+  <div id="scannerShell">
+    <div id="videoWrapper">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
+    </div>
 
-<div id="scannerShell">
-  <div id="videoWrapper">
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas"></canvas>
+    <div id="controls">
+      <button id="startBtn">Enable Camera</button>
+      <button id="flipBtn" class="secondary">Flip Camera</button>
+      <button id="uploadBtn" class="secondary">Upload Image</button>
+      <input type="file" id="fileInput" accept="image/*" style="display:none;">
+    </div>
+
+    <div id="output">
+      <div id="status" class="neutral">Waiting for scan…</div>
+      <div id="payload"></div>
+    </div>
   </div>
 
-  <div id="controls">
-    <button id="startBtn">Enable Camera</button>
-    <button id="flipBtn" class="secondary">Flip Camera</button>
-    <button id="uploadBtn" class="secondary">Upload Image</button>
-    <input type="file" id="fileInput" accept="image/*" style="display:none;">
+  <div id="ledgerShell">
+    <div id="ledgerTitle">Scan Ledger</div>
+    <div id="ledger"></div>
   </div>
 
-  <div id="output">
-    <div id="status" class="neutral">Waiting for scan…</div>
-    <div id="payload"></div>
-  </div>
-</div>
-
-<div id="ledgerShell">
-  <div id="ledgerTitle">Scan Ledger</div>
-  <div id="ledger"></div>
-</div>
-
-<script>
-let video = document.getElementById("video");
-let canvas = document.getElementById("canvas");
-let ctx = canvas.getContext("2d");
-
-let currentStream = null;
-let useFrontCamera = false;
-
-const statusEl = document.getElementById("status");
-const payloadEl = document.getElementById("payload");
-const ledgerEl = document.getElementById("ledger");
-
-let lastScan = "";
-let scanCooldown = false;
-
-const codeReader = new ZXing.BrowserMultiFormatReader();
-
-document.getElementById("startBtn").addEventListener("click", startCamera);
-document.getElementById("flipBtn").addEventListener("click", () => {
-  useFrontCamera = !useFrontCamera;
-  startCamera();
-});
-document.getElementById("uploadBtn").addEventListener("click", () => {
-  document.getElementById("fileInput").click();
-});
-
-async function startCamera() {
-  statusEl.textContent = "Requesting camera...";
-  statusEl.className = "neutral";
-
-  if (currentStream) {
-    currentStream.getTracks().forEach(t => t.stop());
-  }
-
-  const constraints = {
-    video: { facingMode: useFrontCamera ? "user" : "environment" }
-  };
-
-  try {
-    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = currentStream;
-
-    statusEl.textContent = "Camera active";
-    statusEl.className = "success";
-
-    decodeLoop();
-
-  } catch (err) {
-    statusEl.textContent = "Camera error: " + err.name;
-    statusEl.className = "error";
-  }
-}
-
-function decodeLoop() {
-  codeReader.decodeFromVideoDevice(null, "video", (result, err) => {
-    if (result && !scanCooldown) {
-      handleDecoded(result.text);
-    }
-  });
-}
-
-function handleDecoded(data) {
-  if (data === lastScan) return;
-
-  lastScan = data;
-  scanCooldown = true;
-
-  payloadEl.textContent = data;
-  statusEl.textContent = "✅ Scan successful";
-  statusEl.className = "success";
-
-  addToLedger(data);
-
-  setTimeout(() => scanCooldown = false, 1500);
-}
-
-function addToLedger(data) {
-  const item = document.createElement("div");
-  item.className = "ledgerItem";
-
-  const payload = document.createElement("div");
-  payload.className = "ledgerPayload";
-  payload.textContent = data;
-
-  const time = document.createElement("div");
-  time.className = "ledgerTime";
-  time.textContent = new Date().toLocaleString();
-
-  item.appendChild(payload);
-  item.appendChild(time);
-
-  ledgerEl.prepend(item);
-}
-
-document.getElementById("fileInput").addEventListener("change", async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const imgURL = URL.createObjectURL(file);
-
-  try {
-    const result = await codeReader.decodeFromImageUrl(imgURL);
-    handleDecoded(result.text);
-  } catch (err) {
-    statusEl.textContent = "❌ Scan failed";
-    statusEl.className = "error";
-  }
-});
-</script>
-
+  <script src="scanner.js"></script>
 </body>
 </html>
