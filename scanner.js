@@ -1,5 +1,5 @@
 // ------------------------------
-// QTUM(LOG) Scanner Engine
+// QTUM(LOG) Scanner Engine (Fixed)
 // ------------------------------
 
 let video = document.getElementById("video");
@@ -13,6 +13,10 @@ let useFrontCamera = false;
 const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
 
+// Prevent duplicate scans
+let lastScan = "";
+let scanCooldown = false;
+
 // Start camera
 async function startCamera() {
   if (currentStream) {
@@ -25,10 +29,16 @@ async function startCamera() {
     }
   };
 
-  currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-  video.srcObject = currentStream;
-
-  scanLoop();
+  try {
+    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = currentStream;
+    statusEl.textContent = "Camera active";
+    statusEl.className = "";
+    scanLoop();
+  } catch (err) {
+    statusEl.textContent = "Camera access denied or unavailable.";
+    statusEl.className = "error";
+  }
 }
 
 // Flip camera
@@ -56,19 +66,28 @@ function scanLoop() {
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const code = jsQR(imageData.data, canvas.width, canvas.height);
 
-  if (code) {
+  if (code && !scanCooldown) {
     handleDecoded(code.data);
   }
 }
 
 // Handle decoded QR
 function handleDecoded(data) {
+  if (data === lastScan) return; // ignore duplicates
+
+  lastScan = data;
+  scanCooldown = true;
+
   payloadEl.textContent = data;
   statusEl.textContent = "QR detected!";
   statusEl.className = "success";
 
-  // Always save to ledger
   addToLedger(data);
+
+  // cooldown to prevent spam
+  setTimeout(() => {
+    scanCooldown = false;
+  }, 1500);
 }
 
 // File upload scanning
