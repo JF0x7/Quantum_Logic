@@ -1,136 +1,96 @@
 // ------------------------------
-// QTUM(LOG) Quantum Scanner Engine
+// QTUM(LOG) Minimal Camera Test
 // ------------------------------
 
-let video = document.getElementById("video");
-let canvas = document.getElementById("canvas");
-let ctx = canvas.getContext("2d");
-
-let currentStream = null;
-let useFrontCamera = false;
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
 const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
-const ledgerEl = document.getElementById("ledger");
 
-// Prevent duplicate spam
-let lastScan = "";
-let scanCooldown = false;
+let stream = null;
+
+// Force camera request on button click
+document.getElementById("startBtn").addEventListener("click", startCamera);
+
+// Flip camera
+let useFront = false;
+document.getElementById("flipBtn").addEventListener("click", () => {
+  useFront = !useFront;
+  startCamera();
+});
 
 // Start camera
 async function startCamera() {
-  if (currentStream) {
-    currentStream.getTracks().forEach(t => t.stop());
+  statusEl.textContent = "Requesting camera...";
+  statusEl.className = "neutral";
+
+  // Stop old stream
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
   }
 
+  // IMPORTANT: Simplest possible constraints
   const constraints = {
-    video: { facingMode: useFrontCamera ? "user" : "environment" }
+    video: {
+      facingMode: useFront ? "user" : "environment"
+    },
+    audio: false
   };
 
+  console.log("Requesting camera with constraints:", constraints);
+
   try {
-    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = currentStream;
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    console.log("Camera stream received:", stream);
+
+    video.srcObject = stream;
     statusEl.textContent = "Camera active";
-    statusEl.className = "neutral";
-    scanLoop();
+    statusEl.className = "success";
+
+    requestAnimationFrame(scanLoop);
+
   } catch (err) {
-    statusEl.textContent = "Camera unavailable or permission denied.";
+    console.error("Camera error:", err);
+
+    statusEl.textContent = "Camera error: " + err.name;
     statusEl.className = "error";
+
+    // Show specific reasons
+    if (err.name === "NotAllowedError") {
+      statusEl.textContent = "Permission denied. Check browser settings.";
+    }
+    if (err.name === "NotFoundError") {
+      statusEl.textContent = "No camera found.";
+    }
+    if (err.name === "OverconstrainedError") {
+      statusEl.textContent = "Camera mode not supported.";
+    }
   }
 }
 
-// Flip camera
-document.getElementById("flipBtn").addEventListener("click", () => {
-  useFrontCamera = !useFrontCamera;
-  startCamera();
-});
-
-// Enable camera
-document.getElementById("startBtn").addEventListener("click", () => {
-  startCamera();
-});
-
-// Scan loop
+// Scan loop (kept simple)
 function scanLoop() {
-  requestAnimationFrame(scanLoop);
-
-  if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+  if (!video.videoWidth) {
+    requestAnimationFrame(scanLoop);
+    return;
+  }
 
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(video, 0, 0);
 
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const code = jsQR(imageData.data, canvas.width, canvas.height);
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(img.data, canvas.width, canvas.height);
 
-  if (code && !scanCooldown) {
-    handleDecoded(code.data);
+  if (code) {
+    payloadEl.textContent = code.data;
+    statusEl.textContent = "QR detected!";
+    statusEl.className = "success";
   }
+
+  requestAnimationFrame(scanLoop);
 }
-
-// Handle decoded QR
-function handleDecoded(data) {
-  if (data === lastScan) return;
-
-  lastScan = data;
-  scanCooldown = true;
-
-  payloadEl.textContent = data;
-  statusEl.textContent = "QR detected!";
-  statusEl.className = "success";
-
-  addToLedger(data);
-
-  setTimeout(() => {
-    scanCooldown = false;
-  }, 1500);
-}
-
-// Ledger
-function addToLedger(data) {
-  const item = document.createElement("div");
-  item.className = "ledgerItem";
-
-  const payload = document.createElement("div");
-  payload.className = "ledgerPayload";
-  payload.textContent = data;
-
-  const time = document.createElement("div");
-  time.className = "ledgerTime";
-  time.textContent = new Date().toLocaleString();
-
-  item.appendChild(payload);
-  item.appendChild(time);
-
-  ledgerEl.prepend(item);
-}
-
-// File upload scanning
-document.getElementById("uploadBtn").addEventListener("click", () => {
-  document.getElementById("fileInput").click();
-});
-
-document.getElementById("fileInput").addEventListener("change", e => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const img = new Image();
-  img.src = URL.createObjectURL(file);
-
-  img.onload = () => {
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.drawImage(img, 0, 0);
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, canvas.width, canvas.height);
-
-    if (code) {
-      handleDecoded(code.data);
-    } else {
-      statusEl.textContent = "No QR code found in image.";
-      statusEl.className = "error";
-    }
-  };
-});
