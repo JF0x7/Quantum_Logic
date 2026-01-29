@@ -240,7 +240,7 @@ button.secondary {
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://unpkg.com/@zxing/library@latest"></script>
 
 <script>
 let video = document.getElementById("video");
@@ -301,7 +301,42 @@ document.getElementById("flipBtn").addEventListener("click", () => {
 /* Scan Loop */
 function scanLoop() {
   requestAnimationFrame(scanLoop);
+const codeReader = new ZXing.BrowserMultiFormatReader();
 
+async function startCamera() {
+  statusEl.textContent = "Requesting camera...";
+  statusEl.className = "neutral";
+
+  if (currentStream) {
+    currentStream.getTracks().forEach(t => t.stop());
+  }
+
+  const constraints = {
+    video: { facingMode: useFrontCamera ? "user" : "environment" }
+  };
+
+  try {
+    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = currentStream;
+
+    statusEl.textContent = "Camera active";
+    statusEl.className = "success";
+
+    decodeLoop();
+
+  } catch (err) {
+    statusEl.textContent = "Camera error: " + err.name;
+    statusEl.className = "error";
+  }
+}
+
+function decodeLoop() {
+  codeReader.decodeFromVideoDevice(null, "video", (result, err) => {
+    if (result && !scanCooldown) {
+      handleDecoded(result.text);
+    }
+  });
+}
   if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
 
   canvas.width = video.videoWidth;
