@@ -4,24 +4,39 @@
 
 const LEDGER_KEY = "qtumlog_ledger";
 
-// Load ledger from localStorage
+// Safely load ledger from localStorage
 function loadLedger() {
-  const raw = localStorage.getItem(LEDGER_KEY);
-  return raw ? JSON.parse(raw) : [];
+  try {
+    const raw = localStorage.getItem(LEDGER_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (err) {
+    console.error("Ledger load failed:", err);
+    return [];
+  }
 }
 
 // Save ledger to localStorage
 function saveLedger(entries) {
-  localStorage.setItem(LEDGER_KEY, JSON.stringify(entries));
+  try {
+    localStorage.setItem(LEDGER_KEY, JSON.stringify(entries));
+  } catch (err) {
+    console.error("Ledger save failed:", err);
+  }
 }
 
 // Add a new entry
 function addToLedger(payload) {
+  if (!payload || typeof payload !== "string") {
+    console.warn("Ignored invalid ledger payload:", payload);
+    return;
+  }
+
   const ledger = loadLedger();
   const entry = {
-    payload,
+    payload: payload.trim(),
     timestamp: new Date().toISOString()
   };
+
   ledger.unshift(entry);
   saveLedger(ledger);
   renderLedger();
@@ -31,6 +46,12 @@ function addToLedger(payload) {
 function renderLedger() {
   const ledger = loadLedger();
   const container = document.getElementById("ledgerList");
+
+  if (!container) {
+    console.error("Ledger container missing in DOM");
+    return;
+  }
+
   container.innerHTML = "";
 
   if (ledger.length === 0) {
@@ -41,19 +62,31 @@ function renderLedger() {
   ledger.forEach(item => {
     const div = document.createElement("div");
     div.className = "ledgerItem";
-    div.innerHTML = `
-      <div class="ledgerPayload">${item.payload}</div>
-      <div class="ledgerTime">${new Date(item.timestamp).toLocaleString()}</div>
-    `;
+
+    const payload = document.createElement("div");
+    payload.className = "ledgerPayload";
+    payload.textContent = item.payload;
+
+    const time = document.createElement("div");
+    time.className = "ledgerTime";
+    time.textContent = new Date(item.timestamp).toLocaleString();
+
+    div.appendChild(payload);
+    div.appendChild(time);
     container.appendChild(div);
   });
 }
 
 // Clear ledger
-document.getElementById("clearLedgerBtn").addEventListener("click", () => {
-  localStorage.removeItem(LEDGER_KEY);
-  renderLedger();
-});
+const clearBtn = document.getElementById("clearLedgerBtn");
+if (clearBtn) {
+  clearBtn.addEventListener("click", () => {
+    localStorage.removeItem(LEDGER_KEY);
+    renderLedger();
+  });
+} else {
+  console.error("Clear Ledger button missing in DOM");
+}
 
 // Initial render
-renderLedger();
+document.addEventListener("DOMContentLoaded", renderLedger);
