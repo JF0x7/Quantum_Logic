@@ -17,3 +17,7 @@ function addToLedger(data) {
 
   ledgerEl.prepend(item);
 }
+const tag = document.createElement("div");
+tag.className = "ledgerTag";
+tag.textContent = "JH Tools"; // or "Beler Verified", "Fairn Auth"
+item.appendChild(tag);
