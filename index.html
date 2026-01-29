@@ -3,69 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <title>QTUM(LOG) Quantum Scanner</title>
-
+<script src="https://unpkg.com/@zxing/library@latest"></script>
 <style>
-/* ------------------------------
-   QTUM(LOG) Quantum Scanner UI
------------------------------- */
-
 body {
   margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
   background: #000;
   color: #fff;
   font-family: 'Segoe UI', sans-serif;
   text-align: center;
-  overflow-x: hidden;
 }
-
-/* Quantum Logo */
 #quantumLogo {
   width: 90px;
   margin: 20px auto 10px auto;
   filter: drop-shadow(0 0 8px #ff2e88);
 }
-
-/* Titles */
 h1 {
   font-size: 2.4rem;
-  margin-bottom: 0;
   color: #ff2e88;
   text-shadow: 0 0 12px #ff2e88;
 }
-
 h2 {
   font-size: 1.1rem;
   opacity: 0.7;
-  margin-top: 4px;
   margin-bottom: 20px;
 }
-
-/* Scanner Shell */
 #scannerShell {
-  width: 100%;
   height: 70vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
   position: relative;
 }
-
 #videoWrapper {
   width: 100%;
   height: 100%;
   position: relative;
 }
-
 #video {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-
 #canvas {
   position: absolute;
   top: 0;
@@ -74,15 +52,12 @@ h2 {
   height: 100%;
   pointer-events: none;
 }
-
-/* Controls */
 #controls {
   position: absolute;
   bottom: 20px;
   width: 100%;
   z-index: 10;
 }
-
 button {
   background: #ff2e88;
   border: none;
@@ -94,29 +69,22 @@ button {
   margin: 5px;
   box-shadow: 0 0 10px #ff2e88aa;
 }
-
 button.secondary {
   background: #222;
-  box-shadow: 0 0 10px #444;
 }
-
-/* Output */
 #output {
   margin-top: 20px;
   text-align: left;
   padding: 0 20px;
 }
-
 #status {
   padding: 10px;
   border-radius: 6px;
   margin-bottom: 10px;
 }
-
 #status.neutral { background: #222; }
 #status.success { background: #1e8f4a; }
 #status.error { background: #8f1e1e; }
-
 #payload {
   background: #000;
   padding: 10px;
@@ -126,8 +94,6 @@ button.secondary {
   word-wrap: break-word;
   border: 1px solid #333;
 }
-
-/* Ledger */
 #ledgerShell {
   background: #0a0a0a;
   padding: 20px;
@@ -136,14 +102,12 @@ button.secondary {
   margin: 20px auto;
   box-shadow: 0 0 20px #2eff8844;
 }
-
 #ledgerTitle {
   font-size: 1.4rem;
   margin-bottom: 10px;
   color: #2eff88;
   text-shadow: 0 0 10px #2eff88;
 }
-
 .ledgerItem {
   background: #111;
   padding: 12px;
@@ -152,51 +116,17 @@ button.secondary {
   border-left: 4px solid #2eff88;
   box-shadow: 0 0 10px #2eff8844;
 }
-
 .ledgerPayload {
   font-size: 1rem;
 }
-
 .ledgerTime {
   font-size: 0.75rem;
   opacity: 0.6;
 }
-
-/* Camera Permission Modal */
-#cameraPrompt {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
-  flex-direction: column;
-  text-align: center;
-}
-
-#cameraPromptBox {
-  background: #111;
-  padding: 30px;
-  border-radius: 12px;
-  width: 80%;
-  max-width: 360px;
-  box-shadow: 0 0 20px #ff2e88aa;
-}
-
-#cameraPrompt button {
-  margin-top: 20px;
-  width: 100%;
-}
 </style>
-
 </head>
 <body>
 
-<!-- Quantum Logo -->
 <svg id="quantumLogo" viewBox="0 0 100 100">
   <circle cx="50" cy="50" r="40" stroke="#ff2e88" stroke-width="3" fill="none"/>
   <circle cx="50" cy="50" r="25" stroke="#2eff88" stroke-width="3" fill="none"/>
@@ -225,29 +155,12 @@ button.secondary {
   </div>
 </div>
 
-<!-- Ledger -->
 <div id="ledgerShell">
   <div id="ledgerTitle">Scan Ledger</div>
   <div id="ledger"></div>
 </div>
 
-<!-- Camera Permission Prompt -->
-<div id="cameraPrompt">
-  <div id="cameraPromptBox">
-    <h2>Enable Camera?</h2>
-    <p>This scanner requires camera access to read QR codes and barcodes.</p>
-    <button id="cameraPromptBtn">Allow Camera</button>
-  </div>
-</div>
-
-<!-- ZXing multi-format library -->
-<script src="https://unpkg.com/@zxing/library@latest"></script>
-
 <script>
-// ------------------------------
-// QTUM(LOG) Quantum Scanner Engine (ZXing)
-// ------------------------------
-
 let video = document.getElementById("video");
 let canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
@@ -264,13 +177,15 @@ let scanCooldown = false;
 
 const codeReader = new ZXing.BrowserMultiFormatReader();
 
-/* CAMERA PROMPT */
-document.getElementById("cameraPromptBtn").addEventListener("click", () => {
-  document.getElementById("cameraPrompt").style.display = "none";
+document.getElementById("startBtn").addEventListener("click", startCamera);
+document.getElementById("flipBtn").addEventListener("click", () => {
+  useFrontCamera = !useFrontCamera;
   startCamera();
 });
+document.getElementById("uploadBtn").addEventListener("click", () => {
+  document.getElementById("fileInput").click();
+});
 
-/* Start Camera */
 async function startCamera() {
   statusEl.textContent = "Requesting camera...";
   statusEl.className = "neutral";
@@ -298,14 +213,6 @@ async function startCamera() {
   }
 }
 
-document.getElementById("startBtn").addEventListener("click", startCamera);
-
-document.getElementById("flipBtn").addEventListener("click", () => {
-  useFrontCamera = !useFrontCamera;
-  startCamera();
-});
-
-/* Decode Loop using ZXing */
 function decodeLoop() {
   codeReader.decodeFromVideoDevice(null, "video", (result, err) => {
     if (result && !scanCooldown) {
@@ -314,7 +221,6 @@ function decodeLoop() {
   });
 }
 
-/* Handle decoded data */
 function handleDecoded(data) {
   if (data === lastScan) return;
 
@@ -322,7 +228,7 @@ function handleDecoded(data) {
   scanCooldown = true;
 
   payloadEl.textContent = data;
-  statusEl.textContent = "Code detected!";
+  statusEl.textContent = "✅ Scan successful";
   statusEl.className = "success";
 
   addToLedger(data);
@@ -330,7 +236,6 @@ function handleDecoded(data) {
   setTimeout(() => scanCooldown = false, 1500);
 }
 
-/* Ledger */
 function addToLedger(data) {
   const item = document.createElement("div");
   item.className = "ledgerItem";
@@ -349,11 +254,6 @@ function addToLedger(data) {
   ledgerEl.prepend(item);
 }
 
-/* Upload Image decoding */
-document.getElementById("uploadBtn").addEventListener("click", () => {
-  document.getElementById("fileInput").click();
-});
-
 document.getElementById("fileInput").addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -364,7 +264,7 @@ document.getElementById("fileInput").addEventListener("change", async e => {
     const result = await codeReader.decodeFromImageUrl(imgURL);
     handleDecoded(result.text);
   } catch (err) {
-    statusEl.textContent = "No barcode/QR found in image.";
+    statusEl.textContent = "❌ Scan failed";
     statusEl.className = "error";
   }
 });
