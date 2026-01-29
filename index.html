@@ -2,22 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <h1>QTUM(LOG) Scanner</h1>
-  <h2>Native Tools of Julius Hirsch • Verified by Beler Industries</h2>
+  <title>QTUM(LOG) Scanner</title>
+
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/@zxing/library@latest"></script>
-  <script src="ledger.js"></script>
-  <script src="scanner.js"></script>
+  <script defer src="ledger.js"></script>
+  <script defer src="scanner.js"></script>
 </head>
+
 <body>
+
+  <!-- Skull & Bones Quantum Emblem -->
   <svg id="quantumLogo" viewBox="0 0 100 100">
     <circle cx="50" cy="50" r="40" stroke="#ff2e88" stroke-width="3" fill="none"/>
-    <circle cx="50" cy="50" r="25" stroke="#2eff88" stroke-width="3" fill="none"/>
-    <circle cx="50" cy="50" r="10" fill="#ff2e88"/>
+    <path d="M40 45 Q50 20 60 45 Q50 60 40 45 Z" fill="#2eff88"/>
+    <circle cx="45" cy="40" r="4" fill="#000"/>
+    <circle cx="55" cy="40" r="4" fill="#000"/>
+    <line x1="35" y1="70" x2="65" y2="70" stroke="#ff2e88" stroke-width="3"/>
+    <line x1="45" y1="75" x2="55" y2="75" stroke="#ff2e88" stroke-width="3"/>
   </svg>
 
   <h1>QTUM(LOG)</h1>
-  <h2>Quantum Scanner Engine</h2>
+  <h2>Native Tools of Julius Hirsch • Verified by Beler Industries</h2>
 
   <div id="scannerShell">
     <div id="videoWrapper">
@@ -43,6 +49,5 @@
     <div id="ledger"></div>
   </div>
 
-  <script src="scanner.js"></script>
 </body>
 </html>
