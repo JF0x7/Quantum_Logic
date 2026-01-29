@@ -1,4 +1,3 @@
-// --- DOM ELEMENTS ---
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -6,7 +5,6 @@ const ctx = canvas.getContext("2d");
 const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
 
-// --- CAMERA + SCANNING STATE ---
 let currentStream = null;
 let useFrontCamera = false;
 let lastScan = "";
@@ -14,19 +12,15 @@ let scanCooldown = false;
 
 const codeReader = new ZXing.BrowserMultiFormatReader();
 
-// --- BUTTON EVENTS ---
 document.getElementById("startBtn").addEventListener("click", startCamera);
-
 document.getElementById("flipBtn").addEventListener("click", () => {
   useFrontCamera = !useFrontCamera;
   startCamera();
 });
-
 document.getElementById("uploadBtn").addEventListener("click", () => {
   document.getElementById("fileInput").click();
 });
 
-// --- FILE UPLOAD SCANNING ---
 document.getElementById("fileInput").addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -36,13 +30,12 @@ document.getElementById("fileInput").addEventListener("change", async e => {
   try {
     const result = await codeReader.decodeFromImageUrl(imgURL);
     handleDecoded(result.text);
-  } catch (err) {
+  } catch {
     statusEl.textContent = "❌ Scan failed";
     statusEl.className = "error";
   }
 });
 
-// --- CAMERA START ---
 async function startCamera() {
   statusEl.textContent = "Requesting camera...";
   statusEl.className = "neutral";
@@ -69,16 +62,14 @@ async function startCamera() {
   }
 }
 
-// --- LIVE DECODE LOOP ---
 function decodeLoop() {
-  codeReader.decodeFromVideoDevice(null, "video", (result, err) => {
+  codeReader.decodeFromVideoDevice(null, "video", (result) => {
     if (result && !scanCooldown) {
       handleDecoded(result.text);
     }
   });
 }
 
-// --- HANDLE SUCCESSFUL DECODE ---
 function handleDecoded(data) {
   if (data === lastScan) return;
 
@@ -89,7 +80,6 @@ function handleDecoded(data) {
   statusEl.textContent = "✅ Scan successful";
   statusEl.className = "success";
 
-  // 🔥 Call ledger module
   addToLedger(data);
 
   setTimeout(() => scanCooldown = false, 1500);
