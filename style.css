@@ -1,16 +1,17 @@
 /* ------------------------------
    QTUM(LOG) Scanner Styles
 ------------------------------ */
- body {
+
+body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  background: #000; /* optional, looks good with scanners */
+  background: #000;
   color: #fff;
   font-family: sans-serif;
   text-align: center;
-
+  overflow: hidden; /* prevents scroll bounce on mobile */
 }
 
 h1 {
@@ -28,23 +29,25 @@ h2 {
 
 #scannerShell {
   width: 100%;
-  height: 100vh; /* full viewport height */
+  height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
+  position: relative; /* ensures absolute children anchor correctly */
 }
 
 #videoWrapper {
   width: 100%;
   height: 100%;
   display: flex;
+  position: relative;
 }
 
 #video {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* fills screen without distortion */
+  object-fit: cover;
 }
 
 #canvas {
@@ -53,14 +56,19 @@ h2 {
   left: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none; /* prevents blocking UI */
 }
 
-#controls, #output {
+/* Controls + Output */
+#controls,
+#output {
   position: absolute;
   bottom: 20px;
   width: 100%;
   text-align: center;
+  z-index: 10; /* ensures UI stays above video/canvas */
 }
+
 button {
   background: #ff2e88;
   border: none;
@@ -79,6 +87,7 @@ button.secondary {
 #output {
   margin-top: 20px;
   text-align: left;
+  padding: 0 20px;
 }
 
 #status {
