@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>QTUM(LOG) Quantum Scanner</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+</head>
+
+<body>
+
+  <h1>QTUM(LOG)</h1>
+  <h2>Quantum Scanner Engine</h2>
+
+  <div id="scannerShell">
+
+    <div id="videoWrapper">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div id="controls">
+      <button id="startBtn">Enable Camera</button>
+      <button id="flipBtn" class="secondary">Flip Camera</button>
+      <button id="uploadBtn" class="secondary">Upload Image</button>
+      <input type="file" id="fileInput" accept="image/*" style="display:none;">
+    </div>
+
+    <div id="output">
+      <div id="status" class="neutral">Waiting for scan…</div>
+
+      <div id="payloadLabel">Decoded Payload:</div>
+      <div id="payload"></div>
+
+      <div id="qtumTag">QTUM(LOG) Quantum Scanner v1.0</div>
+    </div>
+
+  </div>
+
+  <div id="ledgerShell">
+    <div id="ledgerTitle">Scan Ledger</div>
+    <div id="ledger"></div>
+  </div>
+
+  <script src="scanner.js"></script>
+</body>
+</html>
