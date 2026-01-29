@@ -11,6 +11,12 @@ body {
   filter: drop-shadow(0 0 8px #2eff88);
   animation: pulseGlow 2s infinite ease-in-out;
 }
+@keyframes pulseGlow {
+  0%, 100% { filter: drop-shadow(0 0 8px #2eff88); }
+  50% { filter: drop-shadow(0 0 16px #ff2e88); }
+}
+
+
 h1 {
   font-size: 2.4rem;
   color: #ff2e88;
@@ -115,5 +121,11 @@ button.secondary {
 }
 .ledgerTime {
   font-size: 0.75rem;
+  opacity: 0.6;
+}
+.ledgerTag {
+  font-size: 0.7rem;
+  color: #ff2e88;
+  margin-top: 4px;
   opacity: 0.6;
 }
