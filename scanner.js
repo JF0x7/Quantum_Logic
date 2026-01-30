@@ -41,6 +41,22 @@ document.getElementById("fileInput").addEventListener("change", async e => {
   }
 });
 
+document.getElementById("sendBtn").addEventListener("click", () => {
+  if (!lastScan) {
+    statusEl.textContent = "No scan to signal.";
+    statusEl.className = "neutral";
+    return;
+  }
+
+  // Simulated "send signal" action
+  console.log("Sending signal for payload:", lastScan);
+
+  statusEl.textContent = "📡 Signal sent for last scan";
+  statusEl.className = "success";
+
+  addToLedger("[SIGNAL] " + lastScan);
+});
+
 /* ----------------------------------------------------------
    CAMERA START
 ---------------------------------------------------------- */
@@ -48,7 +64,6 @@ async function startCamera() {
   statusEl.textContent = "Requesting camera...";
   statusEl.className = "neutral";
 
-  // Stop previous stream
   if (currentStream) {
     currentStream.getTracks().forEach(t => t.stop());
   }
@@ -66,7 +81,6 @@ async function startCamera() {
     statusEl.textContent = "Camera active";
     statusEl.className = "success";
 
-    // Ensure canvas matches video
     video.onloadedmetadata = () => {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -80,7 +94,7 @@ async function startCamera() {
 }
 
 /* ----------------------------------------------------------
-   DECODE LOOP (FINAL + WORKING)
+   DECODE LOOP
 ---------------------------------------------------------- */
 function decodeLoop() {
   console.log("decode loop running");
@@ -107,5 +121,7 @@ function handleDecoded(data) {
 
   addToLedger(data);
 
-  setTimeout(() => scanCooldown = false, 1500);
+  setTimeout(() => {
+    scanCooldown = false;
+  }, 1500);
 }
