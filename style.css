@@ -13,7 +13,40 @@ body {
   filter: drop-shadow(0 0 8px #ff2e88);
   animation: pulseGlow 2.2s infinite ease-in-out;
 }
+#reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 180px;
+  height: 180px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #ff2e88;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #ff2e88aa;
+  pointer-events: none;
+}
 
+#reticle::before,
+#reticle::after {
+  content: "";
+  position: absolute;
+  background: #ff2e88;
+  box-shadow: 0 0 8px #ff2e88aa;
+}
+
+#reticle::before {
+  width: 2px;
+  height: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#reticle::after {
+  height: 2px;
+  width: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
 @keyframes pulseGlow {
   0%, 100% { filter: drop-shadow(0 0 8px #ff2e88); }
   50% { filter: drop-shadow(0 0 16px #2eff88); }
