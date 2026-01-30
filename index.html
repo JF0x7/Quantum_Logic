@@ -1,15 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Quantum Scanner</title>
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
 <body>
-  <img id="quantumLogo" src="quantum.png" alt="Quantum Skull">
 
-  <h1>Quantum Scanner</h1>
-  <h2>Faction: Skull & Bones Division</h2>
+  <!-- Quantum Skull Emblem -->
+  <header>
+    <img id="quantumLogo" src="quantum.png" alt="Quantum Skull Emblem">
+    <h1>Quantum Scanner</h1>
+    <h2>Faction: Skull & Bones Division</h2>
+  </header>
 
-  <div id="scannerShell">
+  <!-- Scanner Shell -->
+  <main id="scannerShell">
+
     <div id="videoWrapper">
       <video id="video" autoplay playsinline></video>
       <canvas id="canvas"></canvas>
 
-      <!-- RETICLE (must exist in HTML!) -->
+      <!-- Reticle -->
       <div id="reticle">
         <div class="corner tl"></div>
         <div class="corner tr"></div>
@@ -18,20 +36,30 @@
       </div>
     </div>
 
+    <!-- Controls -->
     <div id="controls">
-      <button id="scanBtn">Scan</button>
-      <button id="stopBtn" class="secondary">Stop</button>
-      <button id="clearBtn" class="secondary">Clear</button>
+      <button id="scanBtn" type="button">Scan</button>
+      <button id="stopBtn" type="button" class="secondary">Stop</button>
+      <button id="clearBtn" type="button" class="secondary">Clear</button>
     </div>
-  </div>
 
-  <div id="output">
+  </main>
+
+  <!-- Output Section -->
+  <section id="output">
     <div id="status" class="neutral">Status: Idle</div>
     <div id="payload"></div>
-  </div>
+  </section>
 
-  <div id="ledgerShell">
+  <!-- Ledger -->
+  <section id="ledgerShell">
     <div id="ledgerTitle">Scan Ledger</div>
     <div id="ledger"></div>
-  </div>
+  </section>
+
+  <!-- External JS -->
+  <script src="scanner.js"></script>
+  <script src="ledger.js"></script>
+
 </body>
+</html>
