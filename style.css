@@ -1,0 +1,153 @@
+body {
+  margin: 0;
+  background: #000;
+  color: #fff;
+  font-family: 'Segoe UI', sans-serif;
+  text-align: center;
+}
+
+/* Skull Emblem */
+#quantumLogo {
+  width: 110px;
+  margin: 20px auto 10px auto;
+  filter: drop-shadow(0 0 8px #ff2e88);
+  animation: pulseGlow 2.2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { filter: drop-shadow(0 0 8px #ff2e88); }
+  50% { filter: drop-shadow(0 0 16px #2eff88); }
+}
+
+h1 {
+  font-size: 2.4rem;
+  color: #ff2e88;
+  text-shadow: 0 0 12px #ff2e88;
+}
+
+h2 {
+  font-size: 1.1rem;
+  opacity: 0.7;
+  margin-bottom: 20px;
+}
+
+#scannerShell {
+  height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+#videoWrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+#video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+#controls {
+  position: absolute;
+  bottom: 20px;
+  width: 100%;
+  z-index: 10;
+}
+
+button {
+  background: #ff2e88;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  margin: 5px;
+  box-shadow: 0 0 10px #ff2e88aa;
+}
+
+button.secondary {
+  background: #222;
+}
+
+#output {
+  margin-top: 20px;
+  text-align: left;
+  padding: 0 20px;
+}
+
+#status {
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+#status.neutral { background: #222; }
+#status.success { background: #1e8f4a; }
+#status.error { background: #8f1e1e; }
+
+#payload {
+  background: #000;
+  padding: 10px;
+  border-radius: 6px;
+  min-height: 40px;
+  margin-bottom: 10px;
+  word-wrap: break-word;
+  border: 1px solid #333;
+}
+
+/* Ledger */
+#ledgerShell {
+  background: #0a0a0a;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 520px;
+  margin: 20px auto;
+  box-shadow: 0 0 20px #2eff8844;
+}
+
+#ledgerTitle {
+  font-size: 1.4rem;
+  margin-bottom: 10px;
+  color: #2eff88;
+  text-shadow: 0 0 10px #2eff88;
+}
+
+.ledgerItem {
+  background: #111;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border-left: 4px solid #2eff88;
+  box-shadow: 0 0 10px #2eff8844;
+}
+
+.ledgerPayload {
+  font-size: 1rem;
+}
+
+.ledgerTime {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.ledgerTag {
+  font-size: 0.75rem;
+  color: #ff2e88;
+  margin-top: 6px;
+  font-style: italic;
+  text-shadow: 0 0 6px #ff2e88;
+}
