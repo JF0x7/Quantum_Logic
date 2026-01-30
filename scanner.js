@@ -111,3 +111,42 @@ function handleDecoded(data) {
 
   setTimeout(() => scanCooldown = false, 1500);
 }
+async function startCamera() {
+  statusEl.textContent = "Requesting camera...";
+  statusEl.className = "neutral";
+
+  if (currentStream) {
+    currentStream.getTracks().forEach(t => t.stop());
+  }
+
+  const constraints = {
+    video: {
+      facingMode: useFrontCamera ? "user" : "environment",
+      focusMode: "continuous", // main autofocus flag
+      advanced: [{ focusMode: "continuous" }] // fallback for some browsers
+    }
+  };
+
+  try {
+    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = currentStream;
+
+    statusEl.textContent = "Camera active";
+    statusEl.className = "success";
+
+    // 🔧 Force autofocus after stream starts
+    const track = currentStream.getVideoTracks()[0];
+    const capabilities = track.getCapabilities();
+
+    if (capabilities.focusMode) {
+      await track.applyConstraints({
+        advanced: [{ focusMode: "continuous" }]
+      });
+    }
+
+    decodeLoop();
+  } catch (err) {
+    statusEl.textContent = "Camera error: " + err.name;
+    statusEl.className = "error";
+  }
+}
