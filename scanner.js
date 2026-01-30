@@ -12,11 +12,16 @@ let scanCooldown = false;
 
 const codeReader = new ZXing.BrowserMultiFormatReader();
 
+/* ----------------------------------------------------------
+   BUTTON EVENTS
+---------------------------------------------------------- */
 document.getElementById("startBtn").addEventListener("click", startCamera);
+
 document.getElementById("flipBtn").addEventListener("click", () => {
   useFrontCamera = !useFrontCamera;
   startCamera();
 });
+
 document.getElementById("uploadBtn").addEventListener("click", () => {
   document.getElementById("fileInput").click();
 });
@@ -36,16 +41,23 @@ document.getElementById("fileInput").addEventListener("change", async e => {
   }
 });
 
+/* ----------------------------------------------------------
+   CAMERA START
+---------------------------------------------------------- */
 async function startCamera() {
   statusEl.textContent = "Requesting camera...";
   statusEl.className = "neutral";
 
+  // Stop previous stream
   if (currentStream) {
     currentStream.getTracks().forEach(t => t.stop());
   }
 
+  // Clean, single constraints block
   const constraints = {
-    video: { facingMode: useFrontCamera ? "user" : "environment" }
+    video: {
+      facingMode: useFrontCamera ? "user" : { ideal: "environment" }
+    }
   };
 
   try {
@@ -62,14 +74,22 @@ async function startCamera() {
   }
 }
 
+/* ----------------------------------------------------------
+   DECODE LOOP
+---------------------------------------------------------- */
 function decodeLoop() {
-  codeReader.decodeFromVideoDevice(null, "video", (result) => {
+  console.log("decode loop running");
+
+  codeReader.decodeFromVideoDevice(null, "video", (result, err) => {
     if (result && !scanCooldown) {
       handleDecoded(result.text);
     }
   });
 }
 
+/* ----------------------------------------------------------
+   HANDLE DECODED PAYLOAD
+---------------------------------------------------------- */
 function handleDecoded(data) {
   if (data === lastScan) return;
 
