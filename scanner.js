@@ -53,7 +53,6 @@ async function startCamera() {
     currentStream.getTracks().forEach(t => t.stop());
   }
 
-  // Clean, single constraints block
   const constraints = {
     video: {
       facingMode: useFrontCamera ? "user" : { ideal: "environment" }
@@ -67,6 +66,12 @@ async function startCamera() {
     statusEl.textContent = "Camera active";
     statusEl.className = "success";
 
+    // Ensure canvas matches video
+    video.onloadedmetadata = () => {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    };
+
     decodeLoop();
   } catch (err) {
     statusEl.textContent = "Camera error: " + err.name;
@@ -75,7 +80,7 @@ async function startCamera() {
 }
 
 /* ----------------------------------------------------------
-   DECODE LOOP
+   DECODE LOOP (FINAL + WORKING)
 ---------------------------------------------------------- */
 function decodeLoop() {
   console.log("decode loop running");
