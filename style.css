@@ -13,7 +13,77 @@ body {
   filter: drop-shadow(0 0 8px #ff2e88);
   animation: pulseGlow 2.2s infinite ease-in-out;
 }
+/* ----------------------------------------------------------
+   SNIPER RETICLE OVERLAY
+---------------------------------------------------------- */
+#reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 220px;
+  height: 220px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  border: 2px solid #2ea8ff;
+  border-radius: 50%;
+  box-shadow: 0 0 18px #2ea8ffcc;
+  animation: reticlePulse 3s infinite ease-in-out;
+  z-index: 5;
+}
 
+/* Inner ring */
+#reticle::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120px;
+  height: 120px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #2ea8ff88;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #2ea8ff55;
+}
+
+/* Square crosshair */
+#reticle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150px;
+  height: 150px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #2ea8ffcc;
+  border-radius: 4px;
+  opacity: 0.35;
+}
+
+/* Corner brackets */
+#reticle .corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 2px solid #2ea8ff;
+  box-shadow: 0 0 10px #2ea8ffcc;
+}
+
+#reticle .corner.tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+#reticle .corner.tr { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+#reticle .corner.bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+#reticle .corner.br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+/* Breathing animation */
+@keyframes reticlePulse {
+  0%, 100% {
+    box-shadow: 0 0 14px #2ea8ffcc;
+    border-color: #2ea8ff;
+  }
+  50% {
+    box-shadow: 0 0 26px #6ec8ff;
+    border-color: #6ec8ff;
+  }
+}
 @keyframes pulseGlow {
   0%, 100% { filter: drop-shadow(0 0 8px #ff2e88); }
   50% { filter: drop-shadow(0 0 16px #2eff88); }
