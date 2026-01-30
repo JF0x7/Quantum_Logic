@@ -13,39 +13,79 @@ body {
   filter: drop-shadow(0 0 8px #ff2e88);
   animation: pulseGlow 2.2s infinite ease-in-out;
 }
+/* Blue Cyber Sniper Reticle */
 #reticle {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 180px;
-  height: 180px;
+  width: 200px;
+  height: 200px;
   transform: translate(-50%, -50%);
-  border: 2px solid #ff2e88;
-  border-radius: 50%;
-  box-shadow: 0 0 12px #ff2e88aa;
   pointer-events: none;
+
+  /* Outer ring */
+  border: 2px solid #2ea8ff;
+  border-radius: 50%;
+  box-shadow: 0 0 18px #2ea8ffcc;
+
+  animation: reticlePulse 3s infinite ease-in-out;
 }
 
-#reticle::before,
+/* Inner ring */
+#reticle::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 110px;
+  height: 110px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #2ea8ff88;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #2ea8ff55;
+}
+
+/* Crosshair lines */
 #reticle::after {
   content: "";
   position: absolute;
-  background: #ff2e88;
-  box-shadow: 0 0 8px #ff2e88aa;
-}
-
-#reticle::before {
-  width: 2px;
-  height: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-#reticle::after {
-  height: 2px;
-  width: 100%;
   top: 50%;
-  transform: translateY(-50%);
+  left: 50%;
+  width: 140px;
+  height: 140px;
+  transform: translate(-50%, -50%);
+  border-left: 2px solid #2ea8ffcc;
+  border-top: 2px solid #2ea8ffcc;
+  border-right: 2px solid #2ea8ffcc;
+  border-bottom: 2px solid #2ea8ffcc;
+  border-radius: 4px;
+  opacity: 0.4;
+}
+
+/* Corner brackets */
+#reticle .corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #2ea8ff;
+  box-shadow: 0 0 10px #2ea8ffcc;
+}
+
+#reticle .corner.tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+#reticle .corner.tr { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+#reticle .corner.bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+#reticle .corner.br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+/* Breathing glow animation */
+@keyframes reticlePulse {
+  0%, 100% {
+    box-shadow: 0 0 14px #2ea8ffcc;
+    border-color: #2ea8ff;
+  }
+  50% {
+    box-shadow: 0 0 26px #6ec8ff;
+    border-color: #6ec8ff;
+  }
 }
 @keyframes pulseGlow {
   0%, 100% { filter: drop-shadow(0 0 8px #ff2e88); }
