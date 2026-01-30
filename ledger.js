@@ -27,5 +27,6 @@ function getFactionTag(data) {
   if (data.includes("JH")) return "JH Tools";
   if (data.includes("Beler")) return "Beler Verified";
   if (data.includes("Fairn")) return "Fairn Auth";
+  if (data.startsWith("[SIGNAL]")) return "Signal Dispatch";
   return "Unmarked Scan";
 }
