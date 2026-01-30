@@ -58,13 +58,16 @@ if (navigator.permissions && navigator.permissions.query) {
   }
 
   const constraints = {
-    video: {
-      facingMode: useFrontCamera ? "user" : "environment",
-      focusMode: "continuous", // main autofocus flag
-      advanced: [{ focusMode: "continuous" }] // fallback for some browsers
-    }
-  };
-
+  video: {
+    facingMode: useFrontCamera ? "user" : "environment",
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    advanced: [
+      { width: 1920, height: 1080 },
+      { focusMode: "continuous" }
+    ]
+  }
+};
   try {
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = currentStream;
