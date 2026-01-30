@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="style.css" />
 
   <!-- ZXing Barcode Library -->
-  <script src="https://unpkg.com/@zxing/library@latest" integrity="" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@zxing/library@latest" crossorigin="anonymous"></script>
 
   <!-- App Scripts -->
   <script defer src="ledger.js"></script>
@@ -24,7 +24,7 @@
 <body>
 
   <!-- Quantum Skull Emblem -->
-  <svg id="quantumLogo" viewBox="0 0 100 100">
+  <svg id="quantumLogo" viewBox="0 0 100 100" aria-hidden="true">
     <circle cx="50" cy="50" r="40" stroke="#ff2e88" stroke-width="3" fill="none"/>
     <path d="M40 45 Q50 20 60 45 Q50 60 40 45 Z" fill="#2eff88"/>
     <circle cx="45" cy="40" r="4" fill="#000"/>
@@ -33,11 +33,14 @@
     <line x1="45" y1="75" x2="55" y2="75" stroke="#ff2e88" stroke-width="3"/>
   </svg>
 
-  <h1>QTUM(LOG)</h1>
-  <h2>Native Tools of Julius Hirsch • Verified by Beler Industries</h2>
+  <header>
+    <h1>QTUM(LOG)</h1>
+    <h2>Native Tools of Julius Hirsch • Verified by Beler Industries</h2>
+  </header>
 
-  <div id="scannerShell">
-    <div id="videoWrapper">
+  <main id="scannerShell">
+
+    <section id="videoWrapper">
 
       <!-- Blue Cyber Sniper Reticle -->
       <div id="reticle">
@@ -49,25 +52,26 @@
 
       <video id="video" autoplay playsinline></video>
       <canvas id="canvas"></canvas>
-    </div>
+    </section>
 
-    <div id="controls">
+    <section id="controls">
       <button id="startBtn">Enable Camera</button>
       <button id="flipBtn" class="secondary">Flip Camera</button>
       <button id="uploadBtn" class="secondary">Upload Image</button>
-      <input type="file" id="fileInput" accept="image/*" style="display:none;">
-    </div>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </section>
 
-    <div id="output">
+    <section id="output">
       <div id="status" class="neutral">Waiting for scan…</div>
       <div id="payload"></div>
-    </div>
-  </div>
+    </section>
 
-  <div id="ledgerShell">
+  </main>
+
+  <aside id="ledgerShell">
     <div id="ledgerTitle">Scan Ledger</div>
     <div id="ledger"></div>
-  </div>
+  </aside>
 
 </body>
 </html>
