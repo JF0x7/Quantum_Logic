@@ -39,6 +39,7 @@ body {
   border-radius: 50%;
   box-shadow: 0 0 18px #2ea8ffcc;
   animation: reticlePulse 3s infinite ease-in-out;
+  z-index: 5; /* ensures visibility */
 }
 
 #reticle::before {
@@ -149,14 +150,14 @@ h2 {
   width: 100%;
   display: flex;
   justify-content: center;
-  gap: 18px; /* Better spacing between buttons */
+  gap: 20px;
   z-index: 10;
 }
 
 button {
   background: #ff2e88;
   border: none;
-  padding: 12px 22px; /* Larger tap target */
+  padding: 12px 22px;
   border-radius: 10px;
   color: #fff;
   font-size: 1.05rem;
