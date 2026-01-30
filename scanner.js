@@ -74,44 +74,21 @@ if (navigator.permissions && navigator.permissions.query) {
 }
 
 // ------------------------------------------------------------
-// SAMSUNG INTERNET AUTOFOCUS FIX (Zoom Pulse)
-// ------------------------------------------------------------
-async function forceRefocus(track) {
-  const caps = track.getCapabilities();
-  if (!caps.zoom) return;
-
-  const settings = track.getSettings();
-  const min = caps.zoom.min;
-  const max = caps.zoom.max;
-
-  try {
-    await track.applyConstraints({ advanced: [{ zoom: max * 0.9 }] });
-    await new Promise(r => setTimeout(r, 120));
-    await track.applyConstraints({ advanced: [{ zoom: settings.zoom || min }] });
-  } catch (e) {
-    console.log("Refocus pulse unsupported", e);
-  }
-}
-
-// ------------------------------------------------------------
-// START CAMERA
+// START CAMERA (NO ZOOM, NO PULSES, STABLE FEED)
 // ------------------------------------------------------------
 async function startCamera() {
   statusEl.textContent = "Requesting camera...";
   statusEl.className = "neutral";
 
-  // Stop old stream
   if (currentStream) {
     currentStream.getTracks().forEach(t => t.stop());
   }
 
-  // High resolution for tiny barcodes
   const constraints = {
     video: {
       facingMode: useFrontCamera ? "user" : "environment",
       width: { ideal: 1920 },
-      height: { ideal: 1080 },
-      advanced: [{ width: 1920, height: 1080 }]
+      height: { ideal: 1080 }
     }
   };
 
@@ -121,17 +98,6 @@ async function startCamera() {
 
     statusEl.textContent = "Camera active";
     statusEl.className = "success";
-
-    const track = currentStream.getVideoTracks()[0];
-
-    // Samsung autofocus pulse
-    setTimeout(() => forceRefocus(track), 500);
-
-    // Continuous refocus every 2.5s
-    setInterval(() => {
-      const t = currentStream?.getVideoTracks()[0];
-      if (t) forceRefocus(t);
-    }, 2500);
 
     decodeLoop();
 
