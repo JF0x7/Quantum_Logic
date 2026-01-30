@@ -1,3 +1,6 @@
+/* ----------------------------------------------------------
+   GLOBAL
+---------------------------------------------------------- */
 body {
   margin: 0;
   background: #000;
@@ -6,14 +9,24 @@ body {
   text-align: center;
 }
 
-/* Skull Emblem */
+/* ----------------------------------------------------------
+   QUANTUM SKULL EMBLEM
+---------------------------------------------------------- */
 #quantumLogo {
   width: 110px;
   margin: 20px auto 10px auto;
   filter: drop-shadow(0 0 8px #ff2e88);
   animation: pulseGlow 2.2s infinite ease-in-out;
 }
-/* Blue Cyber Sniper Reticle */
+
+@keyframes pulseGlow {
+  0%, 100% { filter: drop-shadow(0 0 8px #ff2e88); }
+  50% { filter: drop-shadow(0 0 16px #2eff88); }
+}
+
+/* ----------------------------------------------------------
+   BLUE CYBER SNIPER RETICLE
+---------------------------------------------------------- */
 #reticle {
   position: absolute;
   top: 50%;
@@ -23,7 +36,6 @@ body {
   transform: translate(-50%, -50%);
   pointer-events: none;
 
-  /* Outer ring */
   border: 2px solid #2ea8ff;
   border-radius: 50%;
   box-shadow: 0 0 18px #2ea8ffcc;
@@ -45,7 +57,7 @@ body {
   box-shadow: 0 0 12px #2ea8ff55;
 }
 
-/* Crosshair lines */
+/* Crosshair box */
 #reticle::after {
   content: "";
   position: absolute;
@@ -54,12 +66,9 @@ body {
   width: 140px;
   height: 140px;
   transform: translate(-50%, -50%);
-  border-left: 2px solid #2ea8ffcc;
-  border-top: 2px solid #2ea8ffcc;
-  border-right: 2px solid #2ea8ffcc;
-  border-bottom: 2px solid #2ea8ffcc;
+  border: 2px solid #2ea8ffcc;
   border-radius: 4px;
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 /* Corner brackets */
@@ -76,7 +85,7 @@ body {
 #reticle .corner.bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
 #reticle .corner.br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
 
-/* Breathing glow animation */
+/* Reticle breathing animation */
 @keyframes reticlePulse {
   0%, 100% {
     box-shadow: 0 0 14px #2ea8ffcc;
@@ -87,11 +96,10 @@ body {
     border-color: #6ec8ff;
   }
 }
-@keyframes pulseGlow {
-  0%, 100% { filter: drop-shadow(0 0 8px #ff2e88); }
-  50% { filter: drop-shadow(0 0 16px #2eff88); }
-}
 
+/* ----------------------------------------------------------
+   HEADERS
+---------------------------------------------------------- */
 h1 {
   font-size: 2.4rem;
   color: #ff2e88;
@@ -104,6 +112,9 @@ h2 {
   margin-bottom: 20px;
 }
 
+/* ----------------------------------------------------------
+   SCANNER LAYOUT
+---------------------------------------------------------- */
 #scannerShell {
   height: 70vh;
   display: flex;
@@ -133,6 +144,9 @@ h2 {
   pointer-events: none;
 }
 
+/* ----------------------------------------------------------
+   CONTROLS
+---------------------------------------------------------- */
 #controls {
   position: absolute;
   bottom: 20px;
@@ -156,6 +170,9 @@ button.secondary {
   background: #222;
 }
 
+/* ----------------------------------------------------------
+   OUTPUT
+---------------------------------------------------------- */
 #output {
   margin-top: 20px;
   text-align: left;
@@ -182,7 +199,9 @@ button.secondary {
   border: 1px solid #333;
 }
 
-/* Ledger */
+/* ----------------------------------------------------------
+   LEDGER
+---------------------------------------------------------- */
 #ledgerShell {
   background: #0a0a0a;
   padding: 20px;
