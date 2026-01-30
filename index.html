@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <title>QTUM(LOG) Scanner</title>
 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/@zxing/library@latest"></script>
   <script defer src="ledger.js"></script>
@@ -27,22 +29,23 @@
 
   <div id="scannerShell">
     <div id="videoWrapper">
-
       <video id="video" autoplay playsinline></video>
       <canvas id="canvas"></canvas>
-            <!-- SNIPER RETICLE -->
-<div id="reticle">
-  <div class="corner tl"></div>
-  <div class="corner tr"></div>
-  <div class="corner bl"></div>
-  <div class="corner br"></div>
-</div>
+
+      <!-- Sniper Reticle -->
+      <div id="reticle">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+      </div>
     </div>
 
     <div id="controls">
-      <button id="startBtn">Enable Camera</button>
-      <button id="flipBtn" class="secondary">Flip Camera</button>
-      <button id="uploadBtn" class="secondary">Upload Image</button>
+      <button id="startBtn" type="button">Enable Camera</button>
+      <button id="flipBtn" type="button" class="secondary">Flip Camera</button>
+      <button id="uploadBtn" type="button" class="secondary">Upload Image</button>
+      <button id="sendBtn" type="button" class="secondary">Send Signal</button>
       <input type="file" id="fileInput" accept="image/*" style="display:none;">
     </div>
 
