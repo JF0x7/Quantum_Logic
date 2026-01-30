@@ -1,77 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>QTUM(LOG) Scanner</title>
-
-  <!-- Security Hardening -->
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="referrer" content="no-referrer" />
-  <meta name="format-detection" content="telephone=no" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- ZXing Barcode Library -->
-  <script src="https://unpkg.com/@zxing/library@latest" crossorigin="anonymous"></script>
-
-  <!-- App Scripts -->
-  <script defer src="ledger.js"></script>
-  <script defer src="scanner.js"></script>
-</head>
-
 <body>
+  <img id="quantumLogo" src="quantum.png" alt="Quantum Skull">
 
-  <!-- Quantum Skull Emblem -->
-  <svg id="quantumLogo" viewBox="0 0 100 100" aria-hidden="true">
-    <circle cx="50" cy="50" r="40" stroke="#ff2e88" stroke-width="3" fill="none"/>
-    <path d="M40 45 Q50 20 60 45 Q50 60 40 45 Z" fill="#2eff88"/>
-    <circle cx="45" cy="40" r="4" fill="#000"/>
-    <circle cx="55" cy="40" r="4" fill="#000"/>
-    <line x1="35" y1="70" x2="65" y2="70" stroke="#ff2e88" stroke-width="3"/>
-    <line x1="45" y1="75" x2="55" y2="75" stroke="#ff2e88" stroke-width="3"/>
-  </svg>
+  <h1>Quantum Scanner</h1>
+  <h2>Faction: Skull & Bones Division</h2>
 
-  <header>
-    <h1>QTUM(LOG)</h1>
-    <h2>Native Tools of Julius Hirsch • Verified by Beler Industries</h2>
-  </header>
+  <div id="scannerShell">
+    <div id="videoWrapper">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
 
-  <main id="scannerShell">
-
-    <section id="videoWrapper">
-
-      <!-- Blue Cyber Sniper Reticle -->
+      <!-- RETICLE (must exist in HTML!) -->
       <div id="reticle">
         <div class="corner tl"></div>
         <div class="corner tr"></div>
         <div class="corner bl"></div>
         <div class="corner br"></div>
       </div>
+    </div>
 
-      <video id="video" autoplay playsinline></video>
-      <canvas id="canvas"></canvas>
-    </section>
+    <div id="controls">
+      <button id="scanBtn">Scan</button>
+      <button id="stopBtn" class="secondary">Stop</button>
+      <button id="clearBtn" class="secondary">Clear</button>
+    </div>
+  </div>
 
-    <section id="controls">
-      <button id="startBtn">Enable Camera</button>
-      <button id="flipBtn" class="secondary">Flip Camera</button>
-      <button id="uploadBtn" class="secondary">Upload Image</button>
-      <input type="file" id="fileInput" accept="image/*" hidden>
-    </section>
+  <div id="output">
+    <div id="status" class="neutral">Status: Idle</div>
+    <div id="payload"></div>
+  </div>
 
-    <section id="output">
-      <div id="status" class="neutral">Waiting for scan…</div>
-      <div id="payload"></div>
-    </section>
-
-  </main>
-
-  <aside id="ledgerShell">
+  <div id="ledgerShell">
     <div id="ledgerTitle">Scan Ledger</div>
     <div id="ledger"></div>
-  </aside>
-
+  </div>
 </body>
-</html>
