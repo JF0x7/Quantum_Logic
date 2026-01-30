@@ -35,7 +35,21 @@ document.getElementById("fileInput").addEventListener("change", async e => {
     statusEl.className = "error";
   }
 });
+// --- AUTO-START CAMERA IF ALREADY GRANTED ---
+if (navigator.permissions && navigator.permissions.query) {
+  navigator.permissions.query({ name: "camera" }).then(result => {
+    if (result.state === "granted") {
+      startCamera();
+    }
 
+    // If permission changes while page is open
+    result.onchange = () => {
+      if (result.state === "granted") {
+        startCamera();
+      }
+    };
+  });
+}
 async function startCamera() {
   statusEl.textContent = "Requesting camera...";
   statusEl.className = "neutral";
