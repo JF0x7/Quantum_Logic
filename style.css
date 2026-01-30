@@ -9,6 +9,13 @@ body {
   text-align: center;
 }
 
+/* Utility */
+.full-abs {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+}
+
 /* ----------------------------------------------------------
    QUANTUM SKULL EMBLEM
 ---------------------------------------------------------- */
@@ -29,10 +36,8 @@ body {
 ---------------------------------------------------------- */
 #reticle {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 200px;
-  height: 200px;
+  top: 50%; left: 50%;
+  width: 200px; height: 200px;
   transform: translate(-50%, -50%);
   pointer-events: none;
   border: 2px solid #2ea8ff;
@@ -41,39 +46,31 @@ body {
   animation: reticlePulse 3s infinite ease-in-out;
 }
 
-/* Inner ring */
-#reticle::before {
+#reticle::before,
+#reticle::after {
   content: "";
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 110px;
-  height: 110px;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
+}
+
+#reticle::before {
+  width: 110px; height: 110px;
   border: 2px solid #2ea8ff88;
   border-radius: 50%;
   box-shadow: 0 0 12px #2ea8ff55;
 }
 
-/* Crosshair box */
 #reticle::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 140px;
-  height: 140px;
-  transform: translate(-50%, -50%);
+  width: 140px; height: 140px;
   border: 2px solid #2ea8ffcc;
   border-radius: 4px;
   opacity: 0.35;
 }
 
-/* Corner brackets */
 #reticle .corner {
   position: absolute;
-  width: 22px;
-  height: 22px;
+  width: 22px; height: 22px;
   border: 2px solid #2ea8ff;
   box-shadow: 0 0 10px #2ea8ffcc;
 }
@@ -83,7 +80,6 @@ body {
 #reticle .corner.bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
 #reticle .corner.br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
 
-/* Reticle breathing animation */
 @keyframes reticlePulse {
   0%, 100% {
     box-shadow: 0 0 14px #2ea8ffcc;
@@ -129,20 +125,11 @@ h2 {
 
 #video,
 #canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  composes: full-abs;
 }
 
-#video {
-  object-fit: cover;
-}
-
-#canvas {
-  pointer-events: none;
-}
+#video { object-fit: cover; }
+#canvas { pointer-events: none; }
 
 /* ----------------------------------------------------------
    CONTROLS
@@ -164,6 +151,7 @@ button {
   cursor: pointer;
   margin: 5px;
   box-shadow: 0 0 10px #ff2e88aa;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 button.secondary {
@@ -227,14 +215,8 @@ button.secondary {
   box-shadow: 0 0 10px #2eff8844;
 }
 
-.ledgerPayload {
-  font-size: 1rem;
-}
-
-.ledgerTime {
-  font-size: 0.75rem;
-  opacity: 0.6;
-}
+.ledgerPayload { font-size: 1rem; }
+.ledgerTime { font-size: 0.75rem; opacity: 0.6; }
 
 .ledgerTag {
   font-size: 0.75rem;
