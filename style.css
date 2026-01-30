@@ -9,13 +9,6 @@ body {
   text-align: center;
 }
 
-/* Utility */
-.full-abs {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-}
-
 /* ----------------------------------------------------------
    QUANTUM SKULL EMBLEM
 ---------------------------------------------------------- */
@@ -36,8 +29,10 @@ body {
 ---------------------------------------------------------- */
 #reticle {
   position: absolute;
-  top: 50%; left: 50%;
-  width: 200px; height: 200px;
+  top: 50%;
+  left: 50%;
+  width: 200px;
+  height: 200px;
   transform: translate(-50%, -50%);
   pointer-events: none;
   border: 2px solid #2ea8ff;
@@ -46,23 +41,27 @@ body {
   animation: reticlePulse 3s infinite ease-in-out;
 }
 
-#reticle::before,
-#reticle::after {
+#reticle::before {
   content: "";
   position: absolute;
-  top: 50%; left: 50%;
+  top: 50%;
+  left: 50%;
+  width: 110px;
+  height: 110px;
   transform: translate(-50%, -50%);
-}
-
-#reticle::before {
-  width: 110px; height: 110px;
   border: 2px solid #2ea8ff88;
   border-radius: 50%;
   box-shadow: 0 0 12px #2ea8ff55;
 }
 
 #reticle::after {
-  width: 140px; height: 140px;
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 140px;
+  height: 140px;
+  transform: translate(-50%, -50%);
   border: 2px solid #2ea8ffcc;
   border-radius: 4px;
   opacity: 0.35;
@@ -70,7 +69,8 @@ body {
 
 #reticle .corner {
   position: absolute;
-  width: 22px; height: 22px;
+  width: 22px;
+  height: 22px;
   border: 2px solid #2ea8ff;
   box-shadow: 0 0 10px #2ea8ffcc;
 }
@@ -125,33 +125,49 @@ h2 {
 
 #video,
 #canvas {
-  composes: full-abs;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 
-#video { object-fit: cover; }
-#canvas { pointer-events: none; }
+#video {
+  object-fit: cover;
+}
+
+#canvas {
+  pointer-events: none;
+}
 
 /* ----------------------------------------------------------
-   CONTROLS
+   CONTROLS (IMPROVED SPACING + CENTERING)
 ---------------------------------------------------------- */
 #controls {
   position: absolute;
-  bottom: 20px;
+  bottom: 25px;
   width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 18px; /* Better spacing between buttons */
   z-index: 10;
 }
 
 button {
   background: #ff2e88;
   border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
+  padding: 12px 22px; /* Larger tap target */
+  border-radius: 10px;
   color: #fff;
-  font-size: 1rem;
+  font-size: 1.05rem;
   cursor: pointer;
-  margin: 5px;
   box-shadow: 0 0 10px #ff2e88aa;
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover {
+  transform: scale(1.07);
+  box-shadow: 0 0 14px #ff2e88dd;
 }
 
 button.secondary {
@@ -215,8 +231,14 @@ button.secondary {
   box-shadow: 0 0 10px #2eff8844;
 }
 
-.ledgerPayload { font-size: 1rem; }
-.ledgerTime { font-size: 0.75rem; opacity: 0.6; }
+.ledgerPayload {
+  font-size: 1rem;
+}
+
+.ledgerTime {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
 
 .ledgerTag {
   font-size: 0.75rem;
