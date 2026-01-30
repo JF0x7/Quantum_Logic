@@ -48,7 +48,6 @@ document.getElementById("sendBtn").addEventListener("click", () => {
     return;
   }
 
-  // Simulated "send signal" action
   console.log("Sending signal for payload:", lastScan);
 
   statusEl.textContent = "📡 Signal sent for last scan";
@@ -61,14 +60,28 @@ document.getElementById("sendBtn").addEventListener("click", () => {
    CAMERA START
 ---------------------------------------------------------- */
 async function startCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    statusEl.textContent = "Camera not supported in this browser.";
+    statusEl.className = "error";
+    return;
+  }
+
+  if (location.protocol !== "https:" && location.hostname !== "localhost") {
+    statusEl.textContent = "Camera requires HTTPS (or localhost).";
+    statusEl.className = "error";
+    return;
+  }
+
   statusEl.textContent = "Requesting camera...";
   statusEl.className = "neutral";
 
   if (currentStream) {
     currentStream.getTracks().forEach(t => t.stop());
+    currentStream = null;
   }
 
-  const constraints = {
+  // First attempt: facingMode (works on most)
+  let constraints = {
     video: {
       facingMode: useFrontCamera ? "user" : { ideal: "environment" }
     }
@@ -76,32 +89,51 @@ async function startCamera() {
 
   try {
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = currentStream;
-
-    statusEl.textContent = "Camera active";
-    statusEl.className = "success";
-
-    video.onloadedmetadata = () => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-    };
-
-    decodeLoop();
   } catch (err) {
-    statusEl.textContent = "Camera error: " + err.name;
-    statusEl.className = "error";
+    console.warn("FacingMode failed, falling back to generic video:", err.name);
+
+    // Fallback: generic video (Samsung Internet sometimes prefers this)
+    constraints = { video: true };
+    try {
+      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err2) {
+      statusEl.textContent = "Camera error: " + err2.name;
+      statusEl.className = "error";
+      return;
+    }
   }
+
+  video.srcObject = currentStream;
+
+  statusEl.textContent = "Camera active";
+  statusEl.className = "success";
+
+  video.onloadedmetadata = () => {
+    canvas.width = video.videoWidth || canvas.clientWidth;
+    canvas.height = video.videoHeight || canvas.clientHeight;
+  };
+
+  startDecodeLoop();
 }
 
 /* ----------------------------------------------------------
-   DECODE LOOP
+   DECODE LOOP (Samsung‑friendly)
 ---------------------------------------------------------- */
-function decodeLoop() {
+function startDecodeLoop() {
   console.log("decode loop running");
 
-  codeReader.decodeFromVideoDevice(null, "video", (result, err) => {
+  // Important for Samsung / multiple restarts
+  codeReader.reset();
+
+  // Use element instead of ID string for better compatibility
+  codeReader.decodeFromVideoDevice(undefined, video, (result, err) => {
     if (result && !scanCooldown) {
       handleDecoded(result.text);
+    }
+
+    // Ignore "NotFoundException" (no code in frame)
+    if (err && !(err instanceof ZXing.NotFoundException)) {
+      console.warn("Decode error:", err);
     }
   });
 }
