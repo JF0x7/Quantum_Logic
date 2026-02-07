@@ -232,43 +232,6 @@ button.secondary {
   font-style: italic;
   text-shadow: 0 0 6px #ff2e88;
 }
-/* ----------------------------------------------------------
-   FIX: Prevent Overlapping Layout
----------------------------------------------------------- */
-
-/* Ensure scanner area always has enough room */
-#scannerShell {
-  height: calc(70vh - 80px);
-  min-height: 420px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-/* Prevent video wrapper from collapsing */
-#videoWrapper {
-  min-height: 300px;
-}
-
-/* Responsive reticle — never too big on small screens */
-#reticle {
-  width: min(260px, 55vw);
-  height: min(260px, 55vw);
-}
-
-/* Controls stay clear of reticle */
-#controls {
-  position: absolute;
-  bottom: 10px;
-  width: 100%;
-  padding-bottom: 10px;
-  margin-bottom: env(safe-area-inset-bottom);
-  z-index: 30;
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 14px;
-}
 
 /* Ensure buttons never overlap each other */
 button {
