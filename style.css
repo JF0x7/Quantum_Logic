@@ -232,8 +232,3 @@ button.secondary {
   font-style: italic;
   text-shadow: 0 0 6px #ff2e88;
 }
-
-/* Ensure buttons never overlap each other */
-button {
-  flex-shrink: 0;
-}
