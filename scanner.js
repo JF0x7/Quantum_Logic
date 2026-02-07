@@ -10,7 +10,27 @@ let useFrontCamera = false;
 let lastScan = "";
 let scanCooldown = false;
 
-const codeReader = new ZXing.BrowserMultiFormatReader();
+const codeReader = new ZXing.BrowserMultiFormatReader(
+  new ZXing.Hints([
+    [ZXing.DecodeHintType.TRY_HARDER, true],
+    [ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.QR_CODE,
+      ZXing.BarcodeFormat.DATA_MATRIX,
+      ZXing.BarcodeFormat.AZTEC,
+      ZXing.BarcodeFormat.PDF_417,
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.CODE_93,
+      ZXing.BarcodeFormat.EAN_13,
+      ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.UPC_E,
+      ZXing.BarcodeFormat.ITF,
+      ZXing.BarcodeFormat.RSS_14,
+      ZXing.BarcodeFormat.RSS_EXPANDED
+    ]]
+  ])
+);
 
 /* ----------------------------------------------------------
    UTILITIES
