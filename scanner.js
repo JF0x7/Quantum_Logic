@@ -13,6 +13,21 @@ let scanCooldown = false;
 const codeReader = new ZXing.BrowserMultiFormatReader();
 
 /* ----------------------------------------------------------
+   UTILITIES
+---------------------------------------------------------- */
+function setStatus(text, type = "neutral") {
+  statusEl.textContent = text;
+  statusEl.className = type;
+}
+
+function stopStream() {
+  if (currentStream) {
+    currentStream.getTracks().forEach(t => t.stop());
+    currentStream = null;
+  }
+}
+
+/* ----------------------------------------------------------
    BUTTON EVENTS
 ---------------------------------------------------------- */
 document.getElementById("startBtn").addEventListener("click", startCamera);
@@ -30,58 +45,43 @@ document.getElementById("fileInput").addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const imgURL = URL.createObjectURL(file);
-
   try {
+    const imgURL = URL.createObjectURL(file);
     const result = await codeReader.decodeFromImageUrl(imgURL);
     handleDecoded(result.text);
   } catch {
-    statusEl.textContent = "❌ Scan failed";
-    statusEl.className = "error";
+    setStatus("❌ Scan failed", "error");
   }
 });
 
 document.getElementById("sendBtn").addEventListener("click", () => {
   if (!lastScan) {
-    statusEl.textContent = "No scan to signal.";
-    statusEl.className = "neutral";
+    setStatus("No scan to signal.", "neutral");
     return;
   }
 
-  statusEl.textContent = "📡 Signal sent";
-  statusEl.className = "success";
-
+  setStatus("📡 Signal sent", "success");
   addToLedger("[SIGNAL] " + lastScan);
 });
 
 /* ----------------------------------------------------------
-   CAMERA START — UNIVERSAL BROWSER SAFE
+   CAMERA START — UNIVERSAL & CLEAN
 ---------------------------------------------------------- */
 async function startCamera() {
-  statusEl.textContent = "Requesting camera...";
-  statusEl.className = "neutral";
+  setStatus("Requesting camera...");
 
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    statusEl.textContent = "Camera not supported in this browser.";
-    statusEl.className = "error";
-    return;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    return setStatus("Camera not supported in this browser.", "error");
   }
 
   if (location.protocol !== "https:" && location.hostname !== "localhost") {
-    statusEl.textContent = "Camera requires HTTPS.";
-    statusEl.className = "error";
-    return;
+    return setStatus("Camera requires HTTPS.", "error");
   }
 
-  if (currentStream) {
-    currentStream.getTracks().forEach(t => t.stop());
-    currentStream = null;
-  }
+  stopStream();
 
   let constraints = {
-    video: {
-      facingMode: useFrontCamera ? "user" : { ideal: "environment" }
-    }
+    video: { facingMode: useFrontCamera ? "user" : { ideal: "environment" } }
   };
 
   try {
@@ -89,14 +89,10 @@ async function startCamera() {
   } catch (err) {
     console.warn("FacingMode failed, fallback:", err);
 
-    constraints = { video: true };
-
     try {
-      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      currentStream = await navigator.mediaDevices.getUserMedia({ video: true });
     } catch (err2) {
-      statusEl.textContent = "Camera error: " + err2.name;
-      statusEl.className = "error";
-      return;
+      return setStatus("Camera error: " + err2.name, "error");
     }
   }
 
@@ -107,19 +103,17 @@ async function startCamera() {
     canvas.height = video.videoHeight || 480;
   };
 
-  statusEl.textContent = "Camera active";
-  statusEl.className = "success";
-
+  setStatus("Camera active", "success");
   startDecodeLoop();
 }
 
 /* ----------------------------------------------------------
-   DECODE LOOP — STABLE ON ALL BROWSERS
+   DECODE LOOP — LIGHT & STABLE
 ---------------------------------------------------------- */
 function startDecodeLoop() {
   codeReader.reset();
 
-  codeReader.decodeFromVideoDevice(undefined, video, (result, err) => {
+  codeReader.decodeFromVideoDevice(null, video, (result, err) => {
     if (result && !scanCooldown) {
       handleDecoded(result.text);
     }
@@ -140,12 +134,9 @@ function handleDecoded(data) {
   scanCooldown = true;
 
   payloadEl.textContent = data;
-  statusEl.textContent = "✅ Scan successful";
-  statusEl.className = "success";
+  setStatus("✅ Scan successful", "success");
 
   addToLedger(data);
 
-  setTimeout(() => {
-    scanCooldown = false;
-  }, 1500);
+  setTimeout(() => (scanCooldown = false), 1500);
 }
