@@ -43,17 +43,12 @@ h2 {
    SCANNER LAYOUT
 ---------------------------------------------------------- */
 #scannerShell {
-  height: 70vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
+  height: calc(70vh - 80px); /* subtract control height */
+  min-height: 420px; /* ensures reticle fits on small screens */
 }
 
 #videoWrapper {
-  width: 100%;
-  height: 100%;
-  position: relative;
+  min-height: 300px;
 }
 
 #video {
@@ -78,18 +73,8 @@ h2 {
    SNIPER RETICLE (~260px)
 ---------------------------------------------------------- */
 #reticle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 260px;
-  height: 260px;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  border: 3px solid #2ea8ff;
-  border-radius: 50%;
-  box-shadow: 0 0 22px #2ea8ffcc;
-  animation: reticlePulse 3s infinite ease-in-out;
-  z-index: 20;
+  width: min(260px, 55vw);
+  height: min(260px, 55vw);
 }
 
 @keyframes reticlePulse {
@@ -149,14 +134,8 @@ h2 {
    CONTROLS
 ---------------------------------------------------------- */
 #controls {
-  position: absolute;
-  bottom: 20px;
-  width: 100%;
-  z-index: 30;
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 14px; /* ← perfect spacing */
+  padding-bottom: 10px;
+  margin-bottom: env(safe-area-inset-bottom);
 }
 
 button {
@@ -252,4 +231,46 @@ button.secondary {
   margin-top: 6px;
   font-style: italic;
   text-shadow: 0 0 6px #ff2e88;
+}
+/* ----------------------------------------------------------
+   FIX: Prevent Overlapping Layout
+---------------------------------------------------------- */
+
+/* Ensure scanner area always has enough room */
+#scannerShell {
+  height: calc(70vh - 80px);
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Prevent video wrapper from collapsing */
+#videoWrapper {
+  min-height: 300px;
+}
+
+/* Responsive reticle — never too big on small screens */
+#reticle {
+  width: min(260px, 55vw);
+  height: min(260px, 55vw);
+}
+
+/* Controls stay clear of reticle */
+#controls {
+  position: absolute;
+  bottom: 10px;
+  width: 100%;
+  padding-bottom: 10px;
+  margin-bottom: env(safe-area-inset-bottom);
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+/* Ensure buttons never overlap each other */
+button {
+  flex-shrink: 0;
 }
