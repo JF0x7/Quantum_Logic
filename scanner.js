@@ -110,10 +110,31 @@ async function startCamera() {
 /* ----------------------------------------------------------
    DECODE LOOP — LIGHT & STABLE
 ---------------------------------------------------------- */
-function startDecodeLoop() {
+async function startDecodeLoop() {
   codeReader.reset();
 
-  codeReader.decodeFromVideoDevice(null, video, (result, err) => {
+  // Get camera list
+  const devices = await codeReader.listVideoInputDevices();
+  if (!devices.length) {
+    return setStatus("No camera devices found.", "error");
+  }
+
+  // Pick correct camera
+  let selectedDeviceId;
+
+  if (useFrontCamera) {
+    selectedDeviceId = devices.find(d => d.label.toLowerCase().includes("front"))?.deviceId;
+  } else {
+    selectedDeviceId = devices.find(d => d.label.toLowerCase().includes("back"))?.deviceId;
+  }
+
+  // Fallback if no match
+  if (!selectedDeviceId) {
+    selectedDeviceId = devices[0].deviceId;
+  }
+
+  // Start decoding
+  codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
     if (result && !scanCooldown) {
       handleDecoded(result.text);
     }
