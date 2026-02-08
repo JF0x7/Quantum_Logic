@@ -1,3 +1,6 @@
+/* ----------------------------------------------------------
+   ELEMENTS
+---------------------------------------------------------- */
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -10,11 +13,14 @@ let useFrontCamera = false;
 let lastScan = "";
 let scanCooldown = false;
 
+/* ----------------------------------------------------------
+   ZXING SETUP — Scan All Formats
+---------------------------------------------------------- */
 const hints = new Map();
 hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 hints.set(
   ZXing.DecodeHintType.POSSIBLE_FORMATS,
-  Object.values(ZXing.BarcodeFormat) // ← scans EVERYTHING ZXing supports
+  Object.values(ZXing.BarcodeFormat)
 );
 
 const codeReader = new ZXing.BrowserMultiFormatReader(hints);
@@ -73,7 +79,7 @@ document.getElementById("sendBtn").addEventListener("click", () => {
 });
 
 /* ----------------------------------------------------------
-   CAMERA START — WITH PERMISSION PROMPT + ERRORS
+   CAMERA START — WITH PERMISSION + ERRORS
 ---------------------------------------------------------- */
 async function startCamera() {
   setStatus("Requesting camera access...");
@@ -89,48 +95,19 @@ async function startCamera() {
   stopStream();
 
   const constraints = {
-    video: { facingMode: useFrontCamera ? "user" : { ideal: "environment" } }
-    video.addEventListener("click", async (e) => {
-  if (!currentStream) return;
-
-  const track = currentStream.getVideoTracks()[0];
-  const capabilities = track.getCapabilities();
-
-  if (!capabilities.focusMode) {
-    setStatus("⚠️ Tap‑to‑focus not supported on this device.", "neutral");
-    return;
-  }
-
-  const rect = video.getBoundingClientRect();
-  const x = (e.clientX - rect.left) / rect.width;
-  const y = (e.clientY - rect.top) / rect.height;
-
-  try {
-    await track.applyConstraints({
-      advanced: [
-        {
-          focusMode: "single-shot",
-          pointsOfInterest: [{ x, y }]
-        }
-      ]
-    });
-
-    setStatus("🔍 Focusing…", "neutral");
-  } catch (err) {
-    console.error(err);
-    setStatus("❌ Focus failed", "error");
-  }
-});
+    video: {
+      facingMode: useFrontCamera ? "user" : { ideal: "environment" }
+    }
   };
 
   try {
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
   } catch (err) {
     if (err.name === "NotAllowedError") {
-      return setStatus("❌ Camera blocked. Please enable camera permissions.", "error");
+      return setStatus("❌ Camera blocked. Enable permissions.", "error");
     }
     if (err.name === "NotFoundError") {
-      return setStatus("❌ No camera found on this device.", "error");
+      return setStatus("❌ No camera found.", "error");
     }
     return setStatus("❌ Camera error: " + err.message, "error");
   }
@@ -142,8 +119,47 @@ async function startCamera() {
     canvas.height = video.videoHeight || 480;
   };
 
+  attachTapToFocus();
+
   setStatus("📷 Camera active", "success");
   startDecodeLoop();
+}
+
+/* ----------------------------------------------------------
+   TAP‑TO‑FOCUS (Properly Attached)
+---------------------------------------------------------- */
+function attachTapToFocus() {
+  video.onclick = async (e) => {
+    if (!currentStream) return;
+
+    const track = currentStream.getVideoTracks()[0];
+    const capabilities = track.getCapabilities();
+
+    if (!capabilities.focusMode) {
+      setStatus("⚠️ Tap‑to‑focus not supported.", "neutral");
+      return;
+    }
+
+    const rect = video.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+
+    try {
+      await track.applyConstraints({
+        advanced: [
+          {
+            focusMode: "single-shot",
+            pointsOfInterest: [{ x, y }]
+          }
+        ]
+      });
+
+      setStatus("🔍 Focusing…", "neutral");
+    } catch (err) {
+      console.error(err);
+      setStatus("❌ Focus failed", "error");
+    }
+  };
 }
 
 /* ----------------------------------------------------------
@@ -166,9 +182,13 @@ async function startDecodeLoop() {
   let selectedDeviceId;
 
   if (useFrontCamera) {
-    selectedDeviceId = devices.find(d => d.label.toLowerCase().includes("front"))?.deviceId;
+    selectedDeviceId = devices.find(d =>
+      d.label.toLowerCase().includes("front")
+    )?.deviceId;
   } else {
-    selectedDeviceId = devices.find(d => d.label.toLowerCase().includes("back"))?.deviceId;
+    selectedDeviceId = devices.find(d =>
+      d.label.toLowerCase().includes("back")
+    )?.deviceId;
   }
 
   if (!selectedDeviceId) selectedDeviceId = devices[0].deviceId;
