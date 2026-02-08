@@ -183,3 +183,27 @@ button.secondary {
   font-style: italic;
   text-shadow: 0 0 6px #7fffff;
 }
+#scanIndicator {
+  width: 40px;
+  height: 40px;
+  margin: 10px auto;
+  border-radius: 50%;
+  background: #0a1a1f;
+  box-shadow: 0 0 10px #0ff3;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+#scanIndicator.scanning {
+  background: #003344;
+  box-shadow: 0 0 14px #00eaff;
+}
+
+#scanIndicator.success {
+  background: #0f4f3a;
+  box-shadow: 0 0 14px #00ff99;
+}
+
+#scanIndicator.error {
+  background: #4f0f0f;
+  box-shadow: 0 0 14px #ff4444;
+}
