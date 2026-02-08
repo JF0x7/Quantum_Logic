@@ -10,27 +10,7 @@ let useFrontCamera = false;
 let lastScan = "";
 let scanCooldown = false;
 
-const codeReader = new ZXing.BrowserMultiFormatReader(
-  new ZXing.Hints([
-    [ZXing.DecodeHintType.TRY_HARDER, true],
-    [ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-      ZXing.BarcodeFormat.QR_CODE,
-      ZXing.BarcodeFormat.DATA_MATRIX,
-      ZXing.BarcodeFormat.AZTEC,
-      ZXing.BarcodeFormat.PDF_417,
-      ZXing.BarcodeFormat.CODE_128,
-      ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.CODE_93,
-      ZXing.BarcodeFormat.EAN_13,
-      ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.UPC_A,
-      ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.ITF,
-      ZXing.BarcodeFormat.RSS_14,
-      ZXing.BarcodeFormat.RSS_EXPANDED
-    ]]
-  ])
-);
+const codeReader = new ZXing.BrowserMultiFormatReader();
 
 /* ----------------------------------------------------------
    UTILITIES
@@ -69,8 +49,9 @@ document.getElementById("fileInput").addEventListener("change", async e => {
     const imgURL = URL.createObjectURL(file);
     const result = await codeReader.decodeFromImageUrl(imgURL);
     handleDecoded(result.text);
-  } catch {
-    setStatus("❌ Scan failed", "error");
+  } catch (err) {
+    console.error(err);
+    setStatus("❌ Image scan failed", "error");
   }
 });
 
@@ -85,35 +66,35 @@ document.getElementById("sendBtn").addEventListener("click", () => {
 });
 
 /* ----------------------------------------------------------
-   CAMERA START — UNIVERSAL & CLEAN
+   CAMERA START — WITH PERMISSION PROMPT + ERRORS
 ---------------------------------------------------------- */
 async function startCamera() {
-  setStatus("Requesting camera...");
+  setStatus("Requesting camera access...");
 
   if (!navigator.mediaDevices?.getUserMedia) {
-    return setStatus("Camera not supported in this browser.", "error");
+    return setStatus("❌ This browser does not support camera access.", "error");
   }
 
   if (location.protocol !== "https:" && location.hostname !== "localhost") {
-    return setStatus("Camera requires HTTPS.", "error");
+    return setStatus("❌ Camera requires HTTPS.", "error");
   }
 
   stopStream();
 
-  let constraints = {
+  const constraints = {
     video: { facingMode: useFrontCamera ? "user" : { ideal: "environment" } }
   };
 
   try {
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
   } catch (err) {
-    console.warn("FacingMode failed, fallback:", err);
-
-    try {
-      currentStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    } catch (err2) {
-      return setStatus("Camera error: " + err2.name, "error");
+    if (err.name === "NotAllowedError") {
+      return setStatus("❌ Camera blocked. Please enable camera permissions.", "error");
     }
+    if (err.name === "NotFoundError") {
+      return setStatus("❌ No camera found on this device.", "error");
+    }
+    return setStatus("❌ Camera error: " + err.message, "error");
   }
 
   video.srcObject = currentStream;
@@ -123,23 +104,27 @@ async function startCamera() {
     canvas.height = video.videoHeight || 480;
   };
 
-  setStatus("Camera active", "success");
+  setStatus("📷 Camera active", "success");
   startDecodeLoop();
 }
 
 /* ----------------------------------------------------------
-   DECODE LOOP — LIGHT & STABLE
+   DECODE LOOP — CLEAN + SAFE
 ---------------------------------------------------------- */
 async function startDecodeLoop() {
   codeReader.reset();
 
-  // Get camera list
-  const devices = await codeReader.listVideoInputDevices();
-  if (!devices.length) {
-    return setStatus("No camera devices found.", "error");
+  let devices;
+  try {
+    devices = await codeReader.listVideoInputDevices();
+  } catch (err) {
+    return setStatus("❌ Unable to list cameras.", "error");
   }
 
-  // Pick correct camera
+  if (!devices.length) {
+    return setStatus("❌ No camera devices detected.", "error");
+  }
+
   let selectedDeviceId;
 
   if (useFrontCamera) {
@@ -148,21 +133,22 @@ async function startDecodeLoop() {
     selectedDeviceId = devices.find(d => d.label.toLowerCase().includes("back"))?.deviceId;
   }
 
-  // Fallback if no match
-  if (!selectedDeviceId) {
-    selectedDeviceId = devices[0].deviceId;
+  if (!selectedDeviceId) selectedDeviceId = devices[0].deviceId;
+
+  try {
+    codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
+      if (result && !scanCooldown) {
+        handleDecoded(result.text);
+      }
+
+      if (err && !(err instanceof ZXing.NotFoundException)) {
+        console.warn("Decode error:", err);
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    setStatus("❌ Failed to start decoding.", "error");
   }
-
-  // Start decoding
-  codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
-    if (result && !scanCooldown) {
-      handleDecoded(result.text);
-    }
-
-    if (err && !(err instanceof ZXing.NotFoundException)) {
-      console.warn("Decode error:", err);
-    }
-  });
 }
 
 /* ----------------------------------------------------------
