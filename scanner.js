@@ -10,7 +10,14 @@ let useFrontCamera = false;
 let lastScan = "";
 let scanCooldown = false;
 
-const codeReader = new ZXing.BrowserMultiFormatReader();
+const hints = new Map();
+hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+hints.set(
+  ZXing.DecodeHintType.POSSIBLE_FORMATS,
+  Object.values(ZXing.BarcodeFormat) // ← scans EVERYTHING ZXing supports
+);
+
+const codeReader = new ZXing.BrowserMultiFormatReader(hints);
 
 /* ----------------------------------------------------------
    UTILITIES
