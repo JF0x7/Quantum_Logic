@@ -90,6 +90,37 @@ async function startCamera() {
 
   const constraints = {
     video: { facingMode: useFrontCamera ? "user" : { ideal: "environment" } }
+    video.addEventListener("click", async (e) => {
+  if (!currentStream) return;
+
+  const track = currentStream.getVideoTracks()[0];
+  const capabilities = track.getCapabilities();
+
+  if (!capabilities.focusMode) {
+    setStatus("⚠️ Tap‑to‑focus not supported on this device.", "neutral");
+    return;
+  }
+
+  const rect = video.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+
+  try {
+    await track.applyConstraints({
+      advanced: [
+        {
+          focusMode: "single-shot",
+          pointsOfInterest: [{ x, y }]
+        }
+      ]
+    });
+
+    setStatus("🔍 Focusing…", "neutral");
+  } catch (err) {
+    console.error(err);
+    setStatus("❌ Focus failed", "error");
+  }
+});
   };
 
   try {
