@@ -9,9 +9,9 @@ const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
 
 let currentStream = null;
-let useFrontCamera = true;
+let useFrontCamera = false;
 let lastScan = "";
-let scanCooldown = true;
+let scanCooldown = false;
 
 /* ----------------------------------------------------------
    ZXING SETUP — Scan All Formats
