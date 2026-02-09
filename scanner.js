@@ -96,7 +96,9 @@ async function startCamera() {
 
   const constraints = {
     video: {
-      facingMode: useFrontCamera ? "user" : { ideal: "environment" }
+      facingMode: useFrontCamera ? "user" : { ideal: "environment" },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
     }
   };
 
@@ -126,7 +128,7 @@ async function startCamera() {
 }
 
 /* ----------------------------------------------------------
-   TAP‑TO‑FOCUS (Properly Attached)
+   TAP‑TO‑FOCUS
 ---------------------------------------------------------- */
 function attachTapToFocus() {
   video.onclick = async (e) => {
@@ -163,54 +165,31 @@ function attachTapToFocus() {
 }
 
 /* ----------------------------------------------------------
-   DECODE LOOP — CLEAN + SAFE
+   DECODE LOOP — MANUAL CANVAS DECODE (MOST RELIABLE)
 ---------------------------------------------------------- */
-async function startDecodeLoop() {
-  codeReader.reset();
+function startDecodeLoop() {
+  function loop() {
+    if (!currentStream) return;
 
-  let devices;
-  try {
-    devices = await codeReader.listVideoInputDevices();
-  } catch (err) {
-    return setStatus("❌ Unable to list cameras.", "error");
-  }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  if (!devices.length) {
-    return setStatus("❌ No camera devices detected.", "error");
-  }
-
-  let selectedDeviceId;
-
-  if (useFrontCamera) {
-    selectedDeviceId = devices.find(d =>
-      d.label.toLowerCase().includes("front")
-    )?.deviceId;
-  } else {
-    selectedDeviceId = devices.find(d =>
-      d.label.toLowerCase().includes("back")
-    )?.deviceId;
-  }
-
-  if (!selectedDeviceId) selectedDeviceId = devices[0].deviceId;
-
-  try {
-    codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
+    try {
+      const result = codeReader.decodeFromCanvas(canvas);
       if (result && !scanCooldown) {
         handleDecoded(result.text);
       }
+    } catch (err) {
+      // ignore NotFound errors
+    }
 
-      if (err && !(err instanceof ZXing.NotFoundException)) {
-        console.warn("Decode error:", err);
-      }
-    });
-  } catch (err) {
-    console.error(err);
-    setStatus("❌ Failed to start decoding.", "error");
+    requestAnimationFrame(loop);
   }
+
+  requestAnimationFrame(loop);
 }
 
 /* ----------------------------------------------------------
-   HANDLE DECODED PAYLOAD
+   HANDLE DECODED PAYLOAD — With Confirmation
 ---------------------------------------------------------- */
 function handleDecoded(data) {
   if (data === lastScan) return;
@@ -222,9 +201,12 @@ function handleDecoded(data) {
   setStatus("✅ Scan successful", "success");
 
   addToLedger(data);
-   // 🔗 Auto‑open links
+
+  // 🔗 Confirmation before opening links
   if (/^https?:\/\/.+/i.test(data)) {
-    window.open(data, "_blank");
+    const ok = confirm(`Open this link?\n\n${data}`);
+    if (ok) window.open(data, "_blank");
   }
+
   setTimeout(() => (scanCooldown = false), 1500);
 }
