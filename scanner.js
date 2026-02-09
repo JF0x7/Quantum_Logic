@@ -96,7 +96,10 @@ async function startCamera() {
 
   const constraints = {
     video: {
-      facingMode: useFrontCamera ? "user" : { ideal: "environment" }
+      facingMode: useFrontCamera ? "user" : { ideal: "environment" },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
+      focusMode: "continuous"
     }
   };
 
@@ -126,7 +129,7 @@ async function startCamera() {
 }
 
 /* ----------------------------------------------------------
-   TAP‑TO‑FOCUS (Properly Attached)
+   TAP‑TO‑FOCUS (Improved)
 ---------------------------------------------------------- */
 function attachTapToFocus() {
   video.onclick = async (e) => {
@@ -135,8 +138,13 @@ function attachTapToFocus() {
     const track = currentStream.getVideoTracks()[0];
     const capabilities = track.getCapabilities();
 
-    if (!capabilities.focusMode) {
-      setStatus("⚠️ Tap‑to‑focus not supported.", "neutral");
+    const supportsFocus =
+      capabilities.focusMode &&
+      (capabilities.focusMode.includes("single-shot") ||
+       capabilities.focusMode.includes("continuous"));
+
+    if (!supportsFocus) {
+      setStatus("⚠️ Tap‑to‑focus not supported on this device.", "neutral");
       return;
     }
 
@@ -163,7 +171,7 @@ function attachTapToFocus() {
 }
 
 /* ----------------------------------------------------------
-   DECODE LOOP — CLEAN + SAFE
+   DECODE LOOP — Improved Device Selection + Stability
 ---------------------------------------------------------- */
 async function startDecodeLoop() {
   codeReader.reset();
@@ -179,19 +187,11 @@ async function startDecodeLoop() {
     return setStatus("❌ No camera devices detected.", "error");
   }
 
-  let selectedDeviceId;
-
-  if (useFrontCamera) {
-    selectedDeviceId = devices.find(d =>
-      d.label.toLowerCase().includes("front")
-    )?.deviceId;
-  } else {
-    selectedDeviceId = devices.find(d =>
-      d.label.toLowerCase().includes("back")
-    )?.deviceId;
-  }
-
-  if (!selectedDeviceId) selectedDeviceId = devices[0].deviceId;
+  let selectedDeviceId =
+    devices.find(d => d.label.toLowerCase().includes("back"))?.deviceId ||
+    devices.find(d => d.label.toLowerCase().includes("rear"))?.deviceId ||
+    devices.find(d => d.label.toLowerCase().includes("front"))?.deviceId ||
+    devices[0].deviceId;
 
   try {
     codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
@@ -210,7 +210,7 @@ async function startDecodeLoop() {
 }
 
 /* ----------------------------------------------------------
-   HANDLE DECODED PAYLOAD
+   HANDLE DECODED PAYLOAD — With Auto‑Open Links
 ---------------------------------------------------------- */
 function handleDecoded(data) {
   if (data === lastScan) return;
@@ -222,6 +222,11 @@ function handleDecoded(data) {
   setStatus("✅ Scan successful", "success");
 
   addToLedger(data);
+
+  // Auto-open URLs
+  if (/^https?:\/\/.+/i.test(data)) {
+    window.open(data, "_blank");
+  }
 
   setTimeout(() => (scanCooldown = false), 1500);
 }
