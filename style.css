@@ -79,7 +79,13 @@ h2 {
 }
 
 #canvas {
-  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0; /* invisible but active */
+  display: block;
 }
 
 /* ----------------------------------------------------------
