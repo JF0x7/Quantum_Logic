@@ -182,7 +182,16 @@ function attachTapToFocus() {
 ---------------------------------------------------------- */
 function startDecodeLoop() {
   function loop() {
-    if (!currentStream) return;
+    if (!currentStream || video.readyState < 2) {
+      requestAnimationFrame(loop);
+      return;
+    }
+
+    // Ensure canvas matches video size
+    if (canvas.width !== video.videoWidth) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
