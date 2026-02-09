@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------
    ELEMENTS
 ---------------------------------------------------------- */
-const video = document.getElementById("camera");  // <-- FIXED
+const video = document.getElementById("video");  // <-- FIXED
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");              // <-- FIXED
 
