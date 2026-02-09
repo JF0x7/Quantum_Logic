@@ -99,7 +99,7 @@ async function startCamera() {
       facingMode: useFrontCamera ? "user" : { ideal: "environment" },
       width: { ideal: 1920 },
       height: { ideal: 1080 },
-      focusMode: "continuous"
+      advanced: [{ focusMode: "continuous" }]
     }
   };
 
@@ -123,6 +123,7 @@ async function startCamera() {
   };
 
   attachTapToFocus();
+  startAutoRefocus();
 
   setStatus("📷 Camera active", "success");
   startDecodeLoop();
@@ -171,42 +172,76 @@ function attachTapToFocus() {
 }
 
 /* ----------------------------------------------------------
-   DECODE LOOP — Improved Device Selection + Stability
+   AUTO REFOCUS PULSE
+---------------------------------------------------------- */
+function startAutoRefocus() {
+  setInterval(() => {
+    if (!currentStream) return;
+    const track = currentStream.getVideoTracks()[0];
+    const capabilities = track.getCapabilities();
+    if (!capabilities.focusMode) return;
+
+    try {
+      track.applyConstraints({
+        advanced: [{ focusMode: "continuous" }]
+      });
+    } catch {}
+  }, 2000);
+}
+
+/* ----------------------------------------------------------
+   DECODE LOOP — Center Crop + Contrast Boost
 ---------------------------------------------------------- */
 async function startDecodeLoop() {
   codeReader.reset();
 
-  let devices;
-  try {
-    devices = await codeReader.listVideoInputDevices();
-  } catch (err) {
-    return setStatus("❌ Unable to list cameras.", "error");
-  }
+  function processFrame() {
+    if (!currentStream) return;
 
-  if (!devices.length) {
-    return setStatus("❌ No camera devices detected.", "error");
-  }
+    drawCenterCrop();
+    enhanceFrame();
 
-  let selectedDeviceId =
-    devices.find(d => d.label.toLowerCase().includes("back"))?.deviceId ||
-    devices.find(d => d.label.toLowerCase().includes("rear"))?.deviceId ||
-    devices.find(d => d.label.toLowerCase().includes("front"))?.deviceId ||
-    devices[0].deviceId;
-
-  try {
-    codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
+    try {
+      const result = codeReader.decodeFromCanvas(canvas);
       if (result && !scanCooldown) {
         handleDecoded(result.text);
       }
+    } catch (err) {
+      // ignore NotFound errors
+    }
 
-      if (err && !(err instanceof ZXing.NotFoundException)) {
-        console.warn("Decode error:", err);
-      }
-    });
-  } catch (err) {
-    console.error(err);
-    setStatus("❌ Failed to start decoding.", "error");
+    requestAnimationFrame(processFrame);
   }
+
+  requestAnimationFrame(processFrame);
+}
+
+/* ----------------------------------------------------------
+   CENTER CROP
+---------------------------------------------------------- */
+function drawCenterCrop() {
+  const w = canvas.width * 0.6;
+  const h = canvas.height * 0.6;
+  const x = (canvas.width - w) / 2;
+  const y = (canvas.height - h) / 2;
+
+  ctx.drawImage(video, x, y, w, h, 0, 0, canvas.width, canvas.height);
+}
+
+/* ----------------------------------------------------------
+   CONTRAST BOOST
+---------------------------------------------------------- */
+function enhanceFrame() {
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] *= 1.1;
+    data[i + 1] *= 1.1;
+    data[i + 2] *= 1.1;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
 }
 
 /* ----------------------------------------------------------
@@ -223,7 +258,6 @@ function handleDecoded(data) {
 
   addToLedger(data);
 
-  // Auto-open URLs
   if (/^https?:\/\/.+/i.test(data)) {
     window.open(data, "_blank");
   }
