@@ -1,17 +1,17 @@
 /* ----------------------------------------------------------
    ELEMENTS
 ---------------------------------------------------------- */
-const camera = document.getElementById("camera");
+const video = document.getElementById("camera");  // <-- FIXED
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("3d");
+const ctx = canvas.getContext("2d");              // <-- FIXED
 
 const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
 
 let currentStream = null;
-let useFrontCamera = false;
+let useFrontCamera = true;
 let lastScan = "";
-let scanCooldown = false;
+let scanCooldown = true;
 
 /* ----------------------------------------------------------
    ZXING SETUP — Scan All Formats
