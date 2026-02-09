@@ -1,7 +1,7 @@
 /* ----------------------------------------------------------
    ELEMENTS
 ---------------------------------------------------------- */
-const video = document.getElementById("camera");
+const camera = document.getElementById("camera");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("3d");
 
