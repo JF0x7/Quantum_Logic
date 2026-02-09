@@ -1,12 +1,14 @@
 /* ----------------------------------------------------------
    ELEMENTS
 ---------------------------------------------------------- */
-const video = document.getElementById("video");  // <-- FIXED
+const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");              // <-- FIXED
+const ctx = canvas.getContext("2d");
 
 const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
+const scanIndicator = document.getElementById("scanIndicator");
+const scanMessage = document.getElementById("scanMessage");
 
 let currentStream = null;
 let useFrontCamera = false;
@@ -18,10 +20,7 @@ let scanCooldown = false;
 ---------------------------------------------------------- */
 const hints = new Map();
 hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-hints.set(
-  ZXing.DecodeHintType.POSSIBLE_FORMATS,
-  Object.values(ZXing.BarcodeFormat)
-);
+hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, Object.values(ZXing.BarcodeFormat));
 
 const codeReader = new ZXing.BrowserMultiFormatReader(hints);
 
@@ -31,6 +30,17 @@ const codeReader = new ZXing.BrowserMultiFormatReader(hints);
 function setStatus(text, type = "neutral") {
   statusEl.textContent = text;
   statusEl.className = type;
+}
+
+function setScanMessageText(text, color = "#4fffe0") {
+  scanMessage.textContent = text;
+  scanMessage.style.color = color;
+  scanMessage.style.textShadow = `0 0 10px ${color}`;
+}
+
+function setIndicator(state) {
+  scanIndicator.className = "";
+  if (state) scanIndicator.classList.add(state);
 }
 
 function stopStream() {
@@ -65,6 +75,7 @@ document.getElementById("fileInput").addEventListener("change", async e => {
   } catch (err) {
     console.error(err);
     setStatus("❌ Image scan failed", "error");
+    setIndicator("error");
   }
 });
 
@@ -83,6 +94,8 @@ document.getElementById("sendBtn").addEventListener("click", () => {
 ---------------------------------------------------------- */
 async function startCamera() {
   setStatus("Requesting camera access...");
+  setIndicator("scanning");
+  setScanMessageText("Scanning…");
 
   if (!navigator.mediaDevices?.getUserMedia) {
     return setStatus("❌ This browser does not support camera access.", "error");
@@ -177,6 +190,9 @@ function startDecodeLoop() {
       const result = codeReader.decodeFromCanvas(canvas);
       if (result && !scanCooldown) {
         handleDecoded(result.text);
+      } else {
+        setScanMessageText("Scanning…");
+        setIndicator("scanning");
       }
     } catch (err) {
       // ignore NotFound errors
@@ -199,14 +215,20 @@ function handleDecoded(data) {
 
   payloadEl.textContent = data;
   setStatus("✅ Scan successful", "success");
+  setScanMessageText("Scan detected!", "#00ff99");
+  setIndicator("success");
 
   addToLedger(data);
 
-  // 🔗 Confirmation before opening links
+  // Confirmation before opening links
   if (/^https?:\/\/.+/i.test(data)) {
     const ok = confirm(`Open this link?\n\n${data}`);
     if (ok) window.open(data, "_blank");
   }
 
-  setTimeout(() => (scanCooldown = false), 1500);
+  setTimeout(() => {
+    scanCooldown = false;
+    setScanMessageText("Scanning…");
+    setIndicator("scanning");
+  }, 1500);
 }
