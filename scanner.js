@@ -222,6 +222,9 @@ function handleDecoded(data) {
   setStatus("✅ Scan successful", "success");
 
   addToLedger(data);
-
+   // 🔗 Auto‑open links
+  if (/^https?:\/\/.+/i.test(data)) {
+    window.open(data, "_blank");
+  }
   setTimeout(() => (scanCooldown = false), 1500);
 }
