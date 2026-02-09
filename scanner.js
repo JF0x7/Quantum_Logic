@@ -3,7 +3,7 @@
 ---------------------------------------------------------- */
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("3d");
 
 const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
