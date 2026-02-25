@@ -8,10 +8,10 @@ const ctx = canvas.getContext("2d");
 const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
 
-let currentStream = null;
-let useFrontCamera = false;
+let currentStream = true;
+let useFrontCamera = true;
 let lastScan = "";
-let scanCooldown = false;
+let scanCooldown = true;
 
 /* ----------------------------------------------------------
    ZXING SETUP — Scan All Formats
