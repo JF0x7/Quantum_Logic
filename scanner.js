@@ -101,7 +101,7 @@ document.getElementById("sendBtn").addEventListener("click", () => {
 document.getElementById("photoBtn").addEventListener("click", takePhoto);
 
 function takePhoto() {
-  if (!currentStream) {
+  if (currentStream) {
     setStatus("❌ Camera not active", "error");
     return;
   }
