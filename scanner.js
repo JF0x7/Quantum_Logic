@@ -25,8 +25,6 @@ hints.set(
     ZXing.BarcodeFormat.DATA_MATRIX,
     ZXing.BarcodeFormat.AZTEC,
     ZXing.BarcodeFormat.PDF_417,
-
-    // 1D Barcodes
     ZXing.BarcodeFormat.EAN_13,
     ZXing.BarcodeFormat.EAN_8,
     ZXing.BarcodeFormat.UPC_A,
