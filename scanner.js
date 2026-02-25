@@ -67,6 +67,7 @@ function stopStream() {
    BUTTON EVENTS
 ---------------------------------------------------------- */
 document.getElementById("startBtn").addEventListener("click", startCamera);
+startCamera();
 async function tryDecodeWithRotations() {
   const rotations = [0, 90, 180, 270];
 
