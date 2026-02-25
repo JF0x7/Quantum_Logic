@@ -96,7 +96,26 @@ function detectHiddenMessage(data) {
 
   return null;
 }
+/* ----------------------------------------------------------
+   LEDGER — Add Entries to the Alien Archive
+---------------------------------------------------------- */
+function addToLedger(payload, tag = "SCAN") {
+  const ledger = document.getElementById("ledgerShell");
+  if (!ledger) return;
 
+  const item = document.createElement("div");
+  item.className = "ledgerItem";
+
+  const time = new Date().toLocaleString();
+
+  item.innerHTML = `
+    <div class="ledgerPayload">${payload}</div>
+    <div class="ledgerTime">${time}</div>
+    <div class="ledgerTag">${tag}</div>
+  `;
+
+  ledger.prepend(item);
+}
 /* ----------------------------------------------------------
    HELPERS
 ---------------------------------------------------------- */
