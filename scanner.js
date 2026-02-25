@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------
-   ELEMENTS
+   ELEMENT REFERENCES
 ---------------------------------------------------------- */
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
@@ -8,10 +8,10 @@ const ctx = canvas.getContext("2d");
 const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
 
-let currentStream = void(7);
+let currentStream = null;
 let useFrontCamera = true;
-let lastScan = [];
-let scanCooldown = true;
+let lastScan = null;
+let scanCooldown = false;
 
 /* ----------------------------------------------------------
    ZXING SETUP — Scan All Formats
@@ -26,18 +26,24 @@ hints.set(
 const codeReader = new ZXing.BrowserMultiFormatReader(hints);
 
 /* ----------------------------------------------------------
-   UTILITIES
+   UI HELPERS
 ---------------------------------------------------------- */
+
+/**
+ * Update the status text + color.
+ */
 function setStatus(text, type = "neutral") {
   statusEl.textContent = text;
   statusEl.className = type;
 }
 
+/**
+ * Stop any active camera stream.
+ */
 function stopStream() {
-  if (currentStream) {
-    currentStream.getTracks().forEach(t => t.stop());
-    currentStream = null;
-  }
+  if (!currentStream) return;
+  currentStream.getTracks().forEach(t => t.stop());
+  currentStream = null;
 }
 
 /* ----------------------------------------------------------
@@ -54,19 +60,7 @@ document.getElementById("uploadBtn").addEventListener("click", () => {
   document.getElementById("fileInput").click();
 });
 
-document.getElementById("fileInput").addEventListener("change", async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  try {
-    const imgURL = URL.createObjectURL(file);
-    const result = await codeReader.decodeFromImageUrl(imgURL);
-    handleDecoded(result.text);
-  } catch (err) {
-    console.error(err);
-    setStatus("❌ Image scan failed", "error");
-  }
-});
+document.getElementById("fileInput").addEventListener("change", handleImageUpload);
 
 document.getElementById("sendBtn").addEventListener("click", () => {
   if (!lastScan) {
@@ -79,15 +73,34 @@ document.getElementById("sendBtn").addEventListener("click", () => {
 });
 
 /* ----------------------------------------------------------
+   IMAGE UPLOAD HANDLING
+---------------------------------------------------------- */
+async function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  try {
+    const imgURL = URL.createObjectURL(file);
+    const result = await codeReader.decodeFromImageUrl(imgURL);
+    handleDecoded(result.text);
+  } catch (err) {
+    console.error(err);
+    setStatus("❌ Image scan failed", "error");
+  }
+}
+
+/* ----------------------------------------------------------
    CAMERA START — WITH PERMISSION + ERRORS
 ---------------------------------------------------------- */
 async function startCamera() {
   setStatus("Requesting camera access...");
 
+  // Browser support check
   if (!navigator.mediaDevices?.getUserMedia) {
     return setStatus("❌ This browser does not support camera access.", "error");
   }
 
+  // HTTPS requirement
   if (location.protocol !== "https:" && location.hostname !== "localhost") {
     return setStatus("❌ Camera requires HTTPS.", "error");
   }
@@ -120,13 +133,13 @@ async function startCamera() {
   };
 
   attachTapToFocus();
-
   setStatus("📷 Camera active", "success");
+
   startDecodeLoop();
 }
 
 /* ----------------------------------------------------------
-   TAP‑TO‑FOCUS (Properly Attached)
+   TAP‑TO‑FOCUS
 ---------------------------------------------------------- */
 function attachTapToFocus() {
   video.onclick = async (e) => {
@@ -136,8 +149,7 @@ function attachTapToFocus() {
     const capabilities = track.getCapabilities();
 
     if (!capabilities.focusMode) {
-      setStatus("⚠️ Tap‑to‑focus not supported.", "neutral");
-      return;
+      return setStatus("⚠️ Tap‑to‑focus not supported.", "neutral");
     }
 
     const rect = video.getBoundingClientRect();
@@ -179,19 +191,12 @@ async function startDecodeLoop() {
     return setStatus("❌ No camera devices detected.", "error");
   }
 
-  let selectedDeviceId;
-
-  if (useFrontCamera) {
-    selectedDeviceId = devices.find(d =>
-      d.label.toLowerCase().includes("front")
-    )?.deviceId;
-  } else {
-    selectedDeviceId = devices.find(d =>
-      d.label.toLowerCase().includes("back")
-    )?.deviceId;
-  }
-
-  if (!selectedDeviceId) selectedDeviceId = devices[0].deviceId;
+  // Pick front/back camera if possible
+  let selectedDeviceId =
+    devices.find(d => useFrontCamera
+      ? d.label.toLowerCase().includes("front")
+      : d.label.toLowerCase().includes("back")
+    )?.deviceId || devices[0].deviceId;
 
   try {
     codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
@@ -223,5 +228,6 @@ function handleDecoded(data) {
 
   addToLedger(data);
 
+  // Prevent rapid duplicate scans
   setTimeout(() => (scanCooldown = false), 1500);
 }
