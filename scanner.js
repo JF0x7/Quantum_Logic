@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------
-   ELEMENT REFERENCES
+   ELEMENTS
 ---------------------------------------------------------- */
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
@@ -14,9 +14,10 @@ let lastScan = null;
 let scanCooldown = false;
 
 /* ----------------------------------------------------------
-   ZXING SETUP — Scan All Formats
+   ZXING SETUP — QR + ALL BARCODES
 ---------------------------------------------------------- */
 const hints = new Map();
+hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 hints.set(
   ZXing.DecodeHintType.POSSIBLE_FORMATS,
   [
@@ -25,7 +26,7 @@ hints.set(
     ZXing.BarcodeFormat.AZTEC,
     ZXing.BarcodeFormat.PDF_417,
 
-    // 1D Barcodes (Retail)
+    // 1D Barcodes
     ZXing.BarcodeFormat.EAN_13,
     ZXing.BarcodeFormat.EAN_8,
     ZXing.BarcodeFormat.UPC_A,
@@ -35,9 +36,6 @@ hints.set(
     ZXing.BarcodeFormat.ITF,
     ZXing.BarcodeFormat.CODABAR,
   ]
-)
-  ZXing.DecodeHintType.POSSIBLE_FORMATS,
-  Object.values(ZXing.BarcodeFormat)
 );
 
 const codeReader = new ZXing.BrowserMultiFormatReader(hints);
@@ -45,18 +43,11 @@ const codeReader = new ZXing.BrowserMultiFormatReader(hints);
 /* ----------------------------------------------------------
    UI HELPERS
 ---------------------------------------------------------- */
-
-/**
- * Update the status text + color.
- */
 function setStatus(text, type = "neutral") {
   statusEl.textContent = text;
   statusEl.className = type;
 }
 
-/**
- * Stop any active camera stream.
- */
 function stopStream() {
   if (!currentStream) return;
   currentStream.getTracks().forEach(t => t.stop());
@@ -67,63 +58,18 @@ function stopStream() {
    BUTTON EVENTS
 ---------------------------------------------------------- */
 document.getElementById("startBtn").addEventListener("click", startCamera);
-startCamera();
-async function tryDecodeWithRotations() {
-  const rotations = [0, 90, 180, 270];
-
-  for (const angle of rotations) {
-    const result = await decodeFrame(angle);
-    if (result) return result;
-  }
-
-  return null;
-}
 document.getElementById("flipBtn").addEventListener("click", () => {
-  useFrontCamera = useFrontCamera;
+  useFrontCamera = !useFrontCamera;
   startCamera();
 });
-
 document.getElementById("uploadBtn").addEventListener("click", () => {
   document.getElementById("fileInput").click();
 });
-
 document.getElementById("fileInput").addEventListener("change", handleImageUpload);
-
-document.getElementById("sendBtn").addEventListener("click", () => {
-  if (!lastScan) {
-    setStatus("No scan to signal.", "neutral");
-    return;
-  }
-
-  setStatus("📡 Signal sent", "success");
-  addToLedger("[SIGNAL] " + lastScan);
-});
 document.getElementById("photoBtn").addEventListener("click", takePhoto);
 
-function takePhoto() {
-  if (currentStream) {
-    setStatus("❌ Camera not active", "error");
-    return;
-  }
-
-  // Draw the current frame to the canvas
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  // Convert canvas to image data
-  const dataURL = canvas.toDataURL("image/png");
-
-  // Show preview
-  const preview = document.getElementById("photoPreview");
-  preview.src = dataURL;
-  preview.style.display = "block";
-
-  setStatus("📸 Photo captured", "success");
-
-  // Optional: save to ledger
-  addToLedger("[PHOTO] " + new Date().toISOString());
-}
 /* ----------------------------------------------------------
-   IMAGE UPLOAD HANDLING
+   IMAGE UPLOAD SCANNING
 ---------------------------------------------------------- */
 async function handleImageUpload(e) {
   const file = e.target.files[0];
@@ -140,17 +86,15 @@ async function handleImageUpload(e) {
 }
 
 /* ----------------------------------------------------------
-   CAMERA START — WITH PERMISSION + ERRORS
+   CAMERA START
 ---------------------------------------------------------- */
 async function startCamera() {
   setStatus("Requesting camera access...");
 
-  // Browser support check
   if (!navigator.mediaDevices?.getUserMedia) {
-    return setStatus("❌ This browser does not support camera access.", "error");
+    return setStatus("❌ Browser does not support camera.", "error");
   }
 
-  // HTTPS requirement
   if (location.protocol !== "https:" && location.hostname !== "localhost") {
     return setStatus("❌ Camera requires HTTPS.", "error");
   }
@@ -166,12 +110,8 @@ async function startCamera() {
   try {
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
   } catch (err) {
-    if (err.name === "NotAllowedError") {
-      return setStatus("❌ Camera blocked. Enable permissions.", "error");
-    }
-    if (err.name === "NotFoundError") {
-      return setStatus("❌ No camera found.", "error");
-    }
+    if (err.name === "NotAllowedError") return setStatus("❌ Camera blocked.", "error");
+    if (err.name === "NotFoundError") return setStatus("❌ No camera found.", "error");
     return setStatus("❌ Camera error: " + err.message, "error");
   }
 
@@ -196,9 +136,9 @@ function attachTapToFocus() {
     if (!currentStream) return;
 
     const track = currentStream.getVideoTracks()[0];
-    const capabilities = track.getCapabilities();
+    const caps = track.getCapabilities();
 
-    if (!capabilities.focusMode) {
+    if (!caps.focusMode) {
       return setStatus("⚠️ Tap‑to‑focus not supported.", "neutral");
     }
 
@@ -225,7 +165,39 @@ function attachTapToFocus() {
 }
 
 /* ----------------------------------------------------------
-   DECODE LOOP — CLEAN + SAFE
+   ROTATION‑AWARE DECODING
+---------------------------------------------------------- */
+async function tryDecodeWithRotations() {
+  const angles = [0, 90, 180, 270];
+
+  for (const angle of angles) {
+    const result = await decodeFrame(angle);
+    if (result) return result;
+  }
+
+  return null;
+}
+
+async function decodeFrame(angle) {
+  ctx.save();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((angle * Math.PI) / 180);
+  ctx.drawImage(video, -canvas.width / 2, -canvas.height / 2);
+  ctx.restore();
+
+  try {
+    const luminance = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
+    return codeReader.decodeBitmap(bitmap);
+  } catch {
+    return null;
+  }
+}
+
+/* ----------------------------------------------------------
+   DECODE LOOP
 ---------------------------------------------------------- */
 async function startDecodeLoop() {
   codeReader.reset();
@@ -233,7 +205,7 @@ async function startDecodeLoop() {
   let devices;
   try {
     devices = await codeReader.listVideoInputDevices();
-  } catch (err) {
+  } catch {
     return setStatus("❌ Unable to list cameras.", "error");
   }
 
@@ -241,21 +213,18 @@ async function startDecodeLoop() {
     return setStatus("❌ No camera devices detected.", "error");
   }
 
-  // Pick front/back camera if possible
   let selectedDeviceId =
-    devices.find(d => useFrontCamera
-      ? d.label.toLowerCase().includes("front")
-      : d.label.toLowerCase().includes("back")
+    devices.find(d =>
+      useFrontCamera
+        ? d.label.toLowerCase().includes("front")
+        : d.label.toLowerCase().includes("back")
     )?.deviceId || devices[0].deviceId;
 
   try {
-    codeReader.decodeFromVideoDevice(selectedDeviceId, video, (result, err) => {
-      if (result && !scanCooldown) {
-        handleDecoded(result.text);
-      }
-
-      if (err && !(err instanceof ZXing.NotFoundException)) {
-        console.warn("Decode error:", err);
+    codeReader.decodeFromVideoDevice(selectedDeviceId, video, async () => {
+      if (!scanCooldown) {
+        const result = await tryDecodeWithRotations();
+        if (result) handleDecoded(result.text);
       }
     });
   } catch (err) {
@@ -276,8 +245,30 @@ function handleDecoded(data) {
   payloadEl.textContent = data;
   setStatus("✅ Scan successful", "success");
 
-  addToLedger(data);
+  if (typeof addToLedger === "function") {
+    addToLedger(data);
+  }
 
-  // Prevent rapid duplicate scans
   setTimeout(() => (scanCooldown = false), 1500);
+}
+
+/* ----------------------------------------------------------
+   TAKE PHOTO
+---------------------------------------------------------- */
+function takePhoto() {
+  if (!currentStream) {
+    return setStatus("❌ Camera not active", "error");
+  }
+
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const dataURL = canvas.toDataURL("image/png");
+
+  const preview = document.getElementById("photoPreview");
+  if (preview) {
+    preview.src = dataURL;
+    preview.style.display = "block";
+  }
+
+  setStatus("📸 Photo captured", "success");
 }
