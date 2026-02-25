@@ -8,9 +8,9 @@ const ctx = canvas.getContext("2d");
 const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
 
-let currentStream = true;
+let currentStream = void(7);
 let useFrontCamera = true;
-let lastScan = "";
+let lastScan = [];
 let scanCooldown = true;
 
 /* ----------------------------------------------------------
