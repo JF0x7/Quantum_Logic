@@ -97,7 +97,30 @@ document.getElementById("sendBtn").addEventListener("click", () => {
   setStatus("📡 Signal sent", "success");
   addToLedger("[SIGNAL] " + lastScan);
 });
+document.getElementById("photoBtn").addEventListener("click", takePhoto);
 
+function takePhoto() {
+  if (!currentStream) {
+    setStatus("❌ Camera not active", "error");
+    return;
+  }
+
+  // Draw the current frame to the canvas
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  // Convert canvas to image data
+  const dataURL = canvas.toDataURL("image/png");
+
+  // Show preview
+  const preview = document.getElementById("photoPreview");
+  preview.src = dataURL;
+  preview.style.display = "block";
+
+  setStatus("📸 Photo captured", "success");
+
+  // Optional: save to ledger
+  addToLedger("[PHOTO] " + new Date().toISOString());
+}
 /* ----------------------------------------------------------
    IMAGE UPLOAD HANDLING
 ---------------------------------------------------------- */
