@@ -34,13 +34,13 @@
   <!-- Scanner Shell -->
   <div id="scannerShell">
 
+    <!-- Video Panel -->
     <div id="videoWrapper">
       <video id="video" autoplay playsinline></video>
-      <canvas id="canvas"></canvas>
-
-      <!-- Scan Indicator Orb -->
-      <div id="scanIndicator" aria-label="Scan Status Indicator"></div>
     </div>
+
+    <!-- Hidden Canvas -->
+    <canvas id="canvas"></canvas>
 
     <!-- Controls -->
     <div id="controls" role="group" aria-label="Scanner Controls">
@@ -48,10 +48,15 @@
       <button id="flipBtn" type="button" class="secondary">Flip Camera</button>
       <button id="uploadBtn" type="button" class="secondary">Upload Image</button>
       <button id="sendBtn" type="button" class="secondary">Send Signal</button>
-      <button id="photoBtn">📸 Take Photo</button>
-      <img id="photoPreview" style="display:none; max-width:100%; margin-top:10px;">
+      <button id="photoBtn" type="button">📸 Take Photo</button>
       <input type="file" id="fileInput" accept="image/*" hidden>
     </div>
+
+    <!-- Photo Preview -->
+    <img id="photoPreview" alt="Captured Photo Preview">
+
+    <!-- Scan Indicator Orb -->
+    <div id="scanIndicator" aria-label="Scan Status Indicator"></div>
 
     <!-- Output Terminal -->
     <div id="output">
