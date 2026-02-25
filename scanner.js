@@ -67,22 +67,43 @@ document.getElementById("fileInput").addEventListener("change", handleImageUploa
 document.getElementById("photoBtn").addEventListener("click", takePhoto);
 
 /* ----------------------------------------------------------
-   IMAGE UPLOAD SCANNING
+   IMAGE UPLOAD SCANNING — High Detail via Canvas
 ---------------------------------------------------------- */
 async function handleImageUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
 
-  try {
-    const imgURL = URL.createObjectURL(file);
-    const result = await codeReader.decodeFromImageUrl(imgURL);
-    handleDecoded(result.text);
-  } catch (err) {
-    console.error(err);
-    setStatus("❌ Image scan failed", "error");
-  }
-}
+  const imgURL = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = imgURL;
 
+  img.onload = async () => {
+    // Match canvas to image resolution for max detail
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    try {
+      const luminance = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+      const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
+      const result = codeReader.decodeBitmap(bitmap);
+      handleDecoded(result.text);
+      setStatus("✅ Image decoded", "success");
+    } catch (err) {
+      console.error(err);
+      setStatus("❌ Image decode failed", "error");
+    } finally {
+      URL.revokeObjectURL(imgURL);
+    }
+  };
+
+  img.onerror = () => {
+    setStatus("❌ Failed to load image", "error");
+    URL.revokeObjectURL(imgURL);
+  };
+}
 /* ----------------------------------------------------------
    CAMERA START
 ---------------------------------------------------------- */
