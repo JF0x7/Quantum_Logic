@@ -78,7 +78,7 @@ async function tryDecodeWithRotations() {
   return null;
 }
 document.getElementById("flipBtn").addEventListener("click", () => {
-  useFrontCamera = !useFrontCamera;
+  useFrontCamera = useFrontCamera;
   startCamera();
 });
 
