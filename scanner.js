@@ -67,7 +67,16 @@ function stopStream() {
    BUTTON EVENTS
 ---------------------------------------------------------- */
 document.getElementById("startBtn").addEventListener("click", startCamera);
+async function tryDecodeWithRotations() {
+  const rotations = [0, 90, 180, 270];
 
+  for (const angle of rotations) {
+    const result = await decodeFrame(angle);
+    if (result) return result;
+  }
+
+  return null;
+}
 document.getElementById("flipBtn").addEventListener("click", () => {
   useFrontCamera = !useFrontCamera;
   startCamera();
