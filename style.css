@@ -1,12 +1,12 @@
 /* ----------------------------------------------------------
    GLOBAL — Clean Alien Starship UI
 ---------------------------------------------------------- */
-.hyperIcon {
-  width: 24px;
-  height: 24px;
-  margin-left: 8px;
-  cursor: pointer;
-  filter: drop-shadow(0 0 4px #00eaff);
+:root {
+  --glow-main: #4fffe0;
+  --glow-soft: #7fffff;
+  --panel-bg: #03161c;
+  --panel-border: #0a2a33;
+  --terminal-bg: #020f14;
 }
 
 body {
@@ -18,13 +18,12 @@ body {
   overflow-x: hidden;
 }
 
-/* Utility Glow Colors */
-:root {
-  --glow-main: #4fffe0;
-  --glow-soft: #7fffff;
-  --panel-bg: #03161c;
-  --panel-border: #0a2a33;
-  --terminal-bg: #020f14;
+.hyperIcon {
+  width: 24px;
+  height: 24px;
+  margin-left: 8px;
+  cursor: pointer;
+  filter: drop-shadow(0 0 4px #00eaff);
 }
 
 /* ----------------------------------------------------------
@@ -60,7 +59,7 @@ h2 {
 }
 
 /* ----------------------------------------------------------
-   SCANNER PANEL — Clean, No Overlaps
+   SCANNER PANEL
 ---------------------------------------------------------- */
 #scannerShell {
   width: 100%;
