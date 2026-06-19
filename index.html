@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
   <meta charset="UTF-8" />
   <title>QTUM(LOG) Scanner</title>
 
@@ -8,10 +8,7 @@
 
   <link rel="stylesheet" href="style.css" />
 
-  <!-- ZXing Barcode Library -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
-
-  <!-- App Modules -->
   <script defer src="ledger.js"></script>
   <script defer src="scanner.js"></script>
 </head>
@@ -39,24 +36,18 @@
         />
       </svg>
     </a>
-    </a>
   </div>
 
   <h1>QTUM(LOG)</h1>
   <h2>Native Tools of Julius Hirsch • Verified by Beler Industries</h2>
 
-  <!-- Scanner Shell -->
   <div id="scannerShell">
-
-    <!-- Video Panel -->
     <div id="videoWrapper">
       <video id="video" autoplay playsinline></video>
     </div>
 
-    <!-- Hidden Canvas -->
     <canvas id="canvas"></canvas>
 
-    <!-- Controls -->
     <div id="controls" role="group" aria-label="Scanner Controls">
       <button id="startBtn" type="button">Enable Camera</button>
       <button id="flipBtn" type="button" class="secondary">Flip Camera</button>
@@ -66,21 +57,16 @@
       <input type="file" id="fileInput" accept="image/*" hidden>
     </div>
 
-    <!-- Photo Preview -->
     <img id="photoPreview" alt="Captured Photo Preview">
 
-    <!-- Scan Indicator Orb -->
     <div id="scanIndicator" aria-label="Scan Status Indicator"></div>
 
-    <!-- Output Terminal -->
     <div id="output">
       <div id="status" class="neutral">Waiting for scan…</div>
       <div id="payload"></div>
     </div>
-
   </div>
 
-  <!-- Ledger -->
   <div id="ledgerShell">
     <div id="ledgerTitle">Scan Ledger</div>
     <div id="ledger"></div>
