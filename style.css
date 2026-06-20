@@ -41,8 +41,8 @@ body {
   #quantumLogo {
   width: 100%;
   max-width: 160px;
-  height: 500px;
-  margin: 32px; auto 10px;
+  height: 777px;
+  margin: 0px; auto 10px;
   filter: drop-shadow(0 0 10px var(--glow-main));
   animation: crestPulse 3s infinite ease-in-out;
 }
