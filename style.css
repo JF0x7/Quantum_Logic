@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------
-   GLOBAL — Clean Alien Starship UI
+   GLOBAL — Alien Starship UI
 ---------------------------------------------------------- */
 :root {
   --glow-main: #4fffe0;
@@ -16,6 +16,23 @@ body {
   font-family: 'Segoe UI', sans-serif;
   text-align: center;
   overflow-x: hidden;
+}
+
+/* ----------------------------------------------------------
+   HYPERLINK ICON (NEW)
+---------------------------------------------------------- */
+.hyperlinkIcon {
+  width: 22px;
+  height: 22px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+  filter: drop-shadow(0 0 6px var(--glow-main));
+  transition: transform 0.2s ease;
+}
+
+.hyperlinkIcon:hover {
+  transform: scale(1.15);
 }
 
 /* ----------------------------------------------------------
