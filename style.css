@@ -7,6 +7,9 @@
   --panel-bg: #03161c;
   --panel-border: #0a2a33;
   --terminal-bg: #020f14;
+
+  --shadow-main: 0 0 12px var(--glow-main);
+  --shadow-soft: 0 0 16px var(--glow-soft);
 }
 
 body {
@@ -19,7 +22,7 @@ body {
 }
 
 /* ----------------------------------------------------------
-   HYPERLINK ICON (NEW)
+   HYPERLINK ICON
 ---------------------------------------------------------- */
 .hyperlinkIcon {
   width: 22px;
@@ -38,8 +41,7 @@ body {
 /* ----------------------------------------------------------
    ALIEN CREST / LOGO
 ---------------------------------------------------------- */
-  #quantumLogo {
- 
+#quantumLogo {
   filter: drop-shadow(0 0 10px var(--glow-main));
   animation: crestPulse 3s infinite ease-in-out;
 }
@@ -55,7 +57,7 @@ body {
 h1 {
   font-size: 2.4rem;
   color: var(--glow-main);
-  text-shadow: 0 0 12px var(--glow-main);
+  text-shadow: var(--shadow-main);
   margin-bottom: 4px;
 }
 
@@ -115,13 +117,13 @@ button {
   color: #001b1f;
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: 0 0 12px var(--glow-main);
+  box-shadow: var(--shadow-main);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 button:hover {
   transform: scale(1.06);
-  box-shadow: 0 0 16px var(--glow-soft);
+  box-shadow: var(--shadow-soft);
 }
 
 button.secondary {
@@ -149,8 +151,7 @@ button.secondary {
   text-align: left;
   padding: 0 20px;
   max-width: 900px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-inline: auto;
 }
 
 #status {
@@ -190,7 +191,7 @@ button.secondary {
   font-size: 1.45rem;
   margin-bottom: 14px;
   color: var(--glow-main);
-  text-shadow: 0 0 12px var(--glow-main);
+  text-shadow: var(--shadow-main);
 }
 
 .ledgerItem {
@@ -206,13 +207,16 @@ button.secondary {
   font-size: 1rem;
 }
 
-.ledgerTime {
+.ledgerTime,
+.ledgerTag {
   font-size: 0.78rem;
+}
+
+.ledgerTime {
   opacity: 0.6;
 }
 
 .ledgerTag {
-  font-size: 0.78rem;
   color: var(--glow-soft);
   margin-top: 6px;
   font-style: italic;
