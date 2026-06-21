@@ -22,6 +22,33 @@ body {
 }
 
 /* ----------------------------------------------------------
+   LOGO — Centered + Friendly Size
+---------------------------------------------------------- */
+#logoWrapper {
+  text-align: center;
+  margin-top: 20px;
+}
+
+#quantumLogo {
+  width: 120px;      /* friendly size */
+  height: auto;
+  display: inline-block;
+  filter: drop-shadow(0 0 10px var(--glow-main));
+  animation: crestPulse 3s infinite ease-in-out;
+}
+
+@media (max-width: 480px) {
+  #quantumLogo {
+    width: 90px;     /* mobile-friendly */
+  }
+}
+
+@keyframes crestPulse {
+  0%, 100% { filter: drop-shadow(0 0 10px var(--glow-main)); }
+  50% { filter: drop-shadow(0 0 18px var(--glow-soft)); }
+}
+
+/* ----------------------------------------------------------
    HYPERLINK ICON
 ---------------------------------------------------------- */
 .hyperlinkIcon {
@@ -36,27 +63,6 @@ body {
 
 .hyperlinkIcon:hover {
   transform: scale(1.15);
-}
-
-/* ----------------------------------------------------------
-   ALIEN CREST / LOGO
----------------------------------------------------------- */
-/* ----------------------------------------------------------
-   ALIEN CREST / LOGO — Small + Centered
----------------------------------------------------------- */
-#quantumLogo {
-  width: 120px;          /* adjust size here */
-  height: auto;
-  display: block;
-  margin: 0 auto 16px;   /* centers + adds spacing */
-  filter: drop-shadow(0 0 10px var(--glow-main));
-  animation: crestPulse 3s infinite ease-in-out;
-}
-
-@media (max-width: 480px) {
-  #quantumLogo {
-    width: 90px;         /* mobile-friendly */
-  }
 }
 
 /* ----------------------------------------------------------
