@@ -1,4 +1,30 @@
 /* ----------------------------------------------------------
+   BASE STYLES (apply to all screens)
+---------------------------------------------------------- */
+
+#ledgerShell {
+  max-width: 480px;
+  margin: 20px auto;
+  padding: 18px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;   /* center ledger items */
+  text-align: center;    /* center title + text */
+}
+
+.ledgerItem {
+  width: 100%;
+  max-width: 420px;
+}
+
+.ledgerPayload {
+  word-wrap: break-word;
+}
+
+
+
+/* ----------------------------------------------------------
    MOBILE OPTIMIZATION — iPhone 6 / Small Screens
 ---------------------------------------------------------- */
 @media (max-width: 480px) {
@@ -70,29 +96,14 @@
     padding: 10px;
   }
 
-  /* ----------------------------------------------------------
-     Ledger (Centered + Mobile Optimized)
-  ---------------------------------------------------------- */
+  /* Ledger (mobile tweaks only) */
   #ledgerShell {
     padding: 18px;
     margin: 20px auto;
-
-    /* 🔥 Centering Fix */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-
-    width: 100%;
-    max-width: 480px;
   }
 
   .ledgerItem {
     padding: 12px;
-
-    /* keeps items centered inside */
-    width: 100%;
-    max-width: 420px;
   }
 
   .ledgerPayload {
@@ -116,6 +127,8 @@
     margin-top: 14px;
   }
 }
+
+
 
 /* ----------------------------------------------------------
    ULTRA-SMALL DEVICES (320px width)
