@@ -1,266 +1,121 @@
 /* ----------------------------------------------------------
-   GLOBAL — Alien Starship UI
+   MOBILE OPTIMIZATION — iPhone 6 / Small Screens
 ---------------------------------------------------------- */
-:root {
-  --glow-main: #4fffe0;
-  --glow-soft: #7fffff;
-  --panel-bg: #03161c;
-  --panel-border: #0a2a33;
-  --terminal-bg: #020f14;
-
-  --shadow-main: 0 0 12px var(--glow-main);
-  --shadow-soft: 0 0 16px var(--glow-soft);
-}
-
-body {
-  margin: 0;
-  background: linear-gradient(to bottom, #01070d, #000);
-  color: #c9f7ff;
-  font-family: 'Segoe UI', sans-serif;
-  text-align: center;
-  overflow-x: hidden;
-}
-
-/* ----------------------------------------------------------
-   LOGO — Centered + Friendly Size
----------------------------------------------------------- */
-#logoWrapper {
-  text-align: center;
-  margin-top: 20px;
-}
-
-#quantumLogo {
-  width: 120px;      /* friendly size */
-  height: auto;
-  display: inline-block;
-  filter: drop-shadow(0 0 10px var(--glow-main));
-  animation: crestPulse 3s infinite ease-in-out;
-}
-
 @media (max-width: 480px) {
+
+  body {
+    padding: 0 6px;
+    font-size: 15px;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    margin-top: 10px;
+  }
+
+  h2 {
+    font-size: 0.95rem;
+    margin-bottom: 18px;
+  }
+
+  /* Logo */
+  #logoWrapper {
+    margin-top: 14px;
+  }
+
   #quantumLogo {
-    width: 90px;     /* mobile-friendly */
+    width: 80px;
+  }
+
+  /* Scanner Shell */
+  #scannerShell {
+    padding: 10px;
+  }
+
+  /* Video Wrapper */
+  #videoWrapper {
+    height: 260px; /* fits iPhone 6 perfectly */
+    border-radius: 10px;
+  }
+
+  #video {
+    object-fit: cover;
+  }
+
+  /* Controls */
+  #controls {
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  button {
+    width: 100%;
+    max-width: 260px;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+  }
+
+  /* Output */
+  #output {
+    padding: 0 10px;
+  }
+
+  #status {
+    font-size: 0.9rem;
+    padding: 10px;
+  }
+
+  #payload {
+    font-size: 0.9rem;
+    padding: 10px;
+  }
+
+  /* Ledger */
+  #ledgerShell {
+    padding: 18px;
+    margin: 20px auto;
+  }
+
+  .ledgerItem {
+    padding: 12px;
+  }
+
+  .ledgerPayload {
+    font-size: 0.9rem;
+  }
+
+  .ledgerTime,
+  .ledgerTag {
+    font-size: 0.7rem;
+  }
+
+  /* Scan Indicator */
+  #scanIndicator {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* Photo Preview */
+  #photoPreview {
+    max-width: 100%;
+    margin-top: 14px;
   }
 }
 
-@keyframes crestPulse {
-  0%, 100% { filter: drop-shadow(0 0 10px var(--glow-main)); }
-  50% { filter: drop-shadow(0 0 18px var(--glow-soft)); }
-}
-
 /* ----------------------------------------------------------
-   HYPERLINK ICON
+   ULTRA-SMALL DEVICES (320px width)
 ---------------------------------------------------------- */
-.hyperlinkIcon {
-  width: 22px;
-  height: 22px;
-  display: inline-block;
-  vertical-align: middle;
-  margin-left: 6px;
-  filter: drop-shadow(0 0 6px var(--glow-main));
-  transition: transform 0.2s ease;
-}
+@media (max-width: 360px) {
 
-.hyperlinkIcon:hover {
-  transform: scale(1.15);
-}
+  h1 {
+    font-size: 1.6rem;
+  }
 
-/* ----------------------------------------------------------
-   HEADERS
----------------------------------------------------------- */
-h1 {
-  font-size: 2.4rem;
-  color: var(--glow-main);
-  text-shadow: var(--shadow-main);
-  margin-bottom: 4px;
-}
+  #videoWrapper {
+    height: 220px;
+  }
 
-h2 {
-  font-size: 1.1rem;
-  opacity: 0.75;
-  color: #9be7ff;
-  margin-bottom: 24px;
-}
-
-/* ----------------------------------------------------------
-   SCANNER PANEL
----------------------------------------------------------- */
-#scannerShell {
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-#videoWrapper {
-  width: 100%;
-  height: 500px;
-  border-radius: 14px;
-  overflow: hidden;
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  box-shadow: 0 0 20px #0ff3;
-}
-
-#video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-#canvas {
-  display: none;
-}
-
-/* ----------------------------------------------------------
-   CONTROLS — Starship Console Buttons
----------------------------------------------------------- */
-#controls {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 14px;
-}
-
-button {
-  background: linear-gradient(135deg, var(--glow-main), var(--glow-soft));
-  border: none;
-  padding: 12px 22px;
-  border-radius: 10px;
-  color: #001b1f;
-  font-size: 1rem;
-  cursor: pointer;
-  box-shadow: var(--shadow-main);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-button:hover {
-  transform: scale(1.06);
-  box-shadow: var(--shadow-soft);
-}
-
-button.secondary {
-  background: #0a1a1f;
-  color: #9be7ff;
-  box-shadow: 0 0 10px #000;
-}
-
-/* ----------------------------------------------------------
-   PHOTO PREVIEW
----------------------------------------------------------- */
-#photoPreview {
-  margin-top: 20px;
-  max-width: 90%;
-  border-radius: 12px;
-  display: none;
-  box-shadow: 0 0 20px #4fffe055;
-}
-
-/* ----------------------------------------------------------
-   OUTPUT — Alien Data Terminal
----------------------------------------------------------- */
-#output {
-  margin-top: 30px;
-  text-align: left;
-  padding: 0 20px;
-  max-width: 900px;
-  margin-inline: auto;
-}
-
-#status {
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  font-weight: 600;
-}
-
-#status.neutral { background: #0a1a1f; }
-#status.success { background: #0f4f3a; }
-#status.error { background: #4f0f0f; }
-
-#payload {
-  background: #000;
-  padding: 12px;
-  border-radius: 8px;
-  min-height: 40px;
-  margin-bottom: 12px;
-  word-wrap: break-word;
-  border: 1px solid #123;
-}
-
-/* ----------------------------------------------------------
-   LEDGER — Alien Archive Module
----------------------------------------------------------- */
-#ledgerShell {
-  background: var(--terminal-bg);
-  padding: 24px;
-  border-radius: 14px;
-  max-width: 540px;
-  margin: 30px auto;
-  box-shadow: 0 0 24px #4fffe044;
-}
-
-#ledgerTitle {
-  font-size: 1.45rem;
-  margin-bottom: 14px;
-  color: var(--glow-main);
-  text-shadow: var(--shadow-main);
-}
-
-.ledgerItem {
-  background: var(--panel-bg);
-  padding: 14px;
-  border-radius: 10px;
-  margin-bottom: 14px;
-  border-left: 4px solid var(--glow-main);
-  box-shadow: 0 0 12px #4fffe044;
-}
-
-.ledgerPayload {
-  font-size: 1rem;
-}
-
-.ledgerTime,
-.ledgerTag {
-  font-size: 0.78rem;
-}
-
-.ledgerTime {
-  opacity: 0.6;
-}
-
-.ledgerTag {
-  color: var(--glow-soft);
-  margin-top: 6px;
-  font-style: italic;
-  text-shadow: 0 0 6px var(--glow-soft);
-}
-
-/* ----------------------------------------------------------
-   SCAN INDICATOR — Status Orb
----------------------------------------------------------- */
-#scanIndicator {
-  width: 40px;
-  height: 40px;
-  margin: 10px auto;
-  border-radius: 50%;
-  background: #0a1a1f;
-  box-shadow: 0 0 10px #0ff3;
-  transition: background 0.3s, box-shadow 0.3s;
-}
-
-#scanIndicator.scanning {
-  background: #003344;
-  box-shadow: 0 0 14px #00eaff;
-}
-
-#scanIndicator.success {
-  background: #0f4f3a;
-  box-shadow: 0 0 14px #00ff99;
-}
-
-#scanIndicator.error {
-  background: #4f0f0f;
-  box-shadow: 0 0 14px #ff4444;
+  button {
+    max-width: 230px;
+  }
 }
