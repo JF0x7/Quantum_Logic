@@ -78,17 +78,22 @@ async function handleImageUpload(e) {
   img.src = imgURL;
 
   img.onload = async () => {
-    // Match canvas to image resolution for max detail
     canvas.width = img.naturalWidth;
     canvas.height = img.naturalHeight;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
 
     try {
-      const luminance = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const luminance = new ZXing.RGBLuminanceSource(
+        imageData.data,
+        canvas.width,
+        canvas.height
+      );
       const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
       const result = codeReader.decodeBitmap(bitmap);
+
       handleDecoded(result.text);
       setStatus("✅ Image decoded", "success");
     } catch (err) {
@@ -104,11 +109,14 @@ async function handleImageUpload(e) {
     URL.revokeObjectURL(imgURL);
   };
 }
+
 /* ----------------------------------------------------------
-   CAMERA START
+   CAMERA START — SAFARI COMPATIBLE
 ---------------------------------------------------------- */
 async function startCamera() {
   setStatus("Requesting camera access...");
+
+  stopStream();
 
   if (!navigator.mediaDevices?.getUserMedia) {
     return setStatus("❌ Browser does not support camera.", "error");
@@ -118,69 +126,40 @@ async function startCamera() {
     return setStatus("❌ Camera requires HTTPS.", "error");
   }
 
-  stopStream();
+  let devices;
+  try {
+    devices = await navigator.mediaDevices.enumerateDevices();
+  } catch {
+    return setStatus("❌ Unable to list cameras.", "error");
+  }
+
+  const cams = devices.filter(d => d.kind === "videoinput");
+
+  const selected = useFrontCamera
+    ? cams.find(c => c.label.toLowerCase().includes("front")) || cams[0]
+    : cams.find(c => c.label.toLowerCase().includes("back")) || cams[0];
 
   const constraints = {
-    video: {
-      facingMode: useFrontCamera ? "user" : { ideal: "environment" }
-    }
+    audio: false,
+    video: { deviceId: selected.deviceId }
   };
 
   try {
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
   } catch (err) {
-    if (err.name === "NotAllowedError") return setStatus("❌ Camera blocked.", "error");
-    if (err.name === "NotFoundError") return setStatus("❌ No camera found.", "error");
     return setStatus("❌ Camera error: " + err.message, "error");
   }
 
   video.srcObject = currentStream;
 
   video.onloadedmetadata = () => {
+    video.play().catch(() => {});
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
   };
 
-  attachTapToFocus();
   setStatus("📷 Camera active", "success");
-
   startDecodeLoop();
-}
-
-/* ----------------------------------------------------------
-   TAP‑TO‑FOCUS
----------------------------------------------------------- */
-function attachTapToFocus() {
-  video.onclick = async (e) => {
-    if (!currentStream) return;
-
-    const track = currentStream.getVideoTracks()[0];
-    const caps = track.getCapabilities();
-
-    if (!caps.focusMode) {
-      return setStatus("⚠️ Tap‑to‑focus not supported.", "neutral");
-    }
-
-    const rect = video.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-
-    try {
-      await track.applyConstraints({
-        advanced: [
-          {
-            focusMode: "single-shot",
-            pointsOfInterest: [{ x, y }]
-          }
-        ]
-      });
-
-      setStatus("🔍 Focusing…", "neutral");
-    } catch (err) {
-      console.error(err);
-      setStatus("❌ Focus failed", "error");
-    }
-  };
 }
 
 /* ----------------------------------------------------------
@@ -207,7 +186,12 @@ async function decodeFrame(angle) {
   ctx.restore();
 
   try {
-    const luminance = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const luminance = new ZXing.RGBLuminanceSource(
+      imageData.data,
+      canvas.width,
+      canvas.height
+    );
     const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
     return codeReader.decodeBitmap(bitmap);
   } catch {
@@ -221,26 +205,8 @@ async function decodeFrame(angle) {
 async function startDecodeLoop() {
   codeReader.reset();
 
-  let devices;
   try {
-    devices = await codeReader.listVideoInputDevices();
-  } catch {
-    return setStatus("❌ Unable to list cameras.", "error");
-  }
-
-  if (!devices.length) {
-    return setStatus("❌ No camera devices detected.", "error");
-  }
-
-  let selectedDeviceId =
-    devices.find(d =>
-      useFrontCamera
-        ? d.label.toLowerCase().includes("front")
-        : d.label.toLowerCase().includes("back")
-    )?.deviceId || devices[0].deviceId;
-
-  try {
-    codeReader.decodeFromVideoDevice(selectedDeviceId, video, async () => {
+    codeReader.decodeFromVideoDevice(null, video, async () => {
       if (!scanCooldown) {
         const result = await tryDecodeWithRotations();
         if (result) handleDecoded(result.text);
