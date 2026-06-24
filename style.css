@@ -72,9 +72,12 @@
 
   /* Ledger */
   #ledgerShell {
-    padding: 18px;
-    margin: 20px auto;
-  }
+    margin: 20px auto;   /* already centers horizontally */
+    text-align: center;  /* centers text + inline elements */
+    display: flex;
+    flex-direction: column;
+    lign-items: center; /* centers all ledger items */
+}
 
   .ledgerItem {
     padding: 12px;
