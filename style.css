@@ -1,28 +1,233 @@
 /* ----------------------------------------------------------
-   BASE STYLES (apply to all screens)
+   BASE LAYOUT
 ---------------------------------------------------------- */
 
-#ledgerShell {
-  max-width: 480px;
-  margin: 20px auto;
-  padding: 18px;
+* {
+  box-sizing: border-box;
+}
 
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #05060a;
+  color: #f9fafb;
+  text-align: center;
+}
+
+/* Logo */
+#logoWrapper {
   display: flex;
-  flex-direction: column;
-  align-items: center;   /* center ledger items */
-  text-align: center;    /* center title + text */
+  justify-content: center;
+  margin-top: 10px;
+  margin-bottom: 6px;
 }
 
-.ledgerItem {
+#quantumLogo {
+  width: 100px;
+  height: 100px;
+}
+
+/* Headings */
+h1 {
+  margin: 4px 0;
+  font-size: 2.1rem;
+  letter-spacing: 0.08em;
+}
+
+h2 {
+  margin: 0 0 18px;
+  font-size: 1rem;
+  color: #9ca3af;
+}
+
+/* Scanner Shell */
+#scannerShell {
+  max-width: 520px;
+  margin: 0 auto;
+  background: #020617;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+  border: 1px solid #111827;
+}
+
+/* Video / Canvas */
+#videoWrapper {
   width: 100%;
-  max-width: 420px;
+  height: 300px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.ledgerPayload {
+#video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#canvas {
+  display: none;
+}
+
+/* Controls */
+#controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #4f46e5, #06b6d4);
+  color: #f9fafb;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, opacity 0.15s ease;
+}
+
+button.secondary {
+  background: #111827;
+  color: #e5e7eb;
+  border: 1px solid #1f2937;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: none;
+  opacity: 0.85;
+}
+
+/* Photo Preview */
+#photoPreview {
+  display: none;
+  max-width: 100%;
+  margin-top: 14px;
+  border-radius: 10px;
+}
+
+/* Scan Indicator */
+#scanIndicator {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  margin: 14px auto 0;
+  background: #4b5563;
+}
+
+/* Output */
+#output {
+  margin-top: 14px;
+  text-align: left;
+}
+
+#status {
+  padding: 10px;
+  border-radius: 10px;
+  background: #020617;
+  border: 1px solid #1f2937;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+#status.neutral {
+  color: #e5e7eb;
+}
+
+#status.success {
+  color: #bbf7d0;
+  border-color: #16a34a;
+}
+
+#status.error {
+  color: #fecaca;
+  border-color: #dc2626;
+}
+
+#payload {
+  padding: 10px;
+  border-radius: 10px;
+  background: #020617;
+  border: 1px solid #1f2937;
+  font-size: 0.9rem;
   word-wrap: break-word;
 }
 
+/* ----------------------------------------------------------
+   SCAN LEDGER (CENTERED)
+---------------------------------------------------------- */
 
+#ledgerShell {
+  max-width: 520px;
+  margin: 22px auto 0;
+  padding: 18px;
+  background: #020617;
+  border-radius: 16px;
+  border: 1px solid #111827;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;   /* center content */
+  text-align: center;    /* center title text */
+  gap: 10px;
+}
+
+#ledgerTitle {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #9ca3af;
+}
+
+#ledger {
+  width: 100%;
+}
+
+/* Ledger items injected by JS */
+.ledgerItem {
+  width: 100%;
+  background: #020617;
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid #1f2937;
+  margin-bottom: 8px;
+  text-align: left;
+}
+
+.ledgerPayload {
+  font-size: 0.9rem;
+  color: #e5e7eb;
+  word-wrap: break-word;
+}
+
+.ledgerMeta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 0.7rem;
+  color: #9ca3af;
+}
+
+.ledgerTag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #111827;
+  border: 1px solid #1f2937;
+}
 
 /* ----------------------------------------------------------
    MOBILE OPTIMIZATION — iPhone 6 / Small Screens
@@ -44,31 +249,24 @@
     margin-bottom: 18px;
   }
 
-  /* Logo */
   #logoWrapper {
     margin-top: 14px;
   }
 
   #quantumLogo {
     width: 80px;
+    height: 80px;
   }
 
-  /* Scanner Shell */
   #scannerShell {
     padding: 10px;
   }
 
-  /* Video Wrapper */
   #videoWrapper {
-    height: 260px; /* fits iPhone 6 perfectly */
+    height: 260px;
     border-radius: 10px;
   }
 
-  #video {
-    object-fit: cover;
-  }
-
-  /* Controls */
   #controls {
     gap: 10px;
     margin-top: 14px;
@@ -81,22 +279,16 @@
     font-size: 0.95rem;
   }
 
-  /* Output */
   #output {
     padding: 0 10px;
   }
 
-  #status {
-    font-size: 0.9rem;
-    padding: 10px;
-  }
-
+  #status,
   #payload {
     font-size: 0.9rem;
     padding: 10px;
   }
 
-  /* Ledger (mobile tweaks only) */
   #ledgerShell {
     padding: 18px;
     margin: 20px auto;
@@ -110,25 +302,20 @@
     font-size: 0.9rem;
   }
 
-  .ledgerTime,
-  .ledgerTag {
+  .ledgerMeta {
     font-size: 0.7rem;
   }
 
-  /* Scan Indicator */
   #scanIndicator {
     width: 32px;
     height: 32px;
   }
 
-  /* Photo Preview */
   #photoPreview {
     max-width: 100%;
     margin-top: 14px;
   }
 }
-
-
 
 /* ----------------------------------------------------------
    ULTRA-SMALL DEVICES (320px width)
