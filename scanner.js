@@ -78,11 +78,14 @@ async function handleImageUpload(e) {
   img.src = imgURL;
 
   img.onload = async () => {
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
+    const maxDim = 1600;
+    const scale = Math.min(maxDim / img.naturalWidth, maxDim / img.naturalHeight, 1);
+
+    canvas.width = img.naturalWidth * scale;
+    canvas.height = img.naturalHeight * scale;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     try {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -111,51 +114,65 @@ async function handleImageUpload(e) {
 }
 
 /* ----------------------------------------------------------
-   CAMERA START — SAFARI COMPATIBLE
+   CAMERA START — iPhone 6 + Safari Compatible
 ---------------------------------------------------------- */
 async function startCamera() {
   setStatus("Requesting camera access...");
 
   stopStream();
 
-  if (!navigator.mediaDevices?.getUserMedia) {
-    return setStatus("❌ Browser does not support camera.", "error");
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return setStatus("❌ Camera not supported on this device.", "error");
   }
 
   if (location.protocol !== "https:" && location.hostname !== "localhost") {
-    return setStatus("❌ Camera requires HTTPS.", "error");
+    return setStatus("❌ Camera requires HTTPS on iPhone Safari.", "error");
   }
 
-  let devices;
-  try {
-    devices = await navigator.mediaDevices.enumerateDevices();
-  } catch {
-    return setStatus("❌ Unable to list cameras.", "error");
+  let constraints;
+
+  if (useFrontCamera) {
+    constraints = {
+      video: {
+        facingMode: "user",
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    };
+  } else {
+    constraints = {
+      video: {
+        facingMode: { exact: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    };
   }
-
-  const cams = devices.filter(d => d.kind === "videoinput");
-
-  const selected = useFrontCamera
-    ? cams.find(c => c.label.toLowerCase().includes("front")) || cams[0]
-    : cams.find(c => c.label.toLowerCase().includes("back")) || cams[0];
-
-  const constraints = {
-    audio: false,
-    video: { deviceId: selected.deviceId }
-  };
 
   try {
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
   } catch (err) {
-    return setStatus("❌ Camera error: " + err.message, "error");
+    constraints = {
+      video: true,
+      audio: false
+    };
+    try {
+      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err2) {
+      return setStatus("❌ Camera error: " + err2.message, "error");
+    }
   }
 
   video.srcObject = currentStream;
 
   video.onloadedmetadata = () => {
     video.play().catch(() => {});
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    setTimeout(() => {
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+    }, 200);
   };
 
   setStatus("📷 Camera active", "success");
@@ -177,16 +194,28 @@ async function tryDecodeWithRotations() {
 }
 
 async function decodeFrame(angle) {
+  if (video.readyState < 2) return null;
+
   ctx.save();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate((angle * Math.PI) / 180);
-  ctx.drawImage(video, -canvas.width / 2, -canvas.height / 2);
+
+  try {
+    ctx.drawImage(video, -canvas.width / 2, -canvas.height / 2);
+  } catch {
+    ctx.restore();
+    return null;
+  }
+
   ctx.restore();
 
   try {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    if (canvas.width > 1280) return null;
+
     const luminance = new ZXing.RGBLuminanceSource(
       imageData.data,
       canvas.width,
