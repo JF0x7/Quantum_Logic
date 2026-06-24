@@ -79,3 +79,13 @@ function addToLedger(payload, tag = "SCAN") {
 
   ledger.prepend(item);
 }
+function resetLedger() {
+  const ledger = document.getElementById("ledger");
+  if (!ledger) return;
+
+  // Optional confirmation
+  const ok = confirm("Clear all ledger entries?");
+  if (!ok) return;
+
+  ledger.innerHTML = "";
+}
