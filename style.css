@@ -70,17 +70,29 @@
     padding: 10px;
   }
 
-  /* Ledger */
+  /* ----------------------------------------------------------
+     Ledger (Centered + Mobile Optimized)
+  ---------------------------------------------------------- */
   #ledgerShell {
-    margin: 20px auto;   /* already centers horizontally */
-    text-align: center;  /* centers text + inline elements */
+    padding: 18px;
+    margin: 20px auto;
+
+    /* 🔥 Centering Fix */
     display: flex;
     flex-direction: column;
-    lign-items: center; /* centers all ledger items */
-}
+    align-items: center;
+    text-align: center;
+
+    width: 100%;
+    max-width: 480px;
+  }
 
   .ledgerItem {
     padding: 12px;
+
+    /* keeps items centered inside */
+    width: 100%;
+    max-width: 420px;
   }
 
   .ledgerPayload {
