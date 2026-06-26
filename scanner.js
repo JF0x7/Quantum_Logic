@@ -78,7 +78,7 @@ async function handleImageUpload(e) {
   img.src = imgURL;
 
   img.onload = async () => {
-    const maxDim = 1600;
+    const maxDim = 2000;
     const scale = Math.min(maxDim / img.naturalWidth, maxDim / img.naturalHeight, 1);
 
     canvas.width = img.naturalWidth * scale;
@@ -135,8 +135,8 @@ async function startCamera() {
     constraints = {
       video: {
         facingMode: "user",
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       },
       audio: false
     };
@@ -144,8 +144,8 @@ async function startCamera() {
     constraints = {
       video: {
         facingMode: { exact: "environment" },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       },
       audio: false
     };
@@ -170,8 +170,10 @@ async function startCamera() {
   video.onloadedmetadata = () => {
     video.play().catch(() => {});
     setTimeout(() => {
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
+      const vw = video.videoWidth || 640;
+      const vh = video.videoHeight || 480;
+      canvas.width = vw;
+      canvas.height = vh;
     }, 200);
   };
 
@@ -180,46 +182,33 @@ async function startCamera() {
 }
 
 /* ----------------------------------------------------------
-   ROTATION‑AWARE DECODING
+   FRAME DECODE — Center Crop for Barcodes
 ---------------------------------------------------------- */
-async function tryDecodeWithRotations() {
-  const angles = [0, 90, 180, 270];
-
-  for (const angle of angles) {
-    const result = await decodeFrame(angle);
-    if (result) return result;
-  }
-
-  return null;
-}
-
-async function decodeFrame(angle) {
+async function decodeFrame() {
   if (video.readyState < 2) return null;
 
-  ctx.save();
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+
+  if (!vw || !vh) return null;
+
+  // Draw full frame
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate((angle * Math.PI) / 180);
+  // Center crop (focus where user aims barcode/QR)
+  const cropWidth = Math.floor(canvas.width * 0.7);
+  const cropHeight = Math.floor(canvas.height * 0.5);
+  const cropX = Math.floor((canvas.width - cropWidth) / 2);
+  const cropY = Math.floor((canvas.height - cropHeight) / 2);
 
-  try {
-    ctx.drawImage(video, -canvas.width / 2, -canvas.height / 2);
-  } catch {
-    ctx.restore();
-    return null;
-  }
-
-  ctx.restore();
+  const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
 
   try {
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    if (canvas.width > 1280) return null;
-
     const luminance = new ZXing.RGBLuminanceSource(
       imageData.data,
-      canvas.width,
-      canvas.height
+      cropWidth,
+      cropHeight
     );
     const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
     return codeReader.decodeBitmap(bitmap);
@@ -234,17 +223,20 @@ async function decodeFrame(angle) {
 async function startDecodeLoop() {
   codeReader.reset();
 
-  try {
-    codeReader.decodeFromVideoDevice(null, video, async () => {
-      if (!scanCooldown) {
-        const result = await tryDecodeWithRotations();
-        if (result) handleDecoded(result.text);
+  const loop = async () => {
+    if (!currentStream) return;
+
+    if (!scanCooldown) {
+      const result = await decodeFrame();
+      if (result) {
+        handleDecoded(result.text);
       }
-    });
-  } catch (err) {
-    console.error(err);
-    setStatus("❌ Failed to start decoding.", "error");
-  }
+    }
+
+    requestAnimationFrame(loop);
+  };
+
+  loop();
 }
 
 /* ----------------------------------------------------------
@@ -263,7 +255,7 @@ function handleDecoded(data) {
     addToLedger(data);
   }
 
-  setTimeout(() => (scanCooldown = false), 1500);
+  setTimeout(() => (scanCooldown = false), 800);
 }
 
 /* ----------------------------------------------------------
