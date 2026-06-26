@@ -7,6 +7,7 @@ const ctx = canvas.getContext("2d");
 
 const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
+const preview = document.getElementById("photoPreview");
 
 let currentStream = null;
 let useFrontCamera = true;
@@ -53,6 +54,25 @@ function stopStream() {
 }
 
 /* ----------------------------------------------------------
+   RESET BUTTON — FULL RESET
+---------------------------------------------------------- */
+document.getElementById("resetBtn").addEventListener("click", () => {
+  stopStream();
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  payloadEl.textContent = "";
+  preview.src = "";
+  preview.style.display = "none";
+
+  lastScan = null;
+  scanCooldown = false;
+
+  if (typeof clearLedger === "function") clearLedger();
+
+  setStatus("🔄 Reset complete", "neutral");
+});
+
+/* ----------------------------------------------------------
    BUTTON EVENTS
 ---------------------------------------------------------- */
 document.getElementById("startBtn").addEventListener("click", startCamera);
@@ -67,7 +87,7 @@ document.getElementById("fileInput").addEventListener("change", handleImageUploa
 document.getElementById("photoBtn").addEventListener("click", takePhoto);
 
 /* ----------------------------------------------------------
-   IMAGE UPLOAD SCANNING — High Detail via Canvas
+   IMAGE UPLOAD SCANNING
 ---------------------------------------------------------- */
 async function handleImageUpload(e) {
   const file = e.target.files[0];
@@ -100,21 +120,15 @@ async function handleImageUpload(e) {
       handleDecoded(result.text);
       setStatus("✅ Image decoded", "success");
     } catch (err) {
-      console.error(err);
       setStatus("❌ Image decode failed", "error");
     } finally {
       URL.revokeObjectURL(imgURL);
     }
   };
-
-  img.onerror = () => {
-    setStatus("❌ Failed to load image", "error");
-    URL.revokeObjectURL(imgURL);
-  };
 }
 
 /* ----------------------------------------------------------
-   CAMERA START — iPhone 6 + Safari Compatible
+   UNIVERSAL CAMERA START — Works with ALL webcams
 ---------------------------------------------------------- */
 async function startCamera() {
   setStatus("Requesting camera access...");
@@ -126,42 +140,32 @@ async function startCamera() {
   }
 
   if (location.protocol !== "https:" && location.hostname !== "localhost") {
-    return setStatus("❌ Camera requires HTTPS on iPhone Safari.", "error");
+    return setStatus("❌ Camera requires HTTPS.", "error");
   }
 
-  let constraints;
-
-  if (useFrontCamera) {
-    constraints = {
-      video: {
-        facingMode: "user",
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
-      },
-      audio: false
-    };
-  } else {
-    constraints = {
-      video: {
-        facingMode: { exact: "environment" },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
-      },
-      audio: false
-    };
-  }
+  let constraints = {
+    video: {
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
+      facingMode: useFrontCamera ? "user" : "environment"
+    },
+    audio: false
+  };
 
   try {
     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
   } catch (err) {
-    constraints = {
-      video: true,
-      audio: false
-    };
-    try {
-      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-    } catch (err2) {
-      return setStatus("❌ Camera error: " + err2.message, "error");
+    // fallback for USB webcams like Piko
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === "videoinput");
+
+    if (cams.length > 0) {
+      currentStream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: cams[0].deviceId },
+        audio: false
+      });
+    } else {
+      return setStatus("❌ No cameras found.", "error");
     }
   }
 
@@ -170,10 +174,8 @@ async function startCamera() {
   video.onloadedmetadata = () => {
     video.play().catch(() => {});
     setTimeout(() => {
-      const vw = video.videoWidth || 640;
-      const vh = video.videoHeight || 480;
-      canvas.width = vw;
-      canvas.height = vh;
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
     }, 200);
   };
 
@@ -182,21 +184,13 @@ async function startCamera() {
 }
 
 /* ----------------------------------------------------------
-   FRAME DECODE — Center Crop for Barcodes
+   FRAME DECODE — Center Crop
 ---------------------------------------------------------- */
 async function decodeFrame() {
   if (video.readyState < 2) return null;
 
-  const vw = video.videoWidth;
-  const vh = video.videoHeight;
-
-  if (!vw || !vh) return null;
-
-  // Draw full frame
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  // Center crop (focus where user aims barcode/QR)
   const cropWidth = Math.floor(canvas.width * 0.7);
   const cropHeight = Math.floor(canvas.height * 0.5);
   const cropX = Math.floor((canvas.width - cropWidth) / 2);
@@ -228,9 +222,7 @@ async function startDecodeLoop() {
 
     if (!scanCooldown) {
       const result = await decodeFrame();
-      if (result) {
-        handleDecoded(result.text);
-      }
+      if (result) handleDecoded(result.text);
     }
 
     requestAnimationFrame(loop);
@@ -251,15 +243,13 @@ function handleDecoded(data) {
   payloadEl.textContent = data;
   setStatus("✅ Scan successful", "success");
 
-  if (typeof addToLedger === "function") {
-    addToLedger(data);
-  }
+  if (typeof addToLedger === "function") addToLedger(data);
 
   setTimeout(() => (scanCooldown = false), 800);
 }
 
 /* ----------------------------------------------------------
-   TAKE PHOTO
+   TAKE PHOTO + DECODE
 ---------------------------------------------------------- */
 function takePhoto() {
   if (!currentStream) {
@@ -269,12 +259,27 @@ function takePhoto() {
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
   const dataURL = canvas.toDataURL("image/png");
+  preview.src = dataURL;
+  preview.style.display = "block";
 
-  const preview = document.getElementById("photoPreview");
-  if (preview) {
-    preview.src = dataURL;
-    preview.style.display = "block";
+  // Decode the captured photo
+  handleImageUploadFromCanvas();
+}
+
+async function handleImageUploadFromCanvas() {
+  try {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const luminance = new ZXing.RGBLuminanceSource(
+      imageData.data,
+      canvas.width,
+      canvas.height
+    );
+    const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
+    const result = codeReader.decodeBitmap(bitmap);
+
+    handleDecoded(result.text);
+    setStatus("📸 Photo decoded", "success");
+  } catch {
+    setStatus("❌ Could not decode photo", "error");
   }
-
-  setStatus("📸 Photo captured", "success");
 }
