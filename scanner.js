@@ -146,8 +146,9 @@ async function startCamera() {
   video.onloadedmetadata = () => {
     video.play().catch(() => {});
     setTimeout(() => {
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
       startDecodeLoop();
     }, 200);
   };
@@ -173,27 +174,33 @@ async function flipCamera() {
 async function decodeFrame() {
   if (video.readyState < 2) return null;
 
+  // Draw full frame
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  const cropWidth = Math.floor(canvas.width * 0.7);
-  const cropHeight = Math.floor(canvas.height * 0.5);
+  // Try full frame first (best for QR + big barcodes)
+  try {
+    const fullData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const fullLum = new ZXing.RGBLuminanceSource(fullData.data, canvas.width, canvas.height);
+    const fullBmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(fullLum));
+    return codeReader.decodeBitmap(fullBmp);
+  } catch {}
+
+  // Center crop fallback (best for small UPC/EAN)
+  const cropWidth = Math.floor(canvas.width * 0.6);
+  const cropHeight = Math.floor(canvas.height * 0.4);
   const cropX = Math.floor((canvas.width - cropWidth) / 2);
   const cropY = Math.floor((canvas.height - cropHeight) / 2);
 
-  const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
-
   try {
-    const luminance = new ZXing.RGBLuminanceSource(
-      imageData.data,
-      cropWidth,
-      cropHeight
-    );
-    const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
-    return codeReader.decodeBitmap(bitmap);
-  } catch {
-    return null;
-  }
+    const cropData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
+    const cropLum = new ZXing.RGBLuminanceSource(cropData.data, cropWidth, cropHeight);
+    const cropBmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(cropLum));
+    return codeReader.decodeBitmap(cropBmp);
+  } catch {}
+
+  return null;
 }
+
 
 /* ----------------------------------------------------------
    DECODE LOOP
@@ -206,16 +213,15 @@ async function startDecodeLoop() {
 
     if (!scanCooldown) {
       const result = await decodeFrame();
-      if (result) {
-        handleDecoded(result.text);
-      }
+      if (result) handleDecoded(result.text);
     }
 
-    requestAnimationFrame(loop);
+    setTimeout(loop, 80); // 12.5 FPS decode — perfect for ZXing
   };
 
   loop();
 }
+
 
 /* ----------------------------------------------------------
    HANDLE DECODED PAYLOAD
