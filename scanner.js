@@ -10,7 +10,6 @@ const payloadEl = document.getElementById("payload");
 const preview = document.getElementById("photoPreview");
 
 let currentStream = null;
-let useFrontCamera = true;
 let lastScan = null;
 let scanCooldown = false;
 
@@ -54,21 +53,16 @@ function stopStream() {
 }
 
 /* ----------------------------------------------------------
-   RESET BUTTON — FULL RESET
+   RESET BUTTON
 ---------------------------------------------------------- */
 document.getElementById("resetBtn").addEventListener("click", () => {
   stopStream();
-
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   payloadEl.textContent = "";
   preview.src = "";
   preview.style.display = "none";
-
   lastScan = null;
   scanCooldown = false;
-
-  if (typeof clearLedger === "function") clearLedger();
-
   setStatus("🔄 Reset complete", "neutral");
 });
 
@@ -76,10 +70,6 @@ document.getElementById("resetBtn").addEventListener("click", () => {
    BUTTON EVENTS
 ---------------------------------------------------------- */
 document.getElementById("startBtn").addEventListener("click", startCamera);
-document.getElementById("flipBtn").addEventListener("click", () => {
-  useFrontCamera = !useFrontCamera;
-  startCamera();
-});
 document.getElementById("uploadBtn").addEventListener("click", () => {
   document.getElementById("fileInput").click();
 });
@@ -87,48 +77,7 @@ document.getElementById("fileInput").addEventListener("change", handleImageUploa
 document.getElementById("photoBtn").addEventListener("click", takePhoto);
 
 /* ----------------------------------------------------------
-   IMAGE UPLOAD SCANNING
----------------------------------------------------------- */
-async function handleImageUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const imgURL = URL.createObjectURL(file);
-  const img = new Image();
-  img.src = imgURL;
-
-  img.onload = async () => {
-    const maxDim = 2000;
-    const scale = Math.min(maxDim / img.naturalWidth, maxDim / img.naturalHeight, 1);
-
-    canvas.width = img.naturalWidth * scale;
-    canvas.height = img.naturalHeight * scale;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    try {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const luminance = new ZXing.RGBLuminanceSource(
-        imageData.data,
-        canvas.width,
-        canvas.height
-      );
-      const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
-      const result = codeReader.decodeBitmap(bitmap);
-
-      handleDecoded(result.text);
-      setStatus("✅ Image decoded", "success");
-    } catch (err) {
-      setStatus("❌ Image decode failed", "error");
-    } finally {
-      URL.revokeObjectURL(imgURL);
-    }
-  };
-}
-
-/* ----------------------------------------------------------
-   UNIVERSAL CAMERA START — Works with ALL webcams
+   UNIVERSAL CAMERA START — WORKS WITH ALL WEBCAMS
 ---------------------------------------------------------- */
 async function startCamera() {
   setStatus("Requesting camera access...");
@@ -150,7 +99,7 @@ async function startCamera() {
     return setStatus("❌ No cameras found.", "error");
   }
 
-  // Prefer EMEET Piko
+  // Prefer EMEET Piko if available
   const piko = cams.find(c => c.label.toLowerCase().includes("emeet"));
   const selectedCam = piko || cams[0];
 
@@ -180,7 +129,7 @@ async function startCamera() {
 }
 
 /* ----------------------------------------------------------
-   FRAME DECODE — Center Crop
+   FRAME DECODE — CENTER CROP
 ---------------------------------------------------------- */
 async function decodeFrame() {
   if (video.readyState < 2) return null;
@@ -239,8 +188,6 @@ function handleDecoded(data) {
   payloadEl.textContent = data;
   setStatus("✅ Scan successful", "success");
 
-  if (typeof addToLedger === "function") addToLedger(data);
-
   setTimeout(() => (scanCooldown = false), 800);
 }
 
@@ -258,11 +205,10 @@ function takePhoto() {
   preview.src = dataURL;
   preview.style.display = "block";
 
-  // Decode the captured photo
-  handleImageUploadFromCanvas();
+  decodePhoto();
 }
 
-async function handleImageUploadFromCanvas() {
+async function decodePhoto() {
   try {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const luminance = new ZXing.RGBLuminanceSource(
@@ -278,4 +224,26 @@ async function handleImageUploadFromCanvas() {
   } catch {
     setStatus("❌ Could not decode photo", "error");
   }
+}
+
+/* ----------------------------------------------------------
+   IMAGE UPLOAD SCANNING
+---------------------------------------------------------- */
+async function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const imgURL = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = imgURL;
+
+  img.onload = async () => {
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+
+    ctx.drawImage(img, 0, 0);
+
+    decodePhoto();
+    URL.revokeObjectURL(imgURL);
+  };
 }
