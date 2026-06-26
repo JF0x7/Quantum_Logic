@@ -138,17 +138,23 @@ async function startCamera() {
     return setStatus("❌ Camera not supported.", "error");
   }
 
-  // Get all cameras
-  const devices = await navigator.mediaDevices.enumerateDevices();
-  const cams = devices.filter(d => d.kind === "videoinput");
+  let devices;
+  try {
+    devices = await navigator.mediaDevices.enumerateDevices();
+  } catch (err) {
+    return setStatus("❌ Cannot list devices: " + err.message, "error");
+  }
 
+  const cams = devices.filter(d => d.kind === "videoinput");
   if (cams.length === 0) {
     return setStatus("❌ No cameras found.", "error");
   }
 
-  // Prefer EMEET Piko if available
+  // Prefer EMEET Piko
   const piko = cams.find(c => c.label.toLowerCase().includes("emeet"));
   const selectedCam = piko || cams[0];
+
+  console.log("Selected camera:", selectedCam.label);
 
   try {
     currentStream = await navigator.mediaDevices.getUserMedia({
