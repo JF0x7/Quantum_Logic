@@ -132,41 +132,31 @@ async function handleImageUpload(e) {
 ---------------------------------------------------------- */
 async function startCamera() {
   setStatus("Requesting camera access...");
-
   stopStream();
 
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    return setStatus("❌ Camera not supported on this device.", "error");
+  if (!navigator.mediaDevices?.getUserMedia) {
+    return setStatus("❌ Camera not supported.", "error");
   }
 
-  if (location.protocol !== "https:" && location.hostname !== "localhost") {
-    return setStatus("❌ Camera requires HTTPS.", "error");
+  // Get all cameras
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const cams = devices.filter(d => d.kind === "videoinput");
+
+  if (cams.length === 0) {
+    return setStatus("❌ No cameras found.", "error");
   }
 
-  let constraints = {
-    video: {
-      width: { ideal: 1920 },
-      height: { ideal: 1080 },
-      facingMode: useFrontCamera ? "user" : "environment"
-    },
-    audio: false
-  };
+  // Prefer EMEET Piko if available
+  const piko = cams.find(c => c.label.toLowerCase().includes("emeet"));
+  const selectedCam = piko || cams[0];
 
   try {
-    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+    currentStream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: selectedCam.deviceId } },
+      audio: false
+    });
   } catch (err) {
-    // fallback for USB webcams like Piko
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const cams = devices.filter(d => d.kind === "videoinput");
-
-    if (cams.length > 0) {
-      currentStream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: cams[0].deviceId },
-        audio: false
-      });
-    } else {
-      return setStatus("❌ No cameras found.", "error");
-    }
+    return setStatus("❌ Camera error: " + err.message, "error");
   }
 
   video.srcObject = currentStream;
@@ -176,11 +166,11 @@ async function startCamera() {
     setTimeout(() => {
       canvas.width = video.videoWidth || 640;
       canvas.height = video.videoHeight || 480;
+      startDecodeLoop();
     }, 200);
   };
 
   setStatus("📷 Camera active", "success");
-  startDecodeLoop();
 }
 
 /* ----------------------------------------------------------
