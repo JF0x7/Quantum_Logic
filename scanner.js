@@ -7,11 +7,23 @@ const ctx = canvas.getContext("2d");
 
 const statusEl = document.getElementById("status");
 const payloadEl = document.getElementById("payload");
-const preview = document.getElementById("photoPreview");
+const previewEl = document.getElementById("photoPreview");
+const scanIndicatorEl = document.getElementById("scanIndicator");
+const ledgerEl = document.getElementById("ledger");
+
+const startBtn = document.getElementById("startBtn");
+const flipBtn = document.getElementById("flipBtn");
+const uploadBtn = document.getElementById("uploadBtn");
+const sendBtn = document.getElementById("sendBtn");
+const photoBtn = document.getElementById("photoBtn");
+const resetLedgerBtn = document.getElementById("resetLedgerBtn");
+const fileInput = document.getElementById("fileInput");
 
 let currentStream = null;
 let lastScan = null;
 let scanCooldown = false;
+let currentDeviceIndex = 0;
+let videoDevices = [];
 
 /* ----------------------------------------------------------
    ZXING SETUP — QR + ALL BARCODES
@@ -46,6 +58,10 @@ function setStatus(text, type = "neutral") {
   statusEl.className = type;
 }
 
+function setScanIndicator(active) {
+  scanIndicatorEl.className = active ? "active" : "";
+}
+
 function stopStream() {
   if (!currentStream) return;
   currentStream.getTracks().forEach(t => t.stop());
@@ -53,61 +69,72 @@ function stopStream() {
 }
 
 /* ----------------------------------------------------------
-   RESET BUTTON
----------------------------------------------------------- */
-document.getElementById("resetBtn").addEventListener("click", () => {
-  stopStream();
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  payloadEl.textContent = "";
-  preview.src = "";
-  preview.style.display = "none";
-  lastScan = null;
-  scanCooldown = false;
-  setStatus("🔄 Reset complete", "neutral");
-});
-
-/* ----------------------------------------------------------
    BUTTON EVENTS
 ---------------------------------------------------------- */
-document.getElementById("startBtn").addEventListener("click", startCamera);
-document.getElementById("uploadBtn").addEventListener("click", () => {
-  document.getElementById("fileInput").click();
+startBtn.addEventListener("click", startCamera);
+flipBtn.addEventListener("click", flipCamera);
+uploadBtn.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", handleImageUpload);
+photoBtn.addEventListener("click", takePhoto);
+
+resetLedgerBtn.addEventListener("click", () => {
+  if (typeof clearLedger === "function") {
+    clearLedger();
+  } else {
+    ledgerEl.textContent = "";
+  }
+  setStatus("🔄 Ledger reset", "neutral");
 });
-document.getElementById("fileInput").addEventListener("change", handleImageUpload);
-document.getElementById("photoBtn").addEventListener("click", takePhoto);
+
+sendBtn.addEventListener("click", () => {
+  if (typeof sendSignal === "function") {
+    sendSignal();
+    setStatus("📡 Signal sent", "success");
+  } else {
+    setStatus("📡 Signal button pressed (no handler)", "neutral");
+  }
+});
 
 /* ----------------------------------------------------------
-   UNIVERSAL CAMERA START — WORKS WITH ALL WEBCAMS
+   DEVICE ENUMERATION
+---------------------------------------------------------- */
+async function loadVideoDevices() {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  videoDevices = devices.filter(d => d.kind === "videoinput");
+
+  if (videoDevices.length === 0) {
+    setStatus("❌ No cameras found.", "error");
+  }
+}
+
+/* ----------------------------------------------------------
+   CAMERA START — UNIVERSAL, PIKO-FRIENDLY
 ---------------------------------------------------------- */
 async function startCamera() {
   setStatus("Requesting camera access...");
   stopStream();
+  setScanIndicator(false);
 
   if (!navigator.mediaDevices?.getUserMedia) {
     return setStatus("❌ Camera not supported.", "error");
   }
 
-  let devices;
-  try {
-    devices = await navigator.mediaDevices.enumerateDevices();
-  } catch (err) {
-    return setStatus("❌ Cannot list devices: " + err.message, "error");
+  if (location.protocol !== "https:" && location.hostname !== "localhost") {
+    return setStatus("❌ Camera requires HTTPS.", "error");
   }
 
-  const cams = devices.filter(d => d.kind === "videoinput");
-  if (cams.length === 0) {
-    return setStatus("❌ No cameras found.", "error");
-  }
+  await loadVideoDevices();
+  if (videoDevices.length === 0) return;
 
-  // Prefer EMEET Piko if available
-  const piko = cams.find(c => c.label.toLowerCase().includes("emeet"));
-  const selectedCam = piko || cams[0];
+  // Prefer EMEET if present
+  const piko = videoDevices.find(d => d.label.toLowerCase().includes("emeet"));
+  if (piko) currentDeviceIndex = videoDevices.indexOf(piko);
 
-  console.log("Selected camera:", selectedCam.label);
+  const selected = videoDevices[currentDeviceIndex];
 
   try {
     currentStream = await navigator.mediaDevices.getUserMedia({
-      video: { deviceId: { exact: selectedCam.deviceId } },
+      video: { deviceId: { exact: selected.deviceId } },
       audio: false
     });
   } catch (err) {
@@ -126,6 +153,18 @@ async function startCamera() {
   };
 
   setStatus("📷 Camera active", "success");
+}
+
+/* ----------------------------------------------------------
+   FLIP CAMERA — CYCLE THROUGH DEVICES
+---------------------------------------------------------- */
+async function flipCamera() {
+  if (videoDevices.length <= 1) {
+    return setStatus("ℹ Only one camera available.", "neutral");
+  }
+
+  currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
+  await startCamera();
 }
 
 /* ----------------------------------------------------------
@@ -167,7 +206,9 @@ async function startDecodeLoop() {
 
     if (!scanCooldown) {
       const result = await decodeFrame();
-      if (result) handleDecoded(result.text);
+      if (result) {
+        handleDecoded(result.text);
+      }
     }
 
     requestAnimationFrame(loop);
@@ -187,8 +228,20 @@ function handleDecoded(data) {
 
   payloadEl.textContent = data;
   setStatus("✅ Scan successful", "success");
+  setScanIndicator(true);
 
-  setTimeout(() => (scanCooldown = false), 800);
+  if (typeof addToLedger === "function") {
+    addToLedger(data);
+  } else {
+    const entry = document.createElement("div");
+    entry.textContent = data;
+    ledgerEl.appendChild(entry);
+  }
+
+  setTimeout(() => {
+    scanCooldown = false;
+    setScanIndicator(false);
+  }, 800);
 }
 
 /* ----------------------------------------------------------
@@ -202,13 +255,13 @@ function takePhoto() {
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
   const dataURL = canvas.toDataURL("image/png");
-  preview.src = dataURL;
-  preview.style.display = "block";
+  previewEl.src = dataURL;
+  previewEl.style.display = "block";
 
-  decodePhoto();
+  decodeFromCanvas();
 }
 
-async function decodePhoto() {
+async function decodeFromCanvas() {
   try {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const luminance = new ZXing.RGBLuminanceSource(
@@ -243,7 +296,15 @@ async function handleImageUpload(e) {
 
     ctx.drawImage(img, 0, 0);
 
-    decodePhoto();
+    previewEl.src = imgURL;
+    previewEl.style.display = "block";
+
+    await decodeFromCanvas();
+    URL.revokeObjectURL(imgURL);
+  };
+
+  img.onerror = () => {
+    setStatus("❌ Failed to load image", "error");
     URL.revokeObjectURL(imgURL);
   };
 }
