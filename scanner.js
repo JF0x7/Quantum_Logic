@@ -1,8 +1,13 @@
-// --- CONFIGURATION MATRIX ---
+/**
+ * Universal Quantum Barcode Scanner Engine
+ * Features: Multi-format 1D/2D Matrix Parsing, Auto-Redirect Routing, Camera Swapping
+ */
+
+// --- GLOBAL CONFIGURATION MATRIX ---
 const CONFIG = {
-    cooldownDelay: 2500,     // Lockout window (ms) to stop infinite pop-up loops after a launch
-    vibrateOnScan: true,
-    autoOpenLinks: true      // Instantly open resolved URLs in a new browser tab
+    cooldownDelay: 3000,     // Lockout window (ms) to prevent infinite tab-spawning loops
+    vibrateOnScan: true,     // Haptic pulse toggle for supported mobile devices
+    autoRedirect: true       // Instantly launch URLs or execute web queries upon discovery
 };
 
 // --- CORE SYSTEM STATE ---
@@ -14,74 +19,77 @@ const state = {
     lastScan: null
 };
 
-// --- DOM NODE INTERFACE ---
+// --- DOM NODE REFERENCE INTERFACE ---
+// Bind these key values to your presentation layout items
 const elements = {
     video: document.getElementById("video"),
     payloadDisplay: document.getElementById("payload"),
-    statusDisplay: document.getElementById("status")
+    statusDisplay: document.getElementById("status"),
+    startBtn: document.getElementById("startBtn"),
+    flipBtn: document.getElementById("flipBtn")
 };
 
-// --- CORE ENGINE INITIALIZATION WITH FORCED DECODE HINTS ---
-if (typeof ZXing !== 'undefined') {
-    // Explicitly configure hints to force comprehensive 1D and 2D matrix matching
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true); 
-    // This forces deep pixel checking for crypto codes, books (EAN), and card codes (Code 128/39)
+// --- INITIALIZE ENGINE & FORCED DECODING HINTS ---
+function initScannerEngine() {
+    if (typeof ZXing !== 'undefined') {
+        // Build parsing constraints map
+        const hints = new Map();
+        
+        // CRITICAL: Forces deep multi-pass pixel analysis. 
+        // Essential for dense 1D codes on books/cards and small crypto/QTUM QR layouts.
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
-    state.codeReader = new ZXing.BrowserMultiFormatReader(hints);
-} else {
-    updateStatus("Critical Failure: ZXing script resources not loaded.", "error");
-}
-
-function updateStatus(msg, isError = false) {
-    if (elements.statusDisplay) {
-        elements.statusDisplay.textContent = msg;
-        elements.statusDisplay.style.color = isError ? "#ef4444" : "#38bdf8";
+        // Instantiating the engine with customized hints
+        state.codeReader = new ZXing.BrowserMultiFormatReader(hints);
+        updateStatus("Optics engine successfully compiled. Ready for initialization.", false);
+        bindControlListeners();
+    } else {
+        updateStatus("Critical Failure: ZXing library resources not detected in scope.", true);
     }
-    console.log(`[Scanner]: ${msg}`);
 }
 
-// --- OPTICS ARCHITECTURE & NATIVE STREAM PARSING ---
+// --- CORE OPTICS & CAPTURE MANAGEMENT ---
 async function startCamera() {
     if (!state.codeReader) return;
-    updateStatus("Initializing optics engine...");
+    updateStatus("Warming up camera optics...");
     
-    // Reset any active decoders running on the camera track
+    // Clear the deck and release any current camera locks
     state.codeReader.reset();
 
     try {
+        // Fail-fast guard clause verifying secure hosting context (HTTPS/Localhost)
         if (!navigator.mediaDevices?.getUserMedia) {
-            throw new Error("Browser blocks media pipeline hardware permissions over standard HTTP. Enforce HTTPS.");
+            throw new Error("Browser blocks hardware media access. Ensure site is served over HTTPS.");
         }
 
-        // Gather video inputs natively through ZXing mapper
+        // Poll system layout for video capture endpoints
         const videoInputDevices = await state.codeReader.listVideoInputDevices();
         state.videoDevices = videoInputDevices;
 
         if (videoInputDevices.length === 0) {
-            throw new Error("No physical hardware capture nodes located.");
+            throw new Error("No physical hardware capture nodes located on this system.");
         }
 
-        // Automatically target the rear/environmental camera if available
+        // Automatic fallback selection logic (Prefers rear cameras on phones/tablets)
         if (!state.selectedDeviceId) {
-            const backCam = videoInputDevices.find(d => 
-                d.label.toLowerCase().includes('back') || 
-                d.label.toLowerCase().includes('environment') ||
-                d.label.toLowerCase().includes('rear')
+            const strategicCam = videoInputDevices.find(device => 
+                device.label.toLowerCase().includes('back') || 
+                device.label.toLowerCase().includes('environment') ||
+                device.label.toLowerCase().includes('rear')
             );
-            state.selectedDeviceId = backCam ? backCam.deviceId : videoInputDevices[0].deviceId;
+            state.selectedDeviceId = strategicCam ? strategicCam.deviceId : videoInputDevices[0].deviceId;
         }
 
-        updateStatus("Optics active. Align target barcode within lens center.");
+        updateStatus("Lens track hot. Position barcode squarely inside viewfinder.");
 
-        // Use ZXing's native decoding loop—this performs much better on hardware like Raspberry Pi cameras
+        // Hand over the video rendering track and frame cycle over to ZXing's high-perf native loop
         state.codeReader.decodeFromVideoDevice(state.selectedDeviceId, 'video', (result, error) => {
             if (result) {
-                handleScannedData(result.getText());
+                processDecodedPayload(result.getText());
             }
+            // Mute standard NotFoundExceptions to preserve device memory cycles
             if (error && !(error instanceof ZXing.NotFoundException)) {
-                // Ignore NotFoundException to keep the logs clean while searching the frame
-                console.debug("Matrix tracking artifact:", error);
+                console.debug("Optical matrix artifact:", error);
             }
         });
 
@@ -92,7 +100,7 @@ async function startCamera() {
 
 function flipCamera() {
     if (state.videoDevices.length <= 1) {
-        updateStatus("No secondary camera tracking module discovered.");
+        updateStatus("No secondary camera tracking module found to switch to.");
         return;
     }
     const currentIndex = state.videoDevices.findIndex(d => d.deviceId === state.selectedDeviceId);
@@ -101,58 +109,78 @@ function flipCamera() {
     startCamera();
 }
 
-// --- PIPELINE DATA RESOLUTION & REDIRECTION ---
-function handleScannedData(data) {
-    // Block double-triggers during active cooldown operations
-    if (state.scanCooldown && data === state.lastScan) return;
-
-    state.lastScan = data;
-    state.scanCooldown = true;
-
-    if (elements.payloadDisplay) elements.payloadDisplay.textContent = data;
-    updateStatus("Signal Decoded!", false);
-
-    // Audio Haptic Trigger Pipeline
-    try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.value = 880;
-        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.1);
-        setTimeout(() => audioCtx.close(), 250);
-    } catch(e) {}
-
-    if (CONFIG.vibrateOnScan && navigator.vibrate) {
-        try { navigator.vibrate(80); } catch(e) {}
-    }
-
-    // URL Parsing Verification & Redirection Layer
-    const cleanData = data.trim();
-    const isUrl = /^(https?:\/\/[^\s]+)/i.test(cleanData);
-
-    if (isUrl && CONFIG.autoOpenLinks) {
-        updateStatus("Redirecting to target node payload...");
-        window.open(cleanData, '_blank');
-    } else if (CONFIG.autoOpenLinks) {
-        // If it's a plain barcode string (like a book ISBN or trading card tracking number),
-        // fallback to opening a standard search engine query for that asset string.
-        updateStatus("Querying string on search index...");
-        window.open(`https://www.google.com/search?q=${encodeURIComponent(cleanData)}`, '_blank');
-    }
-
-    // Cooldown reset to prevent browser tab spamming
-    setTimeout(() => {
-        state.scanCooldown = false;
-    }, CONFIG.cooldownDelay);
-}
-
 function stopScanner() {
     if (state.codeReader) {
         state.codeReader.reset();
         updateStatus("Optics suspended. Standby mode active.");
     }
 }
+
+// --- PAYLOAD PARSING & ROUTING LAYER ---
+function processDecodedPayload(data) {
+    // Cooldown gate checking to keep tabs from spawning uncontrollably
+    if (state.scanCooldown && data === state.lastScan) return;
+
+    state.lastScan = data;
+    state.scanCooldown = true;
+
+    // Disseminate to local display elements if attached
+    if (elements.payloadDisplay) elements.payloadDisplay.textContent = data;
+    updateStatus("Signal Decoded!", false);
+
+    // Dynamic High-Frequency Audio Tone Generation
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 900;
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.08);
+        setTimeout(() => audioCtx.close(), 200); // Cleans up audio context immediately
+    } catch(e) {}
+
+    // Haptic pulse dispatch
+    if (CONFIG.vibrateOnScan && navigator.vibrate) {
+        try { navigator.vibrate(60); } catch(e) {}
+    }
+
+    // INTERACTION / ROUTING ROUTINES
+    const trimmedPayload = data.trim();
+    const isUrl = /^(https?:\/\/[^\s]+)/i.test(trimmedPayload);
+
+    if (CONFIG.autoRedirect) {
+        if (isUrl) {
+            updateStatus("Redirecting to target node payload...");
+            window.open(trimmedPayload, '_blank');
+        } else {
+            // Non-URL scan fallback: Query data payload (Trading cards, ISBN books, serials) directly on search indices
+            updateStatus("Dispatching string query to search engine...");
+            window.open(`https://www.google.com/search?q=${encodeURIComponent(trimmedPayload)}`, '_blank');
+        }
+    }
+
+    // Release system cooldown after specified threshold delay
+    setTimeout(() => {
+        state.scanCooldown = false;
+    }, CONFIG.cooldownDelay);
+}
+
+// --- COMPONENT INTERFACE MANAGEMENT ---
+function updateStatus(msg, isError = false) {
+    if (elements.statusDisplay) {
+        elements.statusDisplay.textContent = `Status: ${msg}`;
+        elements.statusDisplay.style.color = isError ? "#ef4444" : "#38bdf8";
+    }
+    console.log(`[Scanner Core]: ${msg}`);
+}
+
+function bindControlListeners() {
+    if (elements.startBtn) elements.startBtn.onclick = startCamera;
+    if (elements.flipBtn) elements.flipBtn.onclick = flipCamera;
+}
+
+// Auto-boot up engine when document finishes evaluation pass
+document.addEventListener("DOMContentLoaded", initScannerEngine);
