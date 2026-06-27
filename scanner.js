@@ -1,185 +1,158 @@
 // --- CONFIGURATION MATRIX ---
 const CONFIG = {
-    scanInterval: 120,      // Loop throttle (ms) to mitigate thermal CPU throttling on mobile
-    cooldownDelay: 1000,    // Post-scan lockout duration (ms)
-    vibrateOnScan: true     // Haptic feedback toggle
+    cooldownDelay: 2500,     // Lockout window (ms) to stop infinite pop-up loops after a launch
+    vibrateOnScan: true,
+    autoOpenLinks: true      // Instantly open resolved URLs in a new browser tab
 };
 
 // --- CORE SYSTEM STATE ---
 const state = {
-    stream: null,
-    lastScan: null,
-    scanCooldown: false,
-    currentDeviceIndex: 0,
+    selectedDeviceId: null,
     videoDevices: [],
-    decodeLoopRunning: false,
-    codeReader: null
+    codeReader: null,
+    scanCooldown: false,
+    lastScan: null
 };
 
-// --- DOM NODE REFERENCE INTERFACE ---
-// Match these IDs up with your custom HTML presentation layer
+// --- DOM NODE INTERFACE ---
 const elements = {
     video: document.getElementById("video"),
-    canvas: document.getElementById("canvas"),
     payloadDisplay: document.getElementById("payload"),
-    statusDisplay: document.getElementById("status"),
-    fileInput: document.getElementById("fileInput")
+    statusDisplay: document.getElementById("status")
 };
 
-// --- ENGINE INITIALIZATION ---
+// --- CORE ENGINE INITIALIZATION WITH FORCED DECODE HINTS ---
 if (typeof ZXing !== 'undefined') {
-    state.codeReader = new ZXing.BrowserMultiFormatReader();
+    // Explicitly configure hints to force comprehensive 1D and 2D matrix matching
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true); 
+    // This forces deep pixel checking for crypto codes, books (EAN), and card codes (Code 128/39)
+
+    state.codeReader = new ZXing.BrowserMultiFormatReader(hints);
 } else {
-    console.error("Critical Failure: ZXing engine missing from window runtime scope.");
+    updateStatus("Critical Failure: ZXing script resources not loaded.", "error");
 }
 
-// --- OPTICS ARCHITECTURE ---
+function updateStatus(msg, isError = false) {
+    if (elements.statusDisplay) {
+        elements.statusDisplay.textContent = msg;
+        elements.statusDisplay.style.color = isError ? "#ef4444" : "#38bdf8";
+    }
+    console.log(`[Scanner]: ${msg}`);
+}
+
+// --- OPTICS ARCHITECTURE & NATIVE STREAM PARSING ---
 async function startCamera() {
-    stopStream();
+    if (!state.codeReader) return;
+    updateStatus("Initializing optics engine...");
+    
+    // Reset any active decoders running on the camera track
+    state.codeReader.reset();
 
     try {
         if (!navigator.mediaDevices?.getUserMedia) {
-            throw new Error("Target browser blocks hardware capture APIs globally.");
+            throw new Error("Browser blocks media pipeline hardware permissions over standard HTTP. Enforce HTTPS.");
         }
 
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        state.videoDevices = devices.filter(d => d.kind === 'videoinput');
+        // Gather video inputs natively through ZXing mapper
+        const videoInputDevices = await state.codeReader.listVideoInputDevices();
+        state.videoDevices = videoInputDevices;
 
-        if (state.videoDevices.length === 0) {
+        if (videoInputDevices.length === 0) {
             throw new Error("No physical hardware capture nodes located.");
         }
 
-        // Auto-select environmental/rear camera setups on baseline boot
-        if (state.videoDevices.length > 1 && state.currentDeviceIndex === 0) {
-            const backIndex = state.videoDevices.findIndex(d => 
-                d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('environment')
+        // Automatically target the rear/environmental camera if available
+        if (!state.selectedDeviceId) {
+            const backCam = videoInputDevices.find(d => 
+                d.label.toLowerCase().includes('back') || 
+                d.label.toLowerCase().includes('environment') ||
+                d.label.toLowerCase().includes('rear')
             );
-            if (backIndex !== -1) state.currentDeviceIndex = backIndex;
+            state.selectedDeviceId = backCam ? backCam.deviceId : videoInputDevices[0].deviceId;
         }
 
-        const activeDevice = state.videoDevices[state.currentDeviceIndex];
-        const constraints = {
-            video: {
-                deviceId: activeDevice ? { exact: activeDevice.deviceId } : undefined,
-                facingMode: 'environment',
-                width: { ideal: 640 },
-                height: { ideal: 480 }
-            },
-            audio: false
-        };
+        updateStatus("Optics active. Align target barcode within lens center.");
 
-        state.stream = await navigator.mediaDevices.getUserMedia(constraints);
-        elements.video.srcObject = state.stream;
-        
-        elements.video.onloadedmetadata = () => {
-            elements.video.play();
-            if (elements.canvas) {
-                elements.canvas.width = elements.video.videoWidth;
-                elements.canvas.height = elements.video.videoHeight;
+        // Use ZXing's native decoding loop—this performs much better on hardware like Raspberry Pi cameras
+        state.codeReader.decodeFromVideoDevice(state.selectedDeviceId, 'video', (result, error) => {
+            if (result) {
+                handleScannedData(result.getText());
             }
-            state.decodeLoopRunning = true;
-            executeDecodeLoop();
-        };
+            if (error && !(error instanceof ZXing.NotFoundException)) {
+                // Ignore NotFoundException to keep the logs clean while searching the frame
+                console.debug("Matrix tracking artifact:", error);
+            }
+        });
 
     } catch (err) {
-        console.error(`Camera Connection Failed: ${err.message}`);
-    }
-}
-
-function stopStream() {
-    state.decodeLoopRunning = false;
-    if (state.stream) {
-        state.stream.getTracks().forEach(track => track.stop());
-        state.stream = null;
+        updateStatus(`Connection Aborted: ${err.message}`, true);
     }
 }
 
 function flipCamera() {
-    if (state.videoDevices.length <= 1) return;
-    state.currentDeviceIndex = (state.currentDeviceIndex + 1) % state.videoDevices.length;
+    if (state.videoDevices.length <= 1) {
+        updateStatus("No secondary camera tracking module discovered.");
+        return;
+    }
+    const currentIndex = state.videoDevices.findIndex(d => d.deviceId === state.selectedDeviceId);
+    const nextIndex = (currentIndex + 1) % state.videoDevices.length;
+    state.selectedDeviceId = state.videoDevices[nextIndex].deviceId;
     startCamera();
 }
 
-// --- CORE PARSING PIPELINE ---
-async function executeDecodeLoop() {
-    if (!state.decodeLoopRunning || !state.stream) return;
-
-    if (!state.scanCooldown) {
-        try {
-            // Direct native engine parse straight from live HTML5 video playback node
-            const result = await state.codeReader.decodeFromVideoElement(elements.video);
-            if (result && result.text) {
-                handleScannedData(result.text);
-            }
-        } catch (e) {
-            // Structural drop-through: ZXing throws exceptions continuously when 
-            // no barcode matrix is sharply visible in the frame context.
-        }
-    }
-
-    // Combine setTimeout with requestAnimationFrame to prevent event loop blocking
-    setTimeout(() => {
-        if (state.decodeLoopRunning) requestAnimationFrame(executeDecodeLoop);
-    }, CONFIG.scanInterval);
-}
-
-// --- DATA HANDLING & FEEDBACK ---
+// --- PIPELINE DATA RESOLUTION & REDIRECTION ---
 function handleScannedData(data) {
-    if (data === state.lastScan && state.scanCooldown) return;
+    // Block double-triggers during active cooldown operations
+    if (state.scanCooldown && data === state.lastScan) return;
 
     state.lastScan = data;
     state.scanCooldown = true;
 
-    // Disseminate to application frame
     if (elements.payloadDisplay) elements.payloadDisplay.textContent = data;
-    
-    // Safely emit to custom global event listeners if needed
-    window.dispatchEvent(new CustomEvent('barcodeScanned', { detail: data }));
+    updateStatus("Signal Decoded!", false);
 
-    // Non-blocking Audio context instantiator (Self-Cleaning to prevent leaks)
+    // Audio Haptic Trigger Pipeline
     try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.frequency.value = 950;
-        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
         osc.start();
-        osc.stop(audioCtx.currentTime + 0.08);
-        setTimeout(() => audioCtx.close(), 200);
+        osc.stop(audioCtx.currentTime + 0.1);
+        setTimeout(() => audioCtx.close(), 250);
     } catch(e) {}
 
-    // Haptic pulse dispatch
     if (CONFIG.vibrateOnScan && navigator.vibrate) {
-        try { navigator.vibrate(60); } catch(e) {}
+        try { navigator.vibrate(80); } catch(e) {}
     }
 
-    // Enforce payload lock cool-off period
-    setTimeout(() => { state.scanCooldown = false; }, CONFIG.cooldownDelay);
+    // URL Parsing Verification & Redirection Layer
+    const cleanData = data.trim();
+    const isUrl = /^(https?:\/\/[^\s]+)/i.test(cleanData);
+
+    if (isUrl && CONFIG.autoOpenLinks) {
+        updateStatus("Redirecting to target node payload...");
+        window.open(cleanData, '_blank');
+    } else if (CONFIG.autoOpenLinks) {
+        // If it's a plain barcode string (like a book ISBN or trading card tracking number),
+        // fallback to opening a standard search engine query for that asset string.
+        updateStatus("Querying string on search index...");
+        window.open(`https://www.google.com/search?q=${encodeURIComponent(cleanData)}`, '_blank');
+    }
+
+    // Cooldown reset to prevent browser tab spamming
+    setTimeout(() => {
+        state.scanCooldown = false;
+    }, CONFIG.cooldownDelay);
 }
 
-// --- GRAPHIC FILE UPLOAD FALLBACK ---
-if (elements.fileInput) {
-    elements.fileInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const url = URL.createObjectURL(file);
-        const img = new Image();
-        img.src = url;
-        
-        img.onload = async () => {
-            try {
-                const result = await state.codeReader.decodeFromImageElement(img);
-                if (result && result.text) {
-                    handleScannedData(result.text);
-                }
-            } catch (err) {
-                console.warn("No verifiable matrix pattern located in uploaded static image.");
-            } finally {
-                URL.revokeObjectURL(url);
-            }
-        };
-    };
+function stopScanner() {
+    if (state.codeReader) {
+        state.codeReader.reset();
+        updateStatus("Optics suspended. Standby mode active.");
+    }
 }
