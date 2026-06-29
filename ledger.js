@@ -1,3 +1,6 @@
+// -----------------------------------------------------
+//       Ledger version 3.1
+// -----------------------------------------------------
 class QuantumLedger {
   constructor(containerId = "ledger") {
     this.container = document.getElementById(containerId);
