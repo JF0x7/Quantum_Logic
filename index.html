@@ -23,7 +23,7 @@
   </div>
 
   <h1>QTUM(LOG)</h1>
-  <h2>Native Tools of Julius Hirsch • Verified by Jared Beler v1.107 Qai v0.21</h2>
+  <h2>Native Tools of Julius Hirsch • Verified by Jared Beler v1.107 Qai v0.22</h2>
 
   <div id="scannerShell">
     <div id="videoWrapper">
@@ -54,16 +54,20 @@
     <div id="ledger"></div>
   </div>
 
-  <!-- Scripts -->
-  <script src="ledger.js"></script>
-  <script src="scanner.js"></script>
+  <!-- Scripts MUST load in this order -->
+  <script src="Qai.js"></script>       <!-- QAI FIRST -->
+  <script src="ledger.js"></script>    <!-- Ledger SECOND -->
+  <script src="scanner.js"></script>   <!-- Scanner LAST -->
+
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       const ledger = new QuantumLedger('ledger');
       const scanner = new QtumScanner(ledger);
+
       window.__ledger = ledger;
       window.__scanner = scanner;
-      console.log('QTUM(LOG) v0.9 initialized');
+
+      console.log('QTUM(LOG) v1.107 initialized with QAI v0.21');
     });
   </script>
 </body>
