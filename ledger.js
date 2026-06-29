@@ -15,7 +15,8 @@ class QuantumLedger {
     const isURL = /^https?:\/\/[^\s]+$/i.test(trimmed);
     const isJSON = this.tryParseJSON(trimmed);
     const isHex = /^[0-9a-fA-F]+$/.test(trimmed) && length % 2 === 0;
-    const isBase64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(trimmed);
+    const isBase64 =
+      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(trimmed);
 
     let classification = "UNKNOWN SIGNAL";
     if (isURL) classification = "URL";
@@ -32,28 +33,38 @@ class QuantumLedger {
     if (!str) return "0.00";
     const freq = {};
     for (const c of str) freq[c] = (freq[c] || 0) + 1;
+
     let entropy = 0;
     const len = str.length;
+
     for (const c in freq) {
       const p = freq[c] / len;
       entropy -= p * Math.log2(p);
     }
+
     return entropy.toFixed(2);
   }
 
   tryParseJSON(str) {
     if (!str.startsWith("{") && !str.startsWith("[")) return false;
-    try { JSON.parse(str); return true; } catch { return false; }
+    try {
+      JSON.parse(str);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   // -----------------------------------------------------
-  // 🔐 MULTI‑LAYER DECRYPTION ENGINE
+  // 🔐 MULTI‑LAYER DECRYPTION ENGINE (Base64, Hex, ROT13, JSON, URL)
   // -----------------------------------------------------
   decryptPayload(payload) {
     const results = {
       base64: null,
       hex: null,
+      rot13: null,
       json: null,
+      url: null,
       success: false
     };
 
@@ -72,11 +83,36 @@ class QuantumLedger {
       }
     } catch {}
 
-    // JSON decode (if decrypted into JSON)
+    // ROT13 decode
     try {
-      const maybeJSON = results.base64 || results.hex || payload;
-      if (this.tryParseJSON(maybeJSON)) {
-        results.json = JSON.parse(maybeJSON);
+      results.rot13 = payload.replace(/[a-zA-Z]/g, c =>
+        String.fromCharCode(
+          (c <= "Z" ? 90 : 122) >= (c = c.charCodeAt(0) + 13)
+            ? c
+            : c - 26
+        )
+      );
+      results.success = true;
+    } catch {}
+
+    // JSON decode (from any decoded form)
+    try {
+      const candidate =
+        results.base64 ||
+        results.hex ||
+        results.rot13 ||
+        payload;
+
+      if (this.tryParseJSON(candidate)) {
+        results.json = JSON.parse(candidate);
+        results.success = true;
+      }
+    } catch {}
+
+    // URL detection
+    try {
+      if (/^https?:\/\/[^\s]+$/i.test(payload)) {
+        results.url = payload;
         results.success = true;
       }
     } catch {}
@@ -96,34 +132,42 @@ class QuantumLedger {
 
     const item = document.createElement("div");
     item.className = "ledger-item";
-    item.dataset.classification = meta.classification.toLowerCase().replace(/\s+/g, "-");
+    item.dataset.classification =
+      meta.classification.toLowerCase().replace(/\s+/g, "-");
 
+    // Payload block
     const payloadEl = document.createElement("div");
     payloadEl.className = "ledger-payload";
     payloadEl.textContent = payload;
 
+    // Metadata block
     const metaEl = document.createElement("div");
     metaEl.className = "ledger-meta";
     metaEl.innerHTML =
       `<span><strong>Len:</strong> ${meta.length}</span>` +
       `<span><strong>Entropy:</strong> ${meta.entropy}</span>` +
       `<span><strong>Type:</strong> ${meta.classification}</span>` +
-      (decrypt.success ? `<span><strong>Decoded:</strong> yes</span>` : `<span><strong>Decoded:</strong> no</span>`);
+      `<span><strong>Decoded:</strong> ${decrypt.success ? "yes" : "no"}</span>`;
 
-    // If decrypted, show a small preview
+    // Decoded preview block
     if (decrypt.success) {
-      const decEl = document.createElement("div");
-      decEl.className = "ledger-meta";
+      const previewEl = document.createElement("div");
+      previewEl.className = "ledger-meta";
+
       const preview =
-        decrypt.json ? JSON.stringify(decrypt.json).slice(0, 80) :
-        decrypt.base64 ? decrypt.base64.slice(0, 80) :
-        decrypt.hex ? decrypt.hex.slice(0, 80) :
+        decrypt.json ? JSON.stringify(decrypt.json).slice(0, 120) :
+        decrypt.base64 ? decrypt.base64.slice(0, 120) :
+        decrypt.hex ? decrypt.hex.slice(0, 120) :
+        decrypt.rot13 ? decrypt.rot13.slice(0, 120) :
+        decrypt.url ? decrypt.url :
         "unknown";
 
-      decEl.innerHTML = `<span><strong>Decoded Preview:</strong> ${preview}</span>`;
-      item.appendChild(decEl);
+      previewEl.innerHTML =
+        `<span><strong>Decoded Preview:</strong> ${preview}</span>`;
+      item.appendChild(previewEl);
     }
 
+    // Footer block
     const footerEl = document.createElement("div");
     footerEl.className = "ledger-footer";
 
@@ -138,6 +182,7 @@ class QuantumLedger {
     footerEl.appendChild(tagEl);
     footerEl.appendChild(timeEl);
 
+    // Assemble entry
     item.appendChild(payloadEl);
     item.appendChild(metaEl);
     item.appendChild(footerEl);
