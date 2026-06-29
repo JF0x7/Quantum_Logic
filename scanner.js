@@ -113,10 +113,10 @@ class QtumScanner {
 
     try {
       this.codeReader = new ZXing.BrowserMultiFormatReader();
-      this.codeReader.decodeFromVideoDevice(this.cameraId, this.video, (result, err) => {
+      this.codeReader.decodeFromVideoDevice(this.cameraId, this.video, async (result, err) => {
         if (result && !this.isProcessing) {
           this.isProcessing = true;
-          this.handleScan(result.text);
+          await this.handleScan(result.text);
           this.indicator.style.background = '#4af';
           setTimeout(() => {
             this.indicator.style.background = '#1f2c3d';
@@ -135,23 +135,29 @@ class QtumScanner {
     }
   }
 
-  handleScan(text) {
+  async handleScan(text) {
     if (!text) return;
 
     this.currentPayload = text;
     this.payloadDiv.textContent = text;
     this.preview.style.display = 'none';
 
-    const report = qai.process(text);
-    console.log('QAI report:', report);
+    try {
+      const report = await qai.process(text);
+      console.log('QAI report:', report);
 
-    const clean = report.moderation.allow;
-    const tag = clean ? 'SCAN' : 'FLAGGED';
-    const statusText = clean ? '✅ Scanned (clean)' : '⚠️ Scanned (flagged)';
-    const statusClass = clean ? 'status-success' : 'status-warning';
+      const clean = report.moderation.allow;
+      const tag = clean ? 'SCAN' : 'FLAGGED';
+      const statusText = clean ? '✅ Scanned (clean)' : '⚠️ Scanned (flagged)';
+      const statusClass = clean ? 'status-success' : 'status-warning';
 
-    this.ledger.addEntry(text, tag);
-    this.setStatus(statusText, statusClass);
+      this.ledger.addEntry(text, tag);
+      this.setStatus(statusText, statusClass);
+    } catch (err) {
+      console.error('QAI processing error:', err);
+      this.ledger.addEntry(text, 'SCAN');
+      this.setStatus('✅ Scanned (QAI offline)', 'status-warning');
+    }
 
     console.log('Scanned:', text);
   }
@@ -169,7 +175,7 @@ class QtumScanner {
         try {
           const codeReader = new ZXing.BrowserMultiFormatReader();
           const result = await codeReader.decodeFromImageElement(img);
-          this.handleScan(result.text);
+          await this.handleScan(result.text);
         } catch (err) {
           this.setStatus('❌ No code found in image', 'status-error');
           console.warn('Upload scan error:', err);
@@ -201,7 +207,7 @@ class QtumScanner {
       try {
         const codeReader = new ZXing.BrowserMultiFormatReader();
         const result = await codeReader.decodeFromImageElement(img);
-        this.handleScan(result.text);
+        await this.handleScan(result.text);
       } catch (err) {
         this.setStatus('❌ No code found in snapshot', 'status-error');
         console.warn('Snapshot scan error:', err);
