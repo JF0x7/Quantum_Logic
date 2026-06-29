@@ -1,4 +1,5 @@
 const qai = new Qai();
+
 class QtumScanner {
   constructor(ledger) {
     this.ledger = ledger;
@@ -44,14 +45,9 @@ class QtumScanner {
     if (uploadBtn) uploadBtn.addEventListener('click', () => fileInput.click());
     if (fileInput) fileInput.addEventListener('change', (e) => this.handleUpload(e));
     if (photoBtn) photoBtn.addEventListener('click', () => this.takePhoto());
-
-    // SINGLE BUTTON — supports array OR single OR void
     if (sendBtn) sendBtn.addEventListener('click', () => this.sendSignal());
-
-    // FULL PAGE RESET
     if (resetBtn) resetBtn.addEventListener('click', () => location.reload());
 
-    // EXIT SNAPSHOT
     this.preview.addEventListener('click', () => {
       this.preview.style.display = 'none';
       this.setStatus('⏻ ready', 'neutral');
@@ -141,20 +137,21 @@ class QtumScanner {
 
   handleScan(text) {
     if (!text) return;
+
     this.currentPayload = text;
     this.payloadDiv.textContent = text;
-    this.setStatus('✅ Scanned!', 'status-success');
-    this.ledger.addEntry(text, 'SCAN');
     this.preview.style.display = 'none';
+
     const report = qai.process(text);
+    console.log('QAI report:', report);
 
-    console.log("QAI report:", report);
+    const clean = report.moderation.allow;
+    const tag = clean ? 'SCAN' : 'FLAGGED';
+    const statusText = clean ? '✅ Scanned (clean)' : '⚠️ Scanned (flagged)';
+    const statusClass = clean ? 'status-success' : 'status-warning';
 
-    if (report.moderation.allow) {
-      this.ledger.addEntry(text, "SCAN");
-    } else {
-      this.ledger.addEntry(text, "FLAGGED");
-    }
+    this.ledger.addEntry(text, tag);
+    this.setStatus(statusText, statusClass);
 
     console.log('Scanned:', text);
   }
@@ -213,25 +210,25 @@ class QtumScanner {
     img.src = dataUrl;
   }
 
-  // SINGLE BUTTON — supports array OR single OR void
   sendSignal(payloadOverride) {
     if (Array.isArray(payloadOverride)) {
-      this.ledger.addBatch(payloadOverride, "SIGNAL");
-      this.setStatus("✦ Multi‑signal dispatched", "status-success");
-      this.payloadDiv.textContent = payloadOverride.join(", ");
+      this.ledger.addBatch(payloadOverride, 'SIGNAL');
+      this.setStatus('✦ Multi‑signal dispatched', 'status-success');
+      this.payloadDiv.textContent = payloadOverride.join(', ');
       return;
     }
 
-    const payload = payloadOverride ||
+    const payload =
+      payloadOverride ||
       this.currentPayload ||
-      ("VOID_SIGNAL_" + Date.now());
+      ('VOID_SIGNAL_' + Date.now());
 
-    this.ledger.addEntry(payload, "SIGNAL");
-    this.setStatus("✦ Signal sent", "status-success");
+    this.ledger.addEntry(payload, 'SIGNAL');
+    this.setStatus('✦ Signal sent', 'status-success');
     this.payloadDiv.textContent = payload;
 
     this.indicator.style.background = '#f0a';
-    setTimeout(() => this.indicator.style.background = '#1f2c3d', 400);
+    setTimeout(() => (this.indicator.style.background = '#1f2c3d'), 400);
 
     if (!this.currentPayload) this.currentPayload = payload;
 
