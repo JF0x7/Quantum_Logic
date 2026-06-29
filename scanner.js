@@ -1,4 +1,3 @@
-// QtumScanner class - global
 class QtumScanner {
   constructor(ledger) {
     this.ledger = ledger;
@@ -44,12 +43,14 @@ class QtumScanner {
     if (uploadBtn) uploadBtn.addEventListener('click', () => fileInput.click());
     if (fileInput) fileInput.addEventListener('change', (e) => this.handleUpload(e));
     if (photoBtn) photoBtn.addEventListener('click', () => this.takePhoto());
+
+    // SINGLE BUTTON — supports array OR single OR void
     if (sendBtn) sendBtn.addEventListener('click', () => this.sendSignal());
 
-    // FULL SCREEN RESET
+    // FULL PAGE RESET
     if (resetBtn) resetBtn.addEventListener('click', () => location.reload());
 
-    // EASY SNAP EXIT
+    // EXIT SNAPSHOT
     this.preview.addEventListener('click', () => {
       this.preview.style.display = 'none';
       this.setStatus('⏻ ready', 'neutral');
@@ -201,18 +202,27 @@ class QtumScanner {
     img.src = dataUrl;
   }
 
-  sendSignal() {
-    const payload = this.currentPayload || ('VOID_SIGNAL_' + Date.now());
-    this.ledger.addEntry(payload, 'SIGNAL');
-    this.setStatus(`✦ Signal sent${!this.currentPayload ? ' (void)' : ''}`, 'status-success');
+  // SINGLE BUTTON — supports array OR single OR void
+  sendSignal(payloadOverride) {
+    if (Array.isArray(payloadOverride)) {
+      this.ledger.addBatch(payloadOverride, "SIGNAL");
+      this.setStatus("✦ Multi‑signal dispatched", "status-success");
+      this.payloadDiv.textContent = payloadOverride.join(", ");
+      return;
+    }
+
+    const payload = payloadOverride ||
+      this.currentPayload ||
+      ("VOID_SIGNAL_" + Date.now());
+
+    this.ledger.addEntry(payload, "SIGNAL");
+    this.setStatus("✦ Signal sent", "status-success");
     this.payloadDiv.textContent = payload;
 
     this.indicator.style.background = '#f0a';
     setTimeout(() => this.indicator.style.background = '#1f2c3d', 400);
 
-    if (!this.currentPayload) {
-      this.currentPayload = payload;
-    }
+    if (!this.currentPayload) this.currentPayload = payload;
 
     console.log('Signal sent:', payload);
   }
