@@ -1,4 +1,5 @@
-export default class QuantumLedger {
+// QuantumLedger class - made globally available
+class QuantumLedger {
   constructor(containerId = "ledger") {
     this.container = document.getElementById(containerId);
     if (!this.container) console.warn(`Ledger container #${containerId} not found.`);
@@ -74,3 +75,6 @@ export default class QuantumLedger {
     this.container.innerHTML = "";
   }
 }
+
+// Make it globally available
+window.QuantumLedger = QuantumLedger;
