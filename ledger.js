@@ -1,4 +1,3 @@
-// QuantumLedger class - global
 class QuantumLedger {
   constructor(containerId = "ledger") {
     this.container = document.getElementById(containerId);
@@ -12,9 +11,7 @@ class QuantumLedger {
     const isURL = /^https?:\/\/[^\s]+$/i.test(trimmed);
     const isJSON = this.tryParseJSON(trimmed);
     const isHex = /^[0-9a-fA-F]+$/.test(trimmed) && length % 2 === 0;
-    const isBase64 =
-      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(trimmed) &&
-      length >= 4;
+    const isBase64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(trimmed);
 
     let classification = "UNKNOWN SIGNAL";
     if (isURL) classification = "URL";
@@ -42,12 +39,7 @@ class QuantumLedger {
 
   tryParseJSON(str) {
     if (!str.startsWith("{") && !str.startsWith("[")) return false;
-    try {
-      JSON.parse(str);
-      return true;
-    } catch {
-      return false;
-    }
+    try { JSON.parse(str); return true; } catch { return false; }
   }
 
   addEntry(payload, tag = "SCAN") {
@@ -91,11 +83,15 @@ class QuantumLedger {
     this.container.prepend(item);
   }
 
+  // NEW: batch support
+  addBatch(payloadArray, tag = "SIGNAL") {
+    payloadArray.forEach(p => this.addEntry(p, tag));
+  }
+
   clear() {
     if (!this.container) return;
     this.container.innerHTML = "";
   }
 }
 
-// expose globally
 window.QuantumLedger = QuantumLedger;
