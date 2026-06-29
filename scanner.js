@@ -41,11 +41,19 @@ class QtumScanner {
 
     if (startBtn) startBtn.addEventListener('click', () => this.startCamera());
     if (flipBtn) flipBtn.addEventListener('click', () => this.flipCamera());
-    if (uploadBtn) uploadBtn.addEventListener('click', () => fileInput && fileInput.click());
+    if (uploadBtn) uploadBtn.addEventListener('click', () => fileInput.click());
     if (fileInput) fileInput.addEventListener('change', (e) => this.handleUpload(e));
     if (photoBtn) photoBtn.addEventListener('click', () => this.takePhoto());
     if (sendBtn) sendBtn.addEventListener('click', () => this.sendSignal());
-    if (resetBtn) resetBtn.addEventListener('click', () => this.ledger.clear());
+
+    // FULL SCREEN RESET
+    if (resetBtn) resetBtn.addEventListener('click', () => location.reload());
+
+    // EASY SNAP EXIT
+    this.preview.addEventListener('click', () => {
+      this.preview.style.display = 'none';
+      this.setStatus('⏻ ready', 'neutral');
+    });
 
     console.log('QtumScanner events bound');
   }
@@ -169,15 +177,16 @@ class QtumScanner {
       this.setStatus('⚠️ Start camera first', 'status-warning');
       return;
     }
+
     this.canvas.width = this.video.videoWidth;
     this.canvas.height = this.video.videoHeight;
     this.ctx.drawImage(this.video, 0, 0);
+
     const dataUrl = this.canvas.toDataURL('image/jpeg');
     this.preview.src = dataUrl;
     this.preview.style.display = 'block';
     this.setStatus('📸 Photo captured', 'status-success');
 
-    // try decode from snapshot
     const img = new Image();
     img.onload = async () => {
       try {
@@ -197,14 +206,16 @@ class QtumScanner {
     this.ledger.addEntry(payload, 'SIGNAL');
     this.setStatus(`✦ Signal sent${!this.currentPayload ? ' (void)' : ''}`, 'status-success');
     this.payloadDiv.textContent = payload;
+
     this.indicator.style.background = '#f0a';
     setTimeout(() => this.indicator.style.background = '#1f2c3d', 400);
+
     if (!this.currentPayload) {
       this.currentPayload = payload;
     }
+
     console.log('Signal sent:', payload);
   }
 }
 
-// expose globally
 window.QtumScanner = QtumScanner;
