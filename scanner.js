@@ -1,3 +1,7 @@
+/* 
+  Scanner version 3.1
+*/
+
 const qai = new Qai();
 
 class QtumScanner {
