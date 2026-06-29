@@ -1,84 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" href="Q.jpg">
-  <title>QTUM(LOG) Scanner</title>
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- ZXing Barcode Scanner -->
+  <title>QTUM(LOG) · v0.7</title>
   <script src="https://unpkg.com/@zxing/library@latest"></script>
-
-  <!-- App Scripts -->
-  <script defer src="ledger.js"></script>
-  <script defer src="scanner.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0b0d15;color:#b3c7e5;font-family:system-ui,'Segoe UI',monospace;display:flex;flex-direction:column;align-items:center;padding:1.2rem;min-height:100vh}
+    #logoWrapper{margin-bottom:0.25rem}
+    #quantumLogo{width:64px;height:64px;border-radius:50%;box-shadow:0 0 12px #4af}
+    h1{font-weight:400;letter-spacing:3px;font-size:1.8rem;margin:0.2rem 0;color:#b3f0ff}
+    h2{font-weight:300;font-size:0.8rem;opacity:0.6;letter-spacing:2px;margin-bottom:0.8rem}
+    #scannerShell{background:#131a26;border-radius:28px;padding:1.2rem;max-width:600px;width:100%;box-shadow:0 12px 30px rgba(0,0,0,0.7)}
+    #videoWrapper{background:#0a0f17;border-radius:20px;overflow:hidden;position:relative;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+    #video{width:100%;height:100%;object-fit:cover;display:block}
+    #photoPreview{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#0a0f17;display:none;z-index:5}
+    #controls{display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.8rem 0 0.4rem;justify-content:center}
+    button{background:#1e2a3a;border:none;color:#c8dfff;padding:0.45rem 1rem;border-radius:60px;font-weight:500;font-size:0.8rem;cursor:pointer;transition:0.15s;box-shadow:0 2px 4px rgba(0,0,0,0.4);letter-spacing:0.3px}
+    button:hover{background:#2d3f55;color:#fff;transform:scale(0.97)}
+    .secondary{background:#16202e;color:#9db9e6}
+    #scanIndicator{height:4px;width:100%;background:#1f2c3d;border-radius:8px;margin:0.3rem 0;transition:0.2s}
+    #output{background:#0e141e;border-radius:18px;padding:0.7rem 1rem;margin-top:0.6rem;min-height:58px}
+    #status{font-size:0.85rem;opacity:0.7;transition:0.2s;word-break:break-all}
+    #payload{font-size:0.9rem;color:#b3e6ff;word-break:break-all;margin-top:0.2rem;font-weight:400}
+    #ledgerShell{max-width:600px;width:100%;margin-top:1.2rem;background:#0e141e;border-radius:28px;padding:0.6rem 0.8rem 0.8rem}
+    #ledgerTitle{color:#6d8bb0;font-size:0.75rem;letter-spacing:2px;padding:0 0.2rem 0.4rem;border-bottom:1px solid #1d2b3b}
+    #ledger{max-height:210px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-top:6px;scrollbar-width:thin;scrollbar-color:#2f4156 transparent}
+    .ledger-item{background:#131d2b;border-radius:14px;padding:0.5rem 0.8rem;border-left:3px solid #3f6b8c;font-size:0.75rem;animation:fadein 0.2s}
+    .ledger-payload{font-weight:400;color:#c6defa;word-break:break-all}
+    .ledger-meta{display:flex;gap:12px;font-size:0.65rem;color:#7c9bc2;margin:2px 0}
+    .ledger-footer{display:flex;justify-content:space-between;font-size:0.6rem;color:#5a7a9a;margin-top:2px}
+    .ledger-tag{background:#1e3347;padding:0 8px;border-radius:30px;color:#b3d9ff}
+    .tag-scan{background:#1d3a4a}
+    .tag-signal{background:#2a3f5a;color:#c8e6ff}
+    .neutral{color:#8faac9}
+    @keyframes fadein{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+    #fileInput{display:none}
+  </style>
 </head>
-
-
 <body>
-
-  <!-- QTUM Logo -->
-  <div id="logoWrapper">
-    <a href="https://qtum-hub-4048d1.gitlab.io/" target="_blank" id="qtumLink">
-      <svg id="quantumLogo" viewBox="0 0 100 100" aria-label="Quantum Crest" role="img"
-        xmlns="http://www.w3.org/2000/svg">
-        <image href="Q.jpg" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid slice" />
-      </svg>
-    </a>
-  </div>
-
+  <div id="logoWrapper"><a href="#" id="qtumLink"><svg id="quantumLogo" viewBox="0 0 100 100"><image href="Q.jpg" width="100" height="100"/></svg></a></div>
   <h1>QTUM(LOG)</h1>
-  <h2>Native Tools of Julius Hirsch • Verified by Beler Industries</h2>
+  <h2>Native Tools of Julius Hirsch • v0.7</h2>
 
-  <!-- Scanner Shell -->
   <div id="scannerShell">
-
-    <!-- Live Camera Feed -->
     <div id="videoWrapper">
       <video id="video" autoplay playsinline></video>
+      <img id="photoPreview" alt="preview">
     </div>
-
-    <!-- Hidden Canvas for Captures -->
-    <canvas id="canvas"></canvas>
-
-    <!-- Controls -->
-    <div id="controls" role="group" aria-label="Scanner Controls">
-      <button id="startBtn" type="button">Enable Camera</button>
-      <button id="flipBtn" type="button" class="secondary">Flip Camera</button>
-      <button id="uploadBtn" type="button" class="secondary">Upload Image</button>
-      <button id="sendBtn" type="button" class="secondary">Send Signal</button>
-      <button id="photoBtn" type="button">📸 Take Photo</button>
-      <button id="resetLedgerBtn" type="button" class="secondary">Reset Ledger</button>
+    <div id="controls">
+      <button id="startBtn">▶ Camera</button>
+      <button id="flipBtn" class="secondary">⟳ Flip</button>
+      <button id="uploadBtn" class="secondary">⬆ Upload</button>
+      <button id="sendBtn" class="secondary">✦ Signal</button>
+      <button id="photoBtn">📸 Snap</button>
+      <button id="resetLedgerBtn" class="secondary">✕ Reset</button>
       <input type="file" id="fileInput" accept="image/*" hidden>
     </div>
-
-    <!-- Photo Preview -->
-    <img id="photoPreview" alt="Captured Photo Preview">
-
-    <!-- Scan Indicator -->
-    <div id="scanIndicator" aria-label="Scan Status Indicator"></div>
-
-    <!-- Output -->
+    <div id="scanIndicator"></div>
     <div id="output">
-      <div id="status" class="neutral">Waiting for scan…</div>
+      <div id="status" class="neutral">⏻ ready</div>
       <div id="payload"></div>
     </div>
-
   </div>
 
-  <!-- Ledger -->
   <div id="ledgerShell">
-    <div id="ledgerTitle">Scan Ledger 0.6</div>
-    <div id="ledger">
-
-    </div>
+    <div id="ledgerTitle">⏺ Scan Ledger 0.7</div>
+    <div id="ledger"></div>
   </div>
 
+  <script src="ledger.js"></script>
+  <script src="scanner.js"></script>
+  <script>
+    (function() {
+      const ledger = new QuantumLedger('ledger');
+      const scanner = new QtumScanner(ledger);
+      window.__scanner = scanner;
+    })();
+  </script>
 </body>
-
 </html>
