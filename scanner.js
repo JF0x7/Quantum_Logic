@@ -1,3 +1,4 @@
+const qai = new Qai();
 class QtumScanner {
   constructor(ledger) {
     this.ledger = ledger;
@@ -127,8 +128,8 @@ class QtumScanner {
           }, 300);
         }
         if (err &&
-            !(err instanceof ZXing.NotFoundException) &&
-            !(err instanceof ZXing.ChecksumException)) {
+          !(err instanceof ZXing.NotFoundException) &&
+          !(err instanceof ZXing.ChecksumException)) {
           console.warn('Scan error:', err);
         }
       });
@@ -145,6 +146,16 @@ class QtumScanner {
     this.setStatus('✅ Scanned!', 'status-success');
     this.ledger.addEntry(text, 'SCAN');
     this.preview.style.display = 'none';
+    const report = qai.process(text);
+
+    console.log("QAI report:", report);
+
+    if (report.moderation.allow) {
+      this.ledger.addEntry(text, "SCAN");
+    } else {
+      this.ledger.addEntry(text, "FLAGGED");
+    }
+
     console.log('Scanned:', text);
   }
 
