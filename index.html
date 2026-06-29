@@ -42,7 +42,7 @@
 <body>
   <div id="logoWrapper"><a href="#" id="qtumLink"><svg id="quantumLogo" viewBox="0 0 100 100"><image href="Q.jpg" width="100" height="100"/></svg></a></div>
   <h1>QTUM(LOG)</h1>
-  <h2>Native Tools of Julius Hirsch • Verefied By Jared Beler v0.8</h2>
+  <h2>Native Tools of Julius Hirsch • Verified by Jared Beler v0.7</h2>
 
   <div id="scannerShell">
     <div id="videoWrapper">
@@ -66,18 +66,23 @@
   </div>
 
   <div id="ledgerShell">
-    <div id="ledgerTitle">⏺ Scan Ledger 0.8</div>
+    <div id="ledgerTitle">⏺ Scan Ledger 0.7</div>
     <div id="ledger"></div>
   </div>
 
   <script src="ledger.js"></script>
   <script src="scanner.js"></script>
   <script>
-    (function() {
+    // Initialize everything when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
       const ledger = new QuantumLedger('ledger');
       const scanner = new QtumScanner(ledger);
       window.__scanner = scanner;
-    })();
+      window.__ledger = ledger;
+      
+      // Log that we're ready
+      console.log('QTUM(LOG) v0.7 initialized');
+    });
   </script>
 </body>
 </html>
