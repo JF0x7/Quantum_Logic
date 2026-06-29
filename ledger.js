@@ -4,10 +4,14 @@ class QuantumLedger {
     if (!this.container) console.warn(`Ledger container #${containerId} not found.`);
   }
 
+  // -----------------------------------------------------
+  // 🔍 PAYLOAD ANALYSIS
+  // -----------------------------------------------------
   analyzePayload(payload) {
     const trimmed = payload.trim();
     const length = trimmed.length;
     const entropy = this.calculateEntropy(trimmed);
+
     const isURL = /^https?:\/\/[^\s]+$/i.test(trimmed);
     const isJSON = this.tryParseJSON(trimmed);
     const isHex = /^[0-9a-fA-F]+$/.test(trimmed) && length % 2 === 0;
@@ -42,9 +46,52 @@ class QuantumLedger {
     try { JSON.parse(str); return true; } catch { return false; }
   }
 
+  // -----------------------------------------------------
+  // 🔐 MULTI‑LAYER DECRYPTION ENGINE
+  // -----------------------------------------------------
+  decryptPayload(payload) {
+    const results = {
+      base64: null,
+      hex: null,
+      json: null,
+      success: false
+    };
+
+    // Base64 decode
+    try {
+      results.base64 = atob(payload);
+      results.success = true;
+    } catch {}
+
+    // Hex decode
+    try {
+      if (/^[0-9a-fA-F]+$/.test(payload)) {
+        const bytes = payload.match(/.{1,2}/g).map(b => parseInt(b, 16));
+        results.hex = new TextDecoder().decode(new Uint8Array(bytes));
+        results.success = true;
+      }
+    } catch {}
+
+    // JSON decode (if decrypted into JSON)
+    try {
+      const maybeJSON = results.base64 || results.hex || payload;
+      if (this.tryParseJSON(maybeJSON)) {
+        results.json = JSON.parse(maybeJSON);
+        results.success = true;
+      }
+    } catch {}
+
+    return results;
+  }
+
+  // -----------------------------------------------------
+  // 🧾 LEDGER ENTRY
+  // -----------------------------------------------------
   addEntry(payload, tag = "SCAN") {
     if (!this.container) return;
+
     const meta = this.analyzePayload(payload);
+    const decrypt = this.decryptPayload(payload);
     const time = new Date().toLocaleTimeString();
 
     const item = document.createElement("div");
@@ -60,7 +107,22 @@ class QuantumLedger {
     metaEl.innerHTML =
       `<span><strong>Len:</strong> ${meta.length}</span>` +
       `<span><strong>Entropy:</strong> ${meta.entropy}</span>` +
-      `<span><strong>Type:</strong> ${meta.classification}</span>`;
+      `<span><strong>Type:</strong> ${meta.classification}</span>` +
+      (decrypt.success ? `<span><strong>Decoded:</strong> yes</span>` : `<span><strong>Decoded:</strong> no</span>`);
+
+    // If decrypted, show a small preview
+    if (decrypt.success) {
+      const decEl = document.createElement("div");
+      decEl.className = "ledger-meta";
+      const preview =
+        decrypt.json ? JSON.stringify(decrypt.json).slice(0, 80) :
+        decrypt.base64 ? decrypt.base64.slice(0, 80) :
+        decrypt.hex ? decrypt.hex.slice(0, 80) :
+        "unknown";
+
+      decEl.innerHTML = `<span><strong>Decoded Preview:</strong> ${preview}</span>`;
+      item.appendChild(decEl);
+    }
 
     const footerEl = document.createElement("div");
     footerEl.className = "ledger-footer";
@@ -83,7 +145,9 @@ class QuantumLedger {
     this.container.prepend(item);
   }
 
-  // NEW: batch support
+  // -----------------------------------------------------
+  // 📦 BATCH SUPPORT
+  // -----------------------------------------------------
   addBatch(payloadArray, tag = "SIGNAL") {
     payloadArray.forEach(p => this.addEntry(p, tag));
   }
