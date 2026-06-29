@@ -1,7 +1,8 @@
-// QtumScanner class - made globally available
+// QtumScanner class - global
 class QtumScanner {
   constructor(ledger) {
     this.ledger = ledger;
+
     this.video = document.getElementById('video');
     this.canvas = document.createElement('canvas');
     this.ctx = this.canvas.getContext('2d');
@@ -9,19 +10,24 @@ class QtumScanner {
     this.status = document.getElementById('status');
     this.payloadDiv = document.getElementById('payload');
     this.indicator = document.getElementById('scanIndicator');
+
     this.currentPayload = '';
     this.codeReader = null;
     this.cameraId = null;
     this.stream = null;
     this.isScanning = false;
     this.isProcessing = false;
-    
-    // Wait for DOM to be ready before binding
+
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => this.bindEvents());
     } else {
       this.bindEvents();
     }
+  }
+
+  setStatus(text, cls = '') {
+    this.status.textContent = text;
+    this.status.className = cls || 'neutral';
   }
 
   bindEvents() {
@@ -40,31 +46,40 @@ class QtumScanner {
     if (photoBtn) photoBtn.addEventListener('click', () => this.takePhoto());
     if (sendBtn) sendBtn.addEventListener('click', () => this.sendSignal());
     if (resetBtn) resetBtn.addEventListener('click', () => this.ledger.clear());
-    
+
     console.log('QtumScanner events bound');
   }
 
   async startCamera() {
     try {
-      this.status.textContent = '⏳ Starting camera...';
+      this.setStatus('⏳ Starting camera...', 'status-warning');
+
       if (this.stream) {
         this.stream.getTracks().forEach(t => t.stop());
         this.stream = null;
       }
+
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cameras = devices.filter(d => d.kind === 'videoinput');
       if (!cameras.length) throw new Error('No camera found');
+
       this.cameraId = this.cameraId || cameras[0].deviceId;
-      const constraints = { video: { deviceId: { exact: this.cameraId }, facingMode: 'environment' } };
+
+      const constraints = {
+        video: {
+          deviceId: { exact: this.cameraId },
+          facingMode: 'environment'
+        }
+      };
+
       this.stream = await navigator.mediaDevices.getUserMedia(constraints);
       this.video.srcObject = this.stream;
       await this.video.play();
-      this.status.textContent = '📷 Camera ready - scanning...';
-      this.status.className = '';
+
+      this.setStatus('📷 Camera ready - scanning...', 'status-success');
       this.startScanning();
     } catch (err) {
-      this.status.textContent = '❌ Camera error: ' + err.message;
-      this.status.className = 'neutral';
+      this.setStatus('❌ Camera error: ' + err.message, 'status-error');
       console.error('Camera error:', err);
     }
   }
@@ -74,7 +89,7 @@ class QtumScanner {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cameras = devices.filter(d => d.kind === 'videoinput');
       if (cameras.length < 2) {
-        this.status.textContent = '⚠️ Only one camera available';
+        this.setStatus('⚠️ Only one camera available', 'status-warning');
         return;
       }
       const currentIdx = cameras.findIndex(d => d.deviceId === this.cameraId);
@@ -82,13 +97,14 @@ class QtumScanner {
       this.cameraId = cameras[nextIdx].deviceId;
       await this.startCamera();
     } catch (err) {
-      this.status.textContent = '❌ Flip failed: ' + err.message;
+      this.setStatus('❌ Flip failed: ' + err.message, 'status-error');
     }
   }
 
   startScanning() {
     if (this.isScanning) return;
     this.isScanning = true;
+
     try {
       this.codeReader = new ZXing.BrowserMultiFormatReader();
       this.codeReader.decodeFromVideoDevice(this.cameraId, this.video, (result, err) => {
@@ -101,13 +117,15 @@ class QtumScanner {
             this.isProcessing = false;
           }, 300);
         }
-        if (err && !(err instanceof ZXing.NotFoundException) && !(err instanceof ZXing.ChecksumException)) {
+        if (err &&
+            !(err instanceof ZXing.NotFoundException) &&
+            !(err instanceof ZXing.ChecksumException)) {
           console.warn('Scan error:', err);
         }
       });
     } catch (err) {
       console.error('Scanning init error:', err);
-      this.status.textContent = '❌ Scanner error: ' + err.message;
+      this.setStatus('❌ Scanner error: ' + err.message, 'status-error');
     }
   }
 
@@ -115,8 +133,7 @@ class QtumScanner {
     if (!text) return;
     this.currentPayload = text;
     this.payloadDiv.textContent = text;
-    this.status.textContent = '✅ Scanned!';
-    this.status.className = '';
+    this.setStatus('✅ Scanned!', 'status-success');
     this.ledger.addEntry(text, 'SCAN');
     this.preview.style.display = 'none';
     console.log('Scanned:', text);
@@ -125,8 +142,9 @@ class QtumScanner {
   handleUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       const img = new Image();
       img.onload = async () => {
         this.preview.src = e.target.result;
@@ -136,8 +154,7 @@ class QtumScanner {
           const result = await codeReader.decodeFromImageElement(img);
           this.handleScan(result.text);
         } catch (err) {
-          this.status.textContent = '❌ No code found in image';
-          this.status.className = 'neutral';
+          this.setStatus('❌ No code found in image', 'status-error');
           console.warn('Upload scan error:', err);
         }
       };
@@ -149,7 +166,7 @@ class QtumScanner {
 
   takePhoto() {
     if (!this.video.videoWidth) {
-      this.status.textContent = '⚠️ Start camera first';
+      this.setStatus('⚠️ Start camera first', 'status-warning');
       return;
     }
     this.canvas.width = this.video.videoWidth;
@@ -158,13 +175,27 @@ class QtumScanner {
     const dataUrl = this.canvas.toDataURL('image/jpeg');
     this.preview.src = dataUrl;
     this.preview.style.display = 'block';
-    this.status.textContent = '📸 Photo captured';
+    this.setStatus('📸 Photo captured', 'status-success');
+
+    // try decode from snapshot
+    const img = new Image();
+    img.onload = async () => {
+      try {
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+        const result = await codeReader.decodeFromImageElement(img);
+        this.handleScan(result.text);
+      } catch (err) {
+        this.setStatus('❌ No code found in snapshot', 'status-error');
+        console.warn('Snapshot scan error:', err);
+      }
+    };
+    img.src = dataUrl;
   }
 
   sendSignal() {
-    const payload = this.currentPayload || 'VOID_SIGNAL_' + Date.now();
+    const payload = this.currentPayload || ('VOID_SIGNAL_' + Date.now());
     this.ledger.addEntry(payload, 'SIGNAL');
-    this.status.textContent = `✦ Signal sent${!this.currentPayload ? ' (void)' : ''}`;
+    this.setStatus(`✦ Signal sent${!this.currentPayload ? ' (void)' : ''}`, 'status-success');
     this.payloadDiv.textContent = payload;
     this.indicator.style.background = '#f0a';
     setTimeout(() => this.indicator.style.background = '#1f2c3d', 400);
@@ -175,5 +206,5 @@ class QtumScanner {
   }
 }
 
-// Make it globally available
+// expose globally
 window.QtumScanner = QtumScanner;
