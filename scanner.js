@@ -42,7 +42,7 @@ function initScannerEngine() {
 
     // Configure comprehensive decoding hints
     const hints = new Map();
-    
+
     // CRITICAL: Forces pixel-by-pixel checking. Absolutely essential for small, dense 
     // codes (book barcodes, trading cards, custom QTUM / crypto layout matrices).
     hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
@@ -255,8 +255,8 @@ function playBeep() {
 
 function triggerHaptic() {
     if (CONFIG.vibrateOnScan && navigator.vibrate) {
-        try { 
-            navigator.vibrate(80); 
+        try {
+            navigator.vibrate(80);
         } catch (e) {
             // Silently absorb errors if unsupported
         }
