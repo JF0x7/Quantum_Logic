@@ -2,7 +2,9 @@
  * Quantum Scanner Engine — Raspberry Pi, Mobile & Webcam Optimized Edition
  * Ultra-stable ZXing wrapper with optimized barcode routing + hardware compatibility
  */
+import QuantumLedger from "./ledger.js";
 
+const ledger = new QuantumLedger("ledger");
 const CONFIG = {
     cooldownDelay: 3000,       // Guard time (ms) to prevent infinite tab-spawning loops
     vibrateOnScan: true,       // Haptic pulse toggle
@@ -220,7 +222,8 @@ function processDecodedPayload(data) {
         state.scanCooldown = false;
     }, CONFIG.cooldownDelay);
 }
-
+// After decoding:
+ledger.addEntry(decodedText, "SCAN");
 /* ----------------------------------------------------------
    AUDIO + HAPTIC FEEDBACK (Memory Leak Immune)
 ---------------------------------------------------------- */
