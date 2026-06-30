@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="Q.jpg">
-  <title>QTUM(LOG) v2.0</title>
+  <title>QTUM(LOG) v2.0 - Quantum AI Scanner</title>
 
-  <!-- ZXing Library -->
+  <!-- ZXing Library for QR/Barcode scanning -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
   
   <!-- Styles -->
@@ -23,19 +23,28 @@
         </svg>
       </a>
     </div>
-    <h1>QTUM(LOG)</h1>
-    <h2>Native Tools of Julius Hirsch • Verified by Jared Beler v2.0 • QAI v0.90</h2>
+    <h1>⚛ QTUM(LOG)</h1>
+    <h2>Quantum AI Scanner • v2.0 • Powered by Hugging Face + PyTorch</h2>
   </header>
 
   <!-- Main Scanner Interface -->
   <main>
     <div id="scannerShell">
+      <!-- Video/Scanner Area -->
       <div id="videoWrapper">
         <video id="video" autoplay playsinline></video>
-        <img id="photoPreview" alt="preview" style="display:none;">
+        <img id="photoPreview" alt="Preview" style="display:none;">
         <div id="scanIndicator"></div>
+        <div id="scanOverlay">
+          <div class="scan-corner tl"></div>
+          <div class="scan-corner tr"></div>
+          <div class="scan-corner bl"></div>
+          <div class="scan-corner br"></div>
+          <div class="scan-line"></div>
+        </div>
       </div>
 
+      <!-- Controls -->
       <div id="controls">
         <button id="startBtn" class="primary">▶ Camera</button>
         <button id="flipBtn" class="secondary">⟳ Flip</button>
@@ -43,12 +52,15 @@
         <button id="photoBtn" class="secondary">📸 Snap</button>
         <button id="sendBtn" class="primary">✦ Signal</button>
         <button id="clearBtn" class="danger">✕ Clear</button>
+        <button id="exportBtn" class="secondary">📤 Export</button>
         <input type="file" id="fileInput" accept="image/*" hidden>
+        <input type="file" id="importInput" accept=".json" hidden>
       </div>
 
+      <!-- Output -->
       <div id="output">
-        <div id="status" class="neutral">⚡ QAI ⏻ ready</div>
-        <div id="payload"></div>
+        <div id="status" class="neutral">⚡ QAI v2.0 initializing...</div>
+        <div id="payload">Ready</div>
       </div>
     </div>
 
@@ -57,14 +69,21 @@
       <div id="ledgerHeader">
         <span id="ledgerTitle">⏺ Scan Ledger</span>
         <span id="ledgerCount">0 entries</span>
+        <button id="importBtn" class="mini">📥 Import</button>
       </div>
       <div id="ledger"></div>
     </aside>
   </main>
 
+  <!-- Footer -->
+  <footer>
+    <span>🔬 QAI v2.0 • Hugging Face 🤗 • PyTorch 🔥</span>
+    <span id="aiStatus">🧠 Models: Loading...</span>
+  </footer>
+
   <!-- Scripts in correct order -->
-  <script type="module" src="Qai.js"></script>
   <script src="ledger.js"></script>
+  <script src="Qai.js"></script>
   <script src="scanner.js"></script>
   <script src="mastermind.js"></script>
 
@@ -75,9 +94,25 @@
       setTimeout(() => {
         if (typeof Mastermind !== 'undefined') {
           window.mastermind = new Mastermind();
-          console.log('🚀 QTUM(LOG) v2.0 initialized');
+          console.log('🚀 QTUM(LOG) v2.0 initialized with AI');
+          
+          // Update footer with AI status
+          const aiStatus = document.getElementById('aiStatus');
+          if (aiStatus && window.mastermind.components?.qai) {
+            window.mastermind.components.qai.addEventListener('ready', () => {
+              aiStatus.textContent = '🧠 AI Models: Active ✅';
+              aiStatus.style.color = '#4a4';
+            });
+            window.mastermind.components.qai.addEventListener('status', (e) => {
+              if (e.detail.type === 'warning') {
+                aiStatus.textContent = '⚠️ ' + e.detail.message;
+                aiStatus.style.color = '#aa4';
+              }
+            });
+          }
         } else {
           console.error('❌ Mastermind failed to load');
+          document.getElementById('status').textContent = '❌ System initialization failed';
         }
       }, 100);
     });
