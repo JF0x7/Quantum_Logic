@@ -1,5 +1,5 @@
 /* 
-  Scanner version 3.2 — QAI-linked + personality notes
+  Scanner version 3.3 — single-entry, QAI-aware, item guessing
 */
 
 class QtumScanner {
@@ -154,12 +154,8 @@ class QtumScanner {
       const statusText = clean ? '✅ Scanned (clean)' : '⚠️ Scanned (flagged)';
       const statusClass = clean ? 'status-success' : 'status-warning';
 
-      // main payload entry
-      this.ledger.addEntry(text, tag);
-
-      // QAI personality notes into ledger
-      this.ledger.addEntry("QAI_NOTE:" + report.vibe, "QAI");
-      this.ledger.addEntry("QAI_NOTE:" + report.response, "QAI");
+      // 🔥 SINGLE LEDGER ENTRY PER SCAN, WITH FULL QAI REPORT
+      this.ledger.addEntry(text, tag, report);
 
       this.setStatus(statusText, statusClass);
     } catch (err) {
