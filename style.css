@@ -1,7 +1,3 @@
-/* ----------------------------------------------------------
-   GLOBAL + RASPBERRY PI OPTIMIZATION
----------------------------------------------------------- */
-
 :root {
   --bg: #05060a;
   --panel: #020617;
@@ -38,9 +34,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ----------------------------------------------------------
-   LOGO
----------------------------------------------------------- */
+/* LOGO */
 
 #logoWrapper {
   display: flex;
@@ -55,9 +49,7 @@ body {
   filter: drop-shadow(0 0 12px var(--accent-glow));
 }
 
-/* ----------------------------------------------------------
-   HEADINGS
----------------------------------------------------------- */
+/* HEADINGS */
 
 h1 {
   margin: 4px 0;
@@ -72,9 +64,7 @@ h2 {
   color: var(--text-muted);
 }
 
-/* ----------------------------------------------------------
-   SCANNER SHELL
----------------------------------------------------------- */
+/* SCANNER SHELL */
 
 #scannerShell {
   max-width: 520px;
@@ -86,9 +76,7 @@ h2 {
   filter: drop-shadow(0 0 22px rgba(0, 0, 0, 0.6));
 }
 
-/* ----------------------------------------------------------
-   VIDEO / CANVAS
----------------------------------------------------------- */
+/* VIDEO / CANVAS */
 
 #videoWrapper {
   width: 100%;
@@ -112,9 +100,7 @@ h2 {
   display: none;
 }
 
-/* ----------------------------------------------------------
-   CONTROLS
----------------------------------------------------------- */
+/* CONTROLS */
 
 #controls {
   display: flex;
@@ -155,9 +141,7 @@ button:active {
   opacity: 0.85;
 }
 
-/* ----------------------------------------------------------
-   PHOTO PREVIEW
----------------------------------------------------------- */
+/* PHOTO PREVIEW */
 
 #photoPreview {
   display: none;
@@ -167,9 +151,7 @@ button:active {
   filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.6));
 }
 
-/* ----------------------------------------------------------
-   SCAN INDICATOR (ANIMATED)
----------------------------------------------------------- */
+/* SCAN INDICATOR */
 
 #scanIndicator {
   width: 36px;
@@ -185,9 +167,7 @@ button:active {
   50% { background: var(--accent2); }
 }
 
-/* ----------------------------------------------------------
-   OUTPUT
----------------------------------------------------------- */
+/* OUTPUT */
 
 #output {
   margin-top: 14px;
@@ -216,9 +196,7 @@ button:active {
   word-wrap: break-word;
 }
 
-/* ----------------------------------------------------------
-   LEDGER (CENTERED)
----------------------------------------------------------- */
+/* LEDGER */
 
 #ledgerShell {
   max-width: 520px;
@@ -267,6 +245,16 @@ button:active {
   margin-top: 6px;
   font-size: 0.75rem;
   color: var(--text-muted);
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ledgerFooter {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .ledgerTag {
@@ -276,12 +264,13 @@ button:active {
   border: 1px solid var(--border-soft);
 }
 
-/* ----------------------------------------------------------
-   MOBILE + PI TOUCHSCREEN OPTIMIZATION
----------------------------------------------------------- */
+.ledgerTime {
+  opacity: 0.8;
+}
+
+/* MOBILE */
 
 @media (max-width: 480px) {
-
   body {
     padding: 0 8px;
     font-size: 15px;
@@ -326,10 +315,6 @@ button:active {
     height: 32px;
   }
 }
-
-/* ----------------------------------------------------------
-   ULTRA-SMALL DEVICES (320px)
----------------------------------------------------------- */
 
 @media (max-width: 360px) {
   h1 { font-size: 1.6rem; }

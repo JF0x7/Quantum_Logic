@@ -6,23 +6,19 @@ class QuantumLedger {
     }
   }
 
-  /**
-   * Safe payload analysis with precise heuristics
-   */
   analyzePayload(payload) {
     const trimmed = payload.trim();
-    const length = payload.length;
-    const entropy = this.calculateEntropy(payload);
+    const length = trimmed.length;
+    const entropy = this.calculateEntropy(trimmed);
 
-    // Heuristics
     const isURL = /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(trimmed);
     const isJSON = this.tryParseJSON(trimmed);
     const isHex = /^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0;
-    
-    // Stricter Base64 pattern requiring length to be a multiple of 4 and avoiding pure alphabet words
-    const isBase64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(trimmed) 
-                     && trimmed.length >= 4 
-                     && (/[+/=]/.test(trimmed) || entropy > 4.5);
+
+    const isBase64 =
+      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(trimmed) &&
+      trimmed.length >= 4 &&
+      (/[+/=]/.test(trimmed) || entropy > 4.5);
 
     let classification = "UNKNOWN SIGNAL";
     if (isURL) classification = "URL";
@@ -32,7 +28,70 @@ class QuantumLedger {
     else if (length < 8) classification = "SHORT CODE";
     else if (length > 80) classification = "LONG FORM DATA";
 
-    return { length, entropy, classification };
+    // EXTRA 5 DATA POINTS
+    const charset = this.detectCharset(trimmed);
+    const entropyClass = this.entropyClass(entropy);
+    const signalStrength = this.signalStrength(length, entropy);
+    const decodedPreview = this.tryDecode(trimmed);
+    const hashFingerprint = this.sha256Fingerprint(trimmed);
+
+    return {
+      length,
+      entropy,
+      classification,
+      charset,
+      entropyClass,
+      signalStrength,
+      decodedPreview,
+      hashFingerprint
+    };
+  }
+
+  detectCharset(str) {
+    if (/^[\x00-\x7F]+$/.test(str)) return "ASCII";
+    if (/^[\x00-\xFF]+$/.test(str)) return "Extended ASCII";
+    return "Unicode / Binary-like";
+  }
+
+  entropyClass(entropy) {
+    const e = parseFloat(entropy);
+    if (e < 3) return "Low";
+    if (e < 4) return "Medium";
+    return "High";
+  }
+
+  signalStrength(length, entropy) {
+    const score = length * 0.2 + parseFloat(entropy) * 4;
+    if (score < 20) return "Weak";
+    if (score < 40) return "Moderate";
+    return "Strong";
+  }
+
+  tryDecode(str) {
+    try {
+      if (/^[0-9a-fA-F]+$/.test(str) && str.length % 2 === 0) {
+        const bytes = str.match(/.{2}/g).map(h => parseInt(h, 16));
+        return String.fromCharCode(...bytes).slice(0, 60);
+      }
+      if (/^[A-Za-z0-9+/=]+$/.test(str)) {
+        return atob(str).slice(0, 60);
+      }
+    } catch {}
+    return "n/a";
+  }
+
+  sha256Fingerprint(str) {
+    try {
+      const buffer = new TextEncoder().encode(str);
+      return crypto.subtle.digest("SHA-256", buffer).then(hash => {
+        const hex = Array.from(new Uint8Array(hash))
+          .map(b => b.toString(16).padStart(2, "0"))
+          .join("");
+        return hex.slice(0, 16);
+      });
+    } catch {
+      return Promise.resolve("n/a");
+    }
   }
 
   calculateEntropy(str) {
@@ -61,46 +120,52 @@ class QuantumLedger {
     }
   }
 
-  /**
-   * Appends an entry safely using DOM elements
-   */
-  addEntry(payload, tag = "SCAN") {
+  async addEntry(payload, tag = "SCAN", extraMeta = {}) {
     if (!this.container) return;
 
     const meta = this.analyzePayload(payload);
+    const hash = await meta.hashFingerprint;
     const time = new Date().toLocaleTimeString();
 
-    // Create container safely
     const item = document.createElement("div");
-    item.className = "ledger-item";
-    item.setAttribute("data-classification", meta.classification.toLowerCase().replace(" ", "-"));
+    item.className = "ledgerItem";
+    item.setAttribute(
+      "data-classification",
+      meta.classification.toLowerCase().replace(" ", "-")
+    );
 
-    // Construct children using innerText/textContent to prevent script injection
     const payloadEl = document.createElement("div");
-    payloadEl.className = "ledger-payload";
+    payloadEl.className = "ledgerPayload";
     payloadEl.textContent = payload;
 
     const footerEl = document.createElement("div");
-    footerEl.className = "ledger-footer";
+    footerEl.className = "ledgerFooter";
 
     const tagEl = document.createElement("span");
-    tagEl.className = `ledger-tag tag-${tag.toLowerCase()}`;
+    tagEl.className = `ledgerTag tag-${tag.toLowerCase()}`;
     tagEl.textContent = tag;
 
     const timeEl = document.createElement("span");
-    timeEl.className = "ledger-time";
+    timeEl.className = "ledgerTime";
     timeEl.textContent = time;
 
     footerEl.appendChild(tagEl);
     footerEl.appendChild(timeEl);
 
-    // Metadata Panel
     const metaEl = document.createElement("div");
-    metaEl.className = "ledger-meta";
+    metaEl.className = "ledgerMeta";
     metaEl.innerHTML = `
       <span><strong>Len:</strong> ${meta.length}</span>
       <span><strong>Entropy:</strong> ${meta.entropy}</span>
       <span><strong>Type:</strong> ${meta.classification}</span>
+      <span><strong>Charset:</strong> ${meta.charset}</span>
+      <span><strong>Entropy Class:</strong> ${meta.entropyClass}</span>
+      <span><strong>Strength:</strong> ${meta.signalStrength}</span>
+      <span><strong>Decoded:</strong> ${meta.decodedPreview}</span>
+      <span><strong>Fingerprint:</strong> ${hash}</span>
+      ${extraMeta.type ? `<span><strong>QAI:</strong> ${extraMeta.type}</span>` : ""}
+      ${extraMeta.pattern ? `<span><strong>Pattern:</strong> ${extraMeta.pattern}</span>` : ""}
+      ${extraMeta.explanation ? `<span style="flex:1 1 100%"><strong>Insight:</strong> ${extraMeta.explanation}</span>` : ""}
     `;
 
     item.appendChild(payloadEl);

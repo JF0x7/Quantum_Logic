@@ -14,6 +14,7 @@
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
   <!-- App Scripts -->
+  <script defer src="Qai.js"></script>
   <script defer src="ledger.js"></script>
   <script defer src="scanner.js"></script>
 </head>
@@ -86,6 +87,15 @@
     <div id="ledgerTitle">Scan Ledger</div>
     <div id="ledger"></div>
   </div>
+
+  <!-- ⭐ FIXED: Initialization -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const qai = new Qai();          // your AI brain
+      const ledger = new QuantumLedger(); // your ledger system
+      const scanner = new QtumScanner(ledger, qai); // your scanner engine
+    });
+  </script>
 
 </body>
 </html>
