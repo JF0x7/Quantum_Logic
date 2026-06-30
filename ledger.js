@@ -1,6 +1,5 @@
-// -----------------------------------------------------
-//       Ledger version 3.3 — Single-entry, QAI-aware
-// -----------------------------------------------------
+// Ledger v4.0 — QAI Memory-Aware, HF-Enhanced, Vision-Friendly
+
 class QuantumLedger {
   constructor(containerId = "ledger") {
     this.container = document.getElementById(containerId);
@@ -11,7 +10,7 @@ class QuantumLedger {
   // 🔍 PAYLOAD ANALYSIS
   // -----------------------------------------------------
   analyzePayload(payload) {
-    const trimmed = payload.trim();
+    const trimmed = (payload || "").trim();
     const length = trimmed.length;
     const entropy = this.calculateEntropy(trimmed);
 
@@ -26,8 +25,9 @@ class QuantumLedger {
     else if (isJSON) classification = "JSON OBJECT";
     else if (isHex) classification = "HEX STRING";
     else if (isBase64) classification = "BASE64 ENCODED";
-    else if (length < 8) classification = "SHORT CODE";
+    else if (length < 8 && length > 0) classification = "SHORT CODE";
     else if (length > 80) classification = "LONG FORM DATA";
+    else if (length === 0) classification = "EMPTY";
 
     return { length, entropy, classification };
   }
@@ -59,7 +59,7 @@ class QuantumLedger {
   }
 
   // -----------------------------------------------------
-  // 🔐 MULTI‑LAYER DECRYPTION ENGINE (Base64, Hex, ROT13, JSON, URL)
+  // 🔐 MULTI-LAYER DECRYPTION
   // -----------------------------------------------------
   decryptPayload(payload) {
     const results = {
@@ -71,13 +71,13 @@ class QuantumLedger {
       success: false
     };
 
-    // Base64 decode
+    // Base64
     try {
       results.base64 = atob(payload);
       results.success = true;
     } catch {}
 
-    // Hex decode
+    // Hex
     try {
       if (/^[0-9a-fA-F]+$/.test(payload)) {
         const bytes = payload.match(/.{1,2}/g).map(b => parseInt(b, 16));
@@ -86,7 +86,7 @@ class QuantumLedger {
       }
     } catch {}
 
-    // ROT13 decode
+    // ROT13
     try {
       results.rot13 = payload.replace(/[a-zA-Z]/g, c =>
         String.fromCharCode(
@@ -98,7 +98,7 @@ class QuantumLedger {
       results.success = true;
     } catch {}
 
-    // JSON decode (from any decoded form)
+    // JSON
     try {
       const candidate =
         results.base64 ||
@@ -112,7 +112,7 @@ class QuantumLedger {
       }
     } catch {}
 
-    // URL detection
+    // URL
     try {
       if (/^https?:\/\/[^\s]+$/i.test(payload)) {
         results.url = payload;
@@ -124,13 +124,13 @@ class QuantumLedger {
   }
 
   // -----------------------------------------------------
-  // 🧾 SINGLE LEDGER ENTRY PER SCAN (QAI-aware)
+  // 🧾 SINGLE ENTRY PER SCAN (QAI + Vision aware)
   // -----------------------------------------------------
   addEntry(payload, tag = "SCAN", qaiReport = null) {
     if (!this.container) return;
 
-    const meta = this.analyzePayload(payload);
-    const decrypt = this.decryptPayload(payload);
+    const meta = this.analyzePayload(payload || "");
+    const decrypt = this.decryptPayload(payload || "");
     const time = new Date().toLocaleTimeString();
 
     const item = document.createElement("div");
@@ -152,7 +152,10 @@ class QuantumLedger {
       `<span><strong>Type:</strong> ${meta.classification}</span>` +
       `<span><strong>Decoded:</strong> ${decrypt.success ? "yes" : "no"}</span>`;
 
-    // Decoded preview block
+    item.appendChild(payloadEl);
+    item.appendChild(metaEl);
+
+    // Decoded preview
     if (decrypt.success) {
       const previewEl = document.createElement("div");
       previewEl.className = "ledger-meta";
@@ -171,35 +174,54 @@ class QuantumLedger {
     }
 
     // -----------------------------------------------------
-    // ⭐ QAI REPORT BLOCK (item type + vibe + verdict)
+    // ⭐ QAI REPORT BLOCK (memory + HF + vision)
     // -----------------------------------------------------
     if (qaiReport) {
       const qMeta = document.createElement("div");
       qMeta.className = "ledger-meta";
 
-      const m = qaiReport.moderation;
+      const m = qaiReport.moderation || { verdict: "unknown", entropy: "0.00", flags: [] };
       const itemType = qaiReport.itemType || "unknown artifact";
       const vibe = qaiReport.vibe || "";
       const response = qaiReport.response || "";
+      const memoryNote = qaiReport.memoryNote || "No memory.";
+      const hf = qaiReport.hf || null;
+      const vision = qaiReport.vision || null;
 
-      qMeta.innerHTML =
-        `<span><strong>QAI Item Guess:</strong> ${itemType}</span>` +
-        `<span><strong>QAI Verdict:</strong> ${m.verdict} (entropy ${m.entropy})</span>` +
-        (m.flags.length
-          ? `<span><strong>QAI Flags:</strong> ${m.flags.join(", ")}</span>`
-          : "") +
-        (vibe
-          ? `<span><strong>QAI Vibe:</strong> ${vibe}</span>`
-          : "") +
-        (response
-          ? `<span><strong>QAI Response:</strong> ${response}</span>`
-          : "");
+      let html = "";
 
+      html += `<span><strong>QAI Item Guess:</strong> ${itemType}</span>`;
+      html += `<span><strong>QAI Verdict:</strong> ${m.verdict} (entropy ${m.entropy})</span>`;
+
+      if (m.flags && m.flags.length) {
+        html += `<span><strong>QAI Flags:</strong> ${m.flags.join(", ")}</span>`;
+      }
+
+      if (hf) {
+        html += `<span><strong>HF Sentiment:</strong> ${hf.label} (${hf.score.toFixed(3)})</span>`;
+      }
+
+      html += `<span><strong>QAI Memory:</strong> ${memoryNote}</span>`;
+
+      if (vision && vision.classification) {
+        const top = vision.classification;
+        html += `<span><strong>Vision Class:</strong> ${top.label} (${top.score.toFixed(3)})</span>`;
+      }
+
+      if (vibe) {
+        html += `<span><strong>QAI Vibe:</strong> ${vibe}</span>`;
+      }
+
+      if (response) {
+        html += `<span><strong>QAI Response:</strong> ${response}</span>`;
+      }
+
+      qMeta.innerHTML = html;
       item.dataset.classification = "qai-annotated";
       item.appendChild(qMeta);
     }
 
-    // Footer block
+    // Footer
     const footerEl = document.createElement("div");
     footerEl.className = "ledger-footer";
 
@@ -214,9 +236,6 @@ class QuantumLedger {
     footerEl.appendChild(tagEl);
     footerEl.appendChild(timeEl);
 
-    // Assemble entry
-    item.appendChild(payloadEl);
-    item.appendChild(metaEl);
     item.appendChild(footerEl);
 
     this.container.prepend(item);
