@@ -1,11 +1,10 @@
 /* 
-  Scanner version 3.1
+  Scanner version 3.2 — QAI-linked + personality notes
 */
 
-const qai = new Qai();
-
 class QtumScanner {
-  constructor(ledger) {
+  constructor(qai, ledger) {
+    this.qai = qai;
     this.ledger = ledger;
 
     this.video = document.getElementById('video');
@@ -54,7 +53,7 @@ class QtumScanner {
 
     this.preview.addEventListener('click', () => {
       this.preview.style.display = 'none';
-      this.setStatus('⏻ ready', 'neutral');
+      this.setStatus('QAI ⏻ ready', 'neutral');
     });
 
     console.log('QtumScanner events bound');
@@ -147,7 +146,7 @@ class QtumScanner {
     this.preview.style.display = 'none';
 
     try {
-      const report = await qai.process(text);
+      const report = await this.qai.process(text);
       console.log('QAI report:', report);
 
       const clean = report.moderation.allow;
@@ -155,12 +154,18 @@ class QtumScanner {
       const statusText = clean ? '✅ Scanned (clean)' : '⚠️ Scanned (flagged)';
       const statusClass = clean ? 'status-success' : 'status-warning';
 
+      // main payload entry
       this.ledger.addEntry(text, tag);
+
+      // QAI personality notes into ledger
+      this.ledger.addEntry("QAI_NOTE:" + report.vibe, "QAI");
+      this.ledger.addEntry("QAI_NOTE:" + report.response, "QAI");
+
       this.setStatus(statusText, statusClass);
     } catch (err) {
       console.error('QAI processing error:', err);
       this.ledger.addEntry(text, 'SCAN');
-      this.setStatus('✅ Scanned (QAI offline)', 'status-warning');
+      this.setStatus('QAI offline — scan logged', 'status-warning');
     }
 
     console.log('Scanned:', text);
