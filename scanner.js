@@ -1,6 +1,9 @@
 /* 
-  Scanner version 3.3 — single-entry, QAI-aware, item guessing
+  QtumScanner v4.0 — Vision-enabled, HF-powered, Memory-aware
+  Requires QAI v0.70+ (browser HF + memory mode)
 */
+
+import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
 
 class QtumScanner {
   constructor(qai, ledger) {
@@ -22,10 +25,35 @@ class QtumScanner {
     this.isScanning = false;
     this.isProcessing = false;
 
+    // HF vision pipelines
+    this.visionReady = this.initVision();
+    this.imageClassifier = null;
+    this.imageEmbedder = null;
+
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => this.bindEvents());
     } else {
       this.bindEvents();
+    }
+  }
+
+  async initVision() {
+    try {
+      this.imageClassifier = await pipeline("image-classification", {
+        model: "google/vit-base-patch16-224",
+        quantized: true
+      });
+
+      this.imageEmbedder = await pipeline("feature-extraction", {
+        model: "google/vit-base-patch16-224",
+        quantized: true
+      });
+
+      console.log("Scanner: HF vision pipelines ready.");
+    } catch (err) {
+      console.error("Scanner: HF vision init failed:", err);
+      this.imageClassifier = null;
+      this.imageEmbedder = null;
     }
   }
 
@@ -138,6 +166,33 @@ class QtumScanner {
     }
   }
 
+  async analyzeImage(img) {
+    await this.visionReady;
+
+    let classification = null;
+    let embedding = null;
+
+    try {
+      if (this.imageClassifier) {
+        const out = await this.imageClassifier(img);
+        classification = out[0];
+      }
+    } catch (err) {
+      console.warn("Image classification failed:", err);
+    }
+
+    try {
+      if (this.imageEmbedder) {
+        const out = await this.imageEmbedder(img);
+        embedding = out[0];
+      }
+    } catch (err) {
+      console.warn("Image embedding failed:", err);
+    }
+
+    return { classification, embedding };
+  }
+
   async handleScan(text) {
     if (!text) return;
 
@@ -154,7 +209,6 @@ class QtumScanner {
       const statusText = clean ? '✅ Scanned (clean)' : '⚠️ Scanned (flagged)';
       const statusClass = clean ? 'status-success' : 'status-warning';
 
-      // 🔥 SINGLE LEDGER ENTRY PER SCAN, WITH FULL QAI REPORT
       this.ledger.addEntry(text, tag, report);
 
       this.setStatus(statusText, statusClass);
@@ -167,7 +221,7 @@ class QtumScanner {
     console.log('Scanned:', text);
   }
 
-  handleUpload(event) {
+  async handleUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -177,14 +231,20 @@ class QtumScanner {
       img.onload = async () => {
         this.preview.src = e.target.result;
         this.preview.style.display = 'block';
-        try {
-          const codeReader = new ZXing.BrowserMultiFormatReader();
-          const result = await codeReader.decodeFromImageElement(img);
-          await this.handleScan(result.text);
-        } catch (err) {
-          this.setStatus('❌ No code found in image', 'status-error');
-          console.warn('Upload scan error:', err);
-        }
+
+        const vision = await this.analyzeImage(img);
+
+        const report = {
+          original: "[IMAGE UPLOAD]",
+          vision,
+          moderation: { allow: true, verdict: "image", flags: [], entropy: 0 },
+          itemType: "image artifact",
+          vibe: "QAI: Image processed.",
+          response: "QAI: Image classified."
+        };
+
+        this.ledger.addEntry("[IMAGE]", "IMAGE", report);
+        this.setStatus("🖼 Image analyzed", "status-success");
       };
       img.src = e.target.result;
     };
@@ -192,7 +252,7 @@ class QtumScanner {
     event.target.value = '';
   }
 
-  takePhoto() {
+  async takePhoto() {
     if (!this.video.videoWidth) {
       this.setStatus('⚠️ Start camera first', 'status-warning');
       return;
@@ -209,14 +269,19 @@ class QtumScanner {
 
     const img = new Image();
     img.onload = async () => {
-      try {
-        const codeReader = new ZXing.BrowserMultiFormatReader();
-        const result = await codeReader.decodeFromImageElement(img);
-        await this.handleScan(result.text);
-      } catch (err) {
-        this.setStatus('❌ No code found in snapshot', 'status-error');
-        console.warn('Snapshot scan error:', err);
-      }
+      const vision = await this.analyzeImage(img);
+
+      const report = {
+        original: "[SNAPSHOT]",
+        vision,
+        moderation: { allow: true, verdict: "image", flags: [], entropy: 0 },
+        itemType: "snapshot artifact",
+        vibe: "QAI: Snapshot processed.",
+        response: "QAI: Snapshot classified."
+      };
+
+      this.ledger.addEntry("[SNAPSHOT]", "IMAGE", report);
+      this.setStatus("📸 Snapshot analyzed", "status-success");
     };
     img.src = dataUrl;
   }
