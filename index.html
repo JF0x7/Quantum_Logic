@@ -85,36 +85,46 @@
   <script src="ledger.js"></script>
   <script src="Qai.js"></script>
   <script src="scanner.js"></script>
-  <script src="mastermind.js"></script>
 
   <!-- Initialization -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Wait for all scripts to load
-      setTimeout(() => {
-        if (typeof Mastermind !== 'undefined') {
-          window.mastermind = new Mastermind();
-          console.log('🚀 QTUM(LOG) v2.0 initialized with AI');
-          
-          // Update footer with AI status
-          const aiStatus = document.getElementById('aiStatus');
-          if (aiStatus && window.mastermind.components?.qai) {
-            window.mastermind.components.qai.addEventListener('ready', () => {
-              aiStatus.textContent = '🧠 AI Models: Active ✅';
-              aiStatus.style.color = '#4a4';
-            });
-            window.mastermind.components.qai.addEventListener('status', (e) => {
-              if (e.detail.type === 'warning') {
-                aiStatus.textContent = '⚠️ ' + e.detail.message;
-                aiStatus.style.color = '#aa4';
-              }
-            });
-          }
-        } else {
-          console.error('❌ Mastermind failed to load');
-          document.getElementById('status').textContent = '❌ System initialization failed';
+      // Initialize components directly
+      const qai = new Qai();
+      const ledger = new QuantumLedger('ledger');
+      const scanner = new QtumScanner(qai, ledger);
+
+      // Expose to window for debugging
+      window.__qai = qai;
+      window.__ledger = ledger;
+      window.__scanner = scanner;
+
+      // Update footer with AI status
+      const aiStatus = document.getElementById('aiStatus');
+      
+      qai.addEventListener('ready', (e) => {
+        const features = Object.keys(e.detail.features).filter(f => e.detail.features[f]);
+        aiStatus.textContent = `🧠 AI Active: ${features.join(', ') || 'Base'}`;
+        aiStatus.style.color = '#4a4';
+        document.getElementById('status').textContent = '✅ QAI v2.0 ready with AI capabilities';
+        document.getElementById('status').className = 'success';
+      });
+
+      qai.addEventListener('status', (e) => {
+        if (e.detail.type === 'warning') {
+          aiStatus.textContent = '⚠️ ' + e.detail.message;
+          aiStatus.style.color = '#aa4';
         }
-      }, 100);
+      });
+
+      qai.addEventListener('error', (e) => {
+        aiStatus.textContent = '⚠️ AI Fallback Mode';
+        aiStatus.style.color = '#aa4';
+        document.getElementById('status').textContent = '⚠️ QAI in fallback mode';
+        document.getElementById('status').className = 'warning';
+      });
+
+      console.log('🚀 QTUM(LOG) v2.0 initialized with AI');
     });
   </script>
 </body>
