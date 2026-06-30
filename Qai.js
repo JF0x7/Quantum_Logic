@@ -1,13 +1,17 @@
-// QAI v0.60 — Browser HF (Transformers.js), item guessing, moderation
+// QAI v0.70 — Browser HF (Transformers.js) + Memory Mode
 
 import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
 
 class Qai {
   constructor() {
     this.name = "QAI";
-    this.version = "0.60-browser-HF";
+    this.version = "0.70-memory-mode";
+
     this.hfReady = this.initHF();
     this.hfClassifier = null;
+    this.hfEmbedder = null;
+
+    this.memory = []; // persistent memory of scans
 
     this.vocab = [
       "signal", "payload", "quantum", "resonance", "artifact",
@@ -17,17 +21,18 @@ class Qai {
 
   async initHF() {
     try {
-      // sentiment-analysis pipeline (HF model in browser)
       this.hfClassifier = await pipeline("sentiment-analysis");
-      console.log("QAI: Hugging Face browser pipeline ready.");
+      this.hfEmbedder = await pipeline("feature-extraction");
+      console.log("QAI: HF sentiment + embeddings ready (browser).");
     } catch (err) {
       console.error("QAI: HF init failed:", err);
       this.hfClassifier = null;
+      this.hfEmbedder = null;
     }
   }
 
   // -----------------------------------------------------
-  // 🛡️ MODERATION ENGINE
+  // 🛡️ MODERATION
   // -----------------------------------------------------
   moderate(payload) {
     const text = payload.toLowerCase();
@@ -70,7 +75,7 @@ class Qai {
   }
 
   // -----------------------------------------------------
-  // 🔐 ENCRYPTION PACK
+  // 🔐 ENCRYPT / DECRYPT
   // -----------------------------------------------------
   encrypt(payload) {
     return {
@@ -96,9 +101,6 @@ class Qai {
       .join("");
   }
 
-  // -----------------------------------------------------
-  // 🔓 DECRYPTION PACK
-  // -----------------------------------------------------
   decrypt(payload) {
     const results = {
       base64: null,
@@ -143,7 +145,7 @@ class Qai {
   }
 
   // -----------------------------------------------------
-  // 🧩 ITEM TYPE GUESSING
+  // 🧩 ITEM TYPE GUESS
   // -----------------------------------------------------
   guessItemType(payload, decrypted) {
     const text = payload.toLowerCase();
@@ -170,14 +172,14 @@ class Qai {
   }
 
   // -----------------------------------------------------
-  // 😎 PERSONALITY ENGINE
+  // 😎 PERSONALITY
   // -----------------------------------------------------
   pickWord() {
     if (!this.vocab.length) return "signal";
     return this.vocab[Math.floor(Math.random() * this.vocab.length)];
   }
 
-  vibe(payload, itemType, moderation) {
+  vibe(payload, itemType, moderation, memoryNote) {
     const word = this.pickWord();
     const baseLines = [
       `QAI hums softly… this ${itemType} feels aligned.`,
@@ -195,46 +197,114 @@ class Qai {
         ? ` Flags: ${moderation.flags.join(", ")}.`
         : "";
 
-    return baseLines[idx] + extra;
+    return baseLines[idx] + extra + ` Memory: ${memoryNote}`;
   }
 
-  response(payload, report, itemType) {
+  response(payload, report, itemType, hf, memoryNote) {
     const m = report.moderation;
-    if (!m.allow) {
-      return `QAI: ${itemType} came in spicy. Verdict: ${m.verdict}. Entropy ${m.entropy}.`;
+    if (hf) {
+      return `QAI (HF): ${hf.label} (${hf.score.toFixed(3)}). Memory: ${memoryNote}`;
     }
-    return `QAI: ${itemType} scanned clean. Entropy ${m.entropy}. Verdict: ${m.verdict}.`;
+    if (!m.allow) {
+      return `QAI: ${itemType} came in spicy. Verdict: ${m.verdict}. Entropy ${m.entropy}. Memory: ${memoryNote}`;
+    }
+    return `QAI: ${itemType} scanned clean. Entropy ${m.entropy}. Verdict: ${m.verdict}. Memory: ${memoryNote}`;
   }
 
   // -----------------------------------------------------
-  // 🧠 FULL PIPELINE (HF in browser)
+  // 🧠 HF SENTIMENT + EMBEDDINGS
+  // -----------------------------------------------------
+  async classifyHF(text) {
+    if (!this.hfClassifier) return null;
+    try {
+      const out = await this.hfClassifier(text);
+      const r = out[0];
+      return { label: r.label, score: r.score };
+    } catch (err) {
+      console.error("QAI HF classify error:", err);
+      return null;
+    }
+  }
+
+  async embed(text) {
+    if (!this.hfEmbedder) return null;
+    try {
+      const out = await this.hfEmbedder(text);
+      return out[0]; // embedding vector
+    } catch (err) {
+      console.error("QAI embed error:", err);
+      return null;
+    }
+  }
+
+  // -----------------------------------------------------
+  // 🧠 MEMORY MODE
+  // -----------------------------------------------------
+  storeMemory(payload, itemType, embedding) {
+    if (!embedding) return;
+    this.memory.push({
+      payload,
+      itemType,
+      embedding,
+      time: Date.now()
+    });
+  }
+
+  cosine(a, b) {
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      na += a[i] * a[i];
+      nb += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(na) * Math.sqrt(nb));
+  }
+
+  findSimilar(embedding) {
+    if (!embedding || this.memory.length === 0) return null;
+
+    let best = null;
+    let bestScore = -1;
+
+    for (const m of this.memory) {
+      const score = this.cosine(embedding, m.embedding);
+      if (score > bestScore) {
+        bestScore = score;
+        best = m;
+      }
+    }
+
+    return { best, score: bestScore };
+  }
+
+  // -----------------------------------------------------
+  // 🧠 FULL PIPELINE
   // -----------------------------------------------------
   async process(payload) {
-    await this.hfReady; // wait for HF pipeline
+    await this.hfReady;
 
     const moderation = this.moderate(payload);
     const encrypted = this.encrypt(payload);
     const decrypted = this.decrypt(payload);
     const itemType = this.guessItemType(payload, decrypted);
 
-    let hf = null;
-    if (this.hfClassifier) {
-      try {
-        const out = await this.hfClassifier(payload);
-        const r = out[0];
-        hf = {
-          label: r.label,
-          score: r.score
-        };
-      } catch (err) {
-        console.error("QAI HF classify error:", err);
-      }
+    const hf = await this.classifyHF(payload);
+    const embedding = await this.embed(payload);
+    const similar = this.findSimilar(embedding);
+
+    let memoryNote = "No prior memory.";
+    if (similar && similar.score > 0.80) {
+      memoryNote = `Similar to previous ${similar.best.itemType} (score ${similar.score.toFixed(2)}).`;
+    } else if (similar) {
+      memoryNote = `Weak similarity to ${similar.best.itemType} (score ${similar.score.toFixed(2)}).`;
+    } else if (this.memory.length === 0) {
+      memoryNote = "First artifact of its kind.";
     }
 
-    const vibe = this.vibe(payload, itemType, moderation);
-    const response = hf
-      ? `QAI (HF browser): ${hf.label} (${hf.score.toFixed(3)}).`
-      : this.response(payload, { moderation }, itemType);
+    this.storeMemory(payload, itemType, embedding);
+
+    const vibe = this.vibe(payload, itemType, moderation, memoryNote);
+    const response = this.response(payload, { moderation }, itemType, hf, memoryNote);
 
     return {
       original: payload,
@@ -243,6 +313,8 @@ class Qai {
       decrypted,
       itemType,
       hf,
+      embedding,
+      memoryNote,
       vibe,
       response
     };
