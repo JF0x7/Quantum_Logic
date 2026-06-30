@@ -63,7 +63,7 @@
     document.addEventListener('DOMContentLoaded', function () {
       const qai = new Qai(); 
       const ledger = new QuantumLedger('ledger');
-      const scanner = new QtumScanner(ledger, qai);
+      const scanner = new QtumScanner(qai, ledger);
 
       window.__qai = qai;
       window.__ledger = ledger;
