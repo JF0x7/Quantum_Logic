@@ -1,5 +1,5 @@
 /**
- * QuantumLedger v1.0 - Secure transaction ledger
+ * QuantumLedger v2.0 - Rich Barcode Display
  */
 
 class QuantumLedger extends EventTarget {
@@ -7,10 +7,9 @@ class QuantumLedger extends EventTarget {
     super();
     this.container = document.getElementById(containerId);
     this.entries = [];
-    this.maxEntries = 1000;
+    this.maxEntries = 500;
     this.loadFromStorage();
     
-    // Auto-save and render on update
     this.addEventListener('update', () => {
       this.saveToStorage();
       this.render();
@@ -18,18 +17,45 @@ class QuantumLedger extends EventTarget {
   }
 
   addEntry(data, tag = 'SCAN', report = null) {
-    const entry = {
-      id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-      timestamp: Date.now(),
-      data: data,
-      tag: tag,
-      report: report,
-      hash: this.generateHash(data + tag)
-    };
+    // Handle rich entry objects
+    let entry;
+    if (typeof data === 'object' && data.raw) {
+      // Already a rich entry
+      entry = {
+        id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        timestamp: Date.now(),
+        ...data,
+        tag: tag || data.tag || 'SCAN'
+      };
+    } else {
+      // Simple entry - convert to rich
+      entry = {
+        id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        timestamp: Date.now(),
+        raw: data,
+        barcodeType: 'Unknown',
+        valid: 'N/A',
+        confidence: 'N/A',
+        pattern: 'None',
+        status: 'Clean',
+        severity: 'Low',
+        length: data.length,
+        timestamp: new Date().toLocaleString(),
+        tag: tag,
+        info: {
+          'Raw Data': data.slice(0, 50) + (data.length > 50 ? '...' : ''),
+          'Length': data.length,
+          'Type': 'Unknown',
+          'Valid': 'N/A',
+          'Confidence': 'N/A',
+          'Status': 'Clean',
+          'Severity': 'Low'
+        }
+      };
+    }
 
     this.entries.unshift(entry);
     
-    // Limit entries
     if (this.entries.length > this.maxEntries) {
       this.entries = this.entries.slice(0, this.maxEntries);
     }
@@ -38,17 +64,6 @@ class QuantumLedger extends EventTarget {
       detail: { entry, total: this.entries.length }
     }));
     return entry;
-  }
-
-  addBatch(items, tag = 'BATCH') {
-    const results = [];
-    items.forEach(item => {
-      results.push(this.addEntry(item, tag));
-    });
-    this.dispatchEvent(new CustomEvent('batch', { 
-      detail: { items: results, count: results.length }
-    }));
-    return results;
   }
 
   getEntries() {
@@ -66,7 +81,15 @@ class QuantumLedger extends EventTarget {
     if (!this.container) return;
     
     if (this.entries.length === 0) {
-      this.container.innerHTML = '<div class="empty-ledger">No entries yet</div>';
+      this.container.innerHTML = `
+        <div class="empty-ledger">
+          <span class="icon">📭</span>
+          <div class="text">No barcodes scanned yet</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);margin-top:8px;">
+            Scan a barcode to see 8-point analysis
+          </div>
+        </div>
+      `;
       return;
     }
 
@@ -74,25 +97,58 @@ class QuantumLedger extends EventTarget {
     const displayEntries = this.entries.slice(0, 50);
     
     displayEntries.forEach((entry, index) => {
+      // Determine tag class
       const tagClass = entry.tag === 'FLAGGED' ? 'tag-flagged' : 
                       entry.tag === 'SIGNAL' ? 'tag-signal' : 
-                      entry.tag === 'IMAGE' ? 'tag-image' : 'tag-scan';
+                      entry.tag === 'IMAGE' ? 'tag-image' : 
+                      entry.tag === 'BARCODE' ? 'tag-barcode' : 'tag-scan';
       
-      const time = new Date(entry.timestamp).toLocaleTimeString();
-      const data = typeof entry.data === 'string' ? 
-                   entry.data.slice(0, 50) : 
-                   JSON.stringify(entry.data).slice(0, 50);
+      // Build info items (8 pieces of barcode info)
+      const infoItems = entry.info || {
+        'Barcode Type': entry.barcodeType || 'Unknown',
+        'Valid': entry.valid || 'N/A',
+        'Confidence': entry.confidence || 'N/A',
+        'Pattern': entry.pattern || 'None',
+        'Status': entry.status || 'Clean',
+        'Severity': entry.severity || 'Low',
+        'Length': entry.length || 'N/A',
+        'Scanned': entry.timestamp || new Date().toLocaleString()
+      };
       
-      // Add AI analysis indicator if available
-      const aiBadge = entry.report?.moderation ? 
-        `<span class="ai-badge">🧠</span>` : '';
+      // Build info grid
+      let infoHtml = '';
+      for (const [label, value] of Object.entries(infoItems)) {
+        const valueClass = 
+          value === '✅ Valid' || value === 'Clean' || value === '✅ Clean' ? 'success' :
+          value === '❌ Invalid' || value === 'Flagged' || value === '⚠️ Flagged' ? 'danger' :
+          value === 'High' ? 'danger' :
+          value === 'Medium' ? 'warning' :
+          value === 'Low' ? 'highlight' : '';
+          
+        infoHtml += `
+          <div class="analysis-item">
+            <span class="label">${label}</span>
+            <span class="value ${valueClass}">${value}</span>
+          </div>
+        `;
+      }
+      
+      // Display raw data
+      const rawDisplay = typeof entry.raw === 'string' ? 
+        entry.raw.slice(0, 80) + (entry.raw.length > 80 ? '...' : '') :
+        JSON.stringify(entry.raw).slice(0, 80);
       
       html += `
         <div class="ledger-entry" data-id="${entry.id}">
-          <div class="ledger-index">#${this.entries.length - index}</div>
-          <div class="ledger-data">${this.escapeHtml(data)} ${aiBadge}</div>
-          <div class="ledger-tag ${tagClass}">${entry.tag}</div>
-          <div class="ledger-time">${time}</div>
+          <div class="entry-header">
+            <span class="entry-id">#${this.entries.length - index}</span>
+            <span class="entry-tag ${tagClass}">${entry.tag || 'SCAN'}</span>
+          </div>
+          <div class="entry-data">${this.escapeHtml(rawDisplay)}</div>
+          <div class="entry-analysis">
+            ${infoHtml}
+          </div>
+          <div class="entry-time">${entry.timestamp || new Date(entry.timestamp).toLocaleString()}</div>
         </div>
       `;
     });
@@ -104,17 +160,8 @@ class QuantumLedger extends EventTarget {
     this.container.innerHTML = html;
   }
 
-  generateHash(data) {
-    let hash = 0;
-    for (let i = 0; i < data.length; i++) {
-      const char = data.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return hash.toString(16).padStart(8, '0');
-  }
-
   escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
@@ -123,7 +170,7 @@ class QuantumLedger extends EventTarget {
   // Storage
   saveToStorage() {
     try {
-      localStorage.setItem('qtum_ledger', JSON.stringify({
+      localStorage.setItem('qtum_ledger_v2', JSON.stringify({
         entries: this.entries,
         savedAt: Date.now()
       }));
@@ -134,7 +181,7 @@ class QuantumLedger extends EventTarget {
 
   loadFromStorage() {
     try {
-      const data = localStorage.getItem('qtum_ledger');
+      const data = localStorage.getItem('qtum_ledger_v2');
       if (data) {
         const parsed = JSON.parse(data);
         if (parsed.entries && Array.isArray(parsed.entries)) {
@@ -159,5 +206,4 @@ class QuantumLedger extends EventTarget {
   }
 }
 
-// Export
 window.QuantumLedger = QuantumLedger;
