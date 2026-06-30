@@ -1,17 +1,26 @@
-// QAI v0.70 — Browser HF (Transformers.js) + Memory Mode
+// QAI v0.90 — HF Browser + Memory Mode + World Model
 
 import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
 
 class Qai {
   constructor() {
     this.name = "QAI";
-    this.version = "0.70-memory-mode";
+    this.version = "0.90-world-model";
 
     this.hfReady = this.initHF();
     this.hfClassifier = null;
     this.hfEmbedder = null;
 
-    this.memory = []; // persistent memory of scans
+    // scan memory
+    this.memory = [];
+
+    // world model
+    this.worldState = {
+      entities: [],      // all artifacts
+      factions: {},      // faction name -> data
+      events: [],        // timeline of world events
+      lastId: 0
+    };
 
     this.vocab = [
       "signal", "payload", "quantum", "resonance", "artifact",
@@ -179,7 +188,7 @@ class Qai {
     return this.vocab[Math.floor(Math.random() * this.vocab.length)];
   }
 
-  vibe(payload, itemType, moderation, memoryNote) {
+  vibe(payload, itemType, moderation, memoryNote, worldNote) {
     const word = this.pickWord();
     const baseLines = [
       `QAI hums softly… this ${itemType} feels aligned.`,
@@ -197,18 +206,18 @@ class Qai {
         ? ` Flags: ${moderation.flags.join(", ")}.`
         : "";
 
-    return baseLines[idx] + extra + ` Memory: ${memoryNote}`;
+    return baseLines[idx] + extra + ` Memory: ${memoryNote} World: ${worldNote}`;
   }
 
-  response(payload, report, itemType, hf, memoryNote) {
+  response(payload, report, itemType, hf, memoryNote, worldNote) {
     const m = report.moderation;
     if (hf) {
-      return `QAI (HF): ${hf.label} (${hf.score.toFixed(3)}). Memory: ${memoryNote}`;
+      return `QAI (HF): ${hf.label} (${hf.score.toFixed(3)}). Memory: ${memoryNote} World: ${worldNote}`;
     }
     if (!m.allow) {
-      return `QAI: ${itemType} came in spicy. Verdict: ${m.verdict}. Entropy ${m.entropy}. Memory: ${memoryNote}`;
+      return `QAI: ${itemType} came in spicy. Verdict: ${m.verdict}. Entropy ${m.entropy}. Memory: ${memoryNote} World: ${worldNote}`;
     }
-    return `QAI: ${itemType} scanned clean. Entropy ${m.entropy}. Verdict: ${m.verdict}. Memory: ${memoryNote}`;
+    return `QAI: ${itemType} scanned clean. Entropy ${m.entropy}. Verdict: ${m.verdict}. Memory: ${memoryNote} World: ${worldNote}`;
   }
 
   // -----------------------------------------------------
@@ -230,7 +239,7 @@ class Qai {
     if (!this.hfEmbedder) return null;
     try {
       const out = await this.hfEmbedder(text);
-      return out[0]; // embedding vector
+      return out[0];
     } catch (err) {
       console.error("QAI embed error:", err);
       return null;
@@ -278,6 +287,77 @@ class Qai {
   }
 
   // -----------------------------------------------------
+  // 🌍 WORLD MODEL
+  // -----------------------------------------------------
+  assignFaction(itemType) {
+    // simple faction mapping
+    if (itemType === "crypto") return "Signal Network";
+    if (itemType === "book") return "Archive Order";
+    if (itemType === "bottle" || itemType === "air duster") return "Alchemical Guild";
+    if (itemType === "custom generated") return "Prototype Forge";
+    if (itemType === "link / web resource") return "Web Cartographers";
+    return "Neutral Drift";
+  }
+
+  registerFaction(name) {
+    if (!this.worldState.factions[name]) {
+      this.worldState.factions[name] = {
+        name,
+        influence: 1,
+        artifacts: 0
+      };
+    }
+    return this.worldState.factions[name];
+  }
+
+  registerEntity(payload, itemType, embedding, hf) {
+    const id = ++this.worldState.lastId;
+    const factionName = this.assignFaction(itemType);
+    const faction = this.registerFaction(factionName);
+
+    const entity = {
+      id,
+      payload,
+      itemType,
+      faction: factionName,
+      time: Date.now(),
+      hf,
+      embedding
+    };
+
+    this.worldState.entities.push(entity);
+    faction.artifacts += 1;
+    faction.influence += hf && hf.label === "POSITIVE" ? 0.5 : 0.1;
+
+    return entity;
+  }
+
+  addWorldEvent(type, description, entity, similar) {
+    this.worldState.events.push({
+      time: Date.now(),
+      type,
+      description,
+      entityId: entity ? entity.id : null,
+      similarEntityId: similar ? similar.id : null
+    });
+  }
+
+  generateWorldNote(entity, similar, score) {
+    if (!entity) return "No world registration.";
+    const faction = this.worldState.factions[entity.faction];
+
+    if (similar && score > 0.80) {
+      return `New ${entity.itemType} joins ${entity.faction}, echoing artifact #${similar.id}. Faction influence: ${faction.influence.toFixed(2)}.`;
+    }
+
+    if (similar) {
+      return `New ${entity.itemType} drifts near ${entity.faction}, faintly linked to artifact #${similar.id}. Faction influence: ${faction.influence.toFixed(2)}.`;
+    }
+
+    return `First ${entity.itemType} for ${entity.faction}. Faction influence now ${faction.influence.toFixed(2)}.`;
+  }
+
+  // -----------------------------------------------------
   // 🧠 FULL PIPELINE
   // -----------------------------------------------------
   async process(payload) {
@@ -303,8 +383,19 @@ class Qai {
 
     this.storeMemory(payload, itemType, embedding);
 
-    const vibe = this.vibe(payload, itemType, moderation, memoryNote);
-    const response = this.response(payload, { moderation }, itemType, hf, memoryNote);
+    const entity = this.registerEntity(payload, itemType, embedding, hf);
+    const similarEntity = similar ? this.worldState.entities.find(e => e.payload === similar.best.payload) : null;
+    const worldNote = this.generateWorldNote(entity, similarEntity, similar ? similar.score : 0);
+
+    this.addWorldEvent(
+      "artifact_scan",
+      `Artifact #${entity.id} (${itemType}) registered in faction ${entity.faction}.`,
+      entity,
+      similarEntity
+    );
+
+    const vibe = this.vibe(payload, itemType, moderation, memoryNote, worldNote);
+    const response = this.response(payload, { moderation }, itemType, hf, memoryNote, worldNote);
 
     return {
       original: payload,
@@ -315,6 +406,8 @@ class Qai {
       hf,
       embedding,
       memoryNote,
+      worldNote,
+      worldState: this.worldState,
       vibe,
       response
     };
