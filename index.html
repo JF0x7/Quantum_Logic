@@ -63,14 +63,14 @@
     document.addEventListener('DOMContentLoaded', function () {
       const qai = new Qai(); 
       const ledger = new QuantumLedger('ledger');
-      const scanner = new QtumScanner(qai, ledger);
+      const scanner = new QtumScanner(ledger, qai);
 
       window.__qai = qai;
       window.__ledger = ledger;
       window.__scanner = scanner;
       
 
-      console.log('QTUM(LOG) v1.107 initialized with QAI v0.30');
+      console.log('QTUM(LOG) v1.107 initialized with QAI v0.32');
     });
   </script>
 </body>
