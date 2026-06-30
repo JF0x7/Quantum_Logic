@@ -1,5 +1,5 @@
 // -----------------------------------------------------
-//       Ledger version 3.1
+//       Ledger version 3.2 — QAI Personality Edition
 // -----------------------------------------------------
 class QuantumLedger {
   constructor(containerId = "ledger") {
@@ -168,6 +168,18 @@ class QuantumLedger {
       previewEl.innerHTML =
         `<span><strong>Decoded Preview:</strong> ${preview}</span>`;
       item.appendChild(previewEl);
+    }
+
+    // -----------------------------------------------------
+    // ⭐ QAI PERSONALITY NOTE SUPPORT
+    // -----------------------------------------------------
+    if (payload.startsWith("QAI_NOTE:")) {
+      const noteEl = document.createElement("div");
+      noteEl.className = "ledger-qai-note";
+      noteEl.textContent = payload.replace("QAI_NOTE:", "");
+
+      item.dataset.classification = "qai-personality";
+      item.appendChild(noteEl);
     }
 
     // Footer block
