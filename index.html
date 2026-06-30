@@ -4,127 +4,721 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="Q.jpg">
-  <title>QTUM(LOG) v2.0 - Quantum AI Scanner</title>
-
-  <!-- ZXing Library for QR/Barcode scanning -->
+  <title>QAI Barcode Analyzer v3.0</title>
+  
+  <!-- ZXing Library -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
   
   <!-- Styles -->
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ===== RESET & BASE ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-card: #1a2332;
+      --bg-hover: #243447;
+      --text-primary: #e8edf5;
+      --text-secondary: #8899bb;
+      --text-muted: #556688;
+      --accent-blue: #4af;
+      --accent-purple: #a4f;
+      --accent-pink: #f0a;
+      --accent-green: #4caf50;
+      --accent-yellow: #ffd54f;
+      --accent-red: #ef5350;
+      --accent-cyan: #00bcd4;
+      --border-color: #1f2c3d;
+      --shadow: 0 8px 32px rgba(0,0,0,0.5);
+      --radius: 12px;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+      background-image: 
+        radial-gradient(ellipse at 10% 20%, rgba(68,170,255,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 80%, rgba(170,68,255,0.08) 0%, transparent 50%);
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      text-align: center;
+      padding: 20px 0 30px;
+      position: relative;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-blue), var(--accent-purple), transparent);
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 10px;
+    }
+
+    #quantumLogo {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 2px solid var(--accent-blue);
+      box-shadow: 0 0 40px rgba(68,170,255,0.2);
+      transition: var(--transition);
+    }
+
+    #quantumLogo:hover {
+      transform: rotate(180deg) scale(1.1);
+      border-color: var(--accent-pink);
+      box-shadow: 0 0 60px rgba(255,68,170,0.3);
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      letter-spacing: 2px;
+      margin-top: 5px;
+    }
+
+    .subtitle span {
+      color: var(--accent-blue);
+    }
+
+    /* ===== MAIN LAYOUT ===== */
+    .app-container {
+      max-width: 1600px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 480px;
+      gap: 25px;
+      padding-top: 20px;
+    }
+
+    @media (max-width: 1100px) {
+      .app-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ===== SCANNER CARD ===== */
+    .scanner-card {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: 24px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow);
+    }
+
+    .scanner-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .scanner-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .scanner-title .badge {
+      font-size: 0.65rem;
+      padding: 2px 10px;
+      border-radius: 20px;
+      background: var(--accent-blue);
+      color: var(--bg-primary);
+      font-weight: 700;
+    }
+
+    .ai-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .ai-status .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot.online { background: var(--accent-green); box-shadow: 0 0 10px rgba(76,175,80,0.5); }
+    .dot.offline { background: var(--accent-red); box-shadow: 0 0 10px rgba(239,83,80,0.5); }
+    .dot.initializing { background: var(--accent-yellow); animation: pulse 1s infinite; }
+
+    /* ===== VIDEO WRAPPER ===== */
+    .video-wrapper {
+      position: relative;
+      background: var(--bg-primary);
+      border-radius: var(--radius);
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      border: 1px solid var(--border-color);
+      margin-bottom: 16px;
+    }
+
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #photoPreview {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: var(--bg-primary);
+      cursor: pointer;
+      display: none;
+      z-index: 10;
+    }
+
+    /* Scan Overlay */
+    .scan-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    .scan-overlay.active { opacity: 1; }
+
+    .scan-corner {
+      position: absolute;
+      width: 35px;
+      height: 35px;
+      border-color: var(--accent-blue);
+      border-style: solid;
+      border-width: 0;
+    }
+    .tl { top: 20px; left: 20px; border-top-width: 3px; border-left-width: 3px; }
+    .tr { top: 20px; right: 20px; border-top-width: 3px; border-right-width: 3px; }
+    .bl { bottom: 20px; left: 20px; border-bottom-width: 3px; border-left-width: 3px; }
+    .br { bottom: 20px; right: 20px; border-bottom-width: 3px; border-right-width: 3px; }
+
+    .scan-line {
+      position: absolute;
+      top: 30%;
+      left: 15%;
+      width: 70%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+      animation: scanMove 2.5s infinite ease-in-out;
+      box-shadow: 0 0 30px rgba(68,170,255,0.4);
+    }
+
+    @keyframes scanMove {
+      0%, 100% { top: 25%; opacity: 0.3; }
+      50% { top: 75%; opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Scan Indicator */
+    #scanIndicator {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 4px;
+      background: var(--border-color);
+      border-radius: 2px;
+      transition: var(--transition);
+      z-index: 6;
+    }
+
+    #scanIndicator.active {
+      background: var(--accent-blue);
+      box-shadow: 0 0 30px rgba(68,170,255,0.6);
+      width: 150px;
+    }
+
+    #scanIndicator.flagged {
+      background: var(--accent-red);
+      box-shadow: 0 0 30px rgba(239,83,80,0.6);
+    }
+
+    /* ===== CONTROLS ===== */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .controls button {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      flex: 1;
+      min-width: 65px;
+      letter-spacing: 0.3px;
+    }
+
+    .controls button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+
+    .controls button:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      color: white;
+    }
+    .btn-primary:hover { box-shadow: 0 6px 25px rgba(68,170,255,0.35); }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+    .btn-secondary:hover { background: var(--bg-hover); }
+
+    .btn-danger {
+      background: var(--accent-red);
+      color: white;
+    }
+    .btn-danger:hover { box-shadow: 0 6px 25px rgba(239,83,80,0.35); }
+
+    .btn-success {
+      background: var(--accent-green);
+      color: white;
+    }
+    .btn-success:hover { box-shadow: 0 6px 25px rgba(76,175,80,0.35); }
+
+    /* ===== OUTPUT ===== */
+    .output-area {
+      background: var(--bg-primary);
+      border-radius: 8px;
+      padding: 14px;
+      border: 1px solid var(--border-color);
+    }
+
+    #status {
+      font-size: 0.9rem;
+      padding: 10px 14px;
+      border-radius: 6px;
+      background: var(--bg-secondary);
+      margin-bottom: 8px;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: var(--transition);
+    }
+
+    #status .icon { font-size: 1.2rem; }
+    #status.success { color: var(--accent-green); border-left: 3px solid var(--accent-green); }
+    #status.warning { color: var(--accent-yellow); border-left: 3px solid var(--accent-yellow); }
+    #status.error { color: var(--accent-red); border-left: 3px solid var(--accent-red); }
+    #status.info { color: var(--accent-blue); border-left: 3px solid var(--accent-blue); }
+    #status.neutral { color: var(--text-secondary); border-left: 3px solid var(--border-color); }
+
+    #payload {
+      font-size: 0.85rem;
+      color: var(--accent-blue);
+      word-break: break-all;
+      padding: 10px 14px;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+      min-height: 34px;
+      font-family: 'Courier New', monospace;
+      border: 1px solid var(--border-color);
+    }
+
+    /* ===== LEDGER ===== */
+    .ledger-card {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: 24px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      max-height: 800px;
+    }
+
+    .ledger-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .ledger-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ledger-title .count {
+      font-size: 0.75rem;
+      padding: 2px 12px;
+      border-radius: 20px;
+      background: var(--bg-card);
+      color: var(--text-secondary);
+    }
+
+    .ledger-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .ledger-actions button {
+      padding: 4px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+    }
+
+    .ledger-actions button:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    /* ===== LEDGER ENTRIES ===== */
+    #ledger {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    #ledger::-webkit-scrollbar { width: 4px; }
+    #ledger::-webkit-scrollbar-track { background: var(--bg-primary); border-radius: 2px; }
+    #ledger::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+    #ledger::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
+
+    .ledger-entry {
+      background: var(--bg-primary);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 8px;
+      border: 1px solid transparent;
+      transition: var(--transition);
+    }
+
+    .ledger-entry:hover {
+      border-color: var(--border-color);
+      background: var(--bg-secondary);
+    }
+
+    .entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .entry-id {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .entry-tag {
+      padding: 2px 12px;
+      border-radius: 20px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .tag-scan { background: rgba(68,170,255,0.2); color: var(--accent-blue); }
+    .tag-flagged { background: rgba(239,83,80,0.2); color: var(--accent-red); }
+    .tag-signal { background: rgba(255,68,170,0.2); color: var(--accent-pink); }
+    .tag-image { background: rgba(170,68,255,0.2); color: var(--accent-purple); }
+    .tag-barcode { background: rgba(0,188,212,0.2); color: var(--accent-cyan); }
+
+    .entry-data {
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      color: var(--text-primary);
+      word-break: break-all;
+      margin-bottom: 8px;
+      padding: 8px 10px;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+    }
+
+    /* ===== 7-8 PIECES OF BARCODE INFO ===== */
+    .entry-analysis {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .analysis-item {
+      display: flex;
+      flex-direction: column;
+      padding: 4px 8px;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      font-size: 0.7rem;
+    }
+
+    .analysis-item .label {
+      color: var(--text-muted);
+      font-size: 0.55rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .analysis-item .value {
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 0.75rem;
+      margin-top: 1px;
+    }
+
+    .analysis-item .value.highlight { color: var(--accent-blue); }
+    .analysis-item .value.success { color: var(--accent-green); }
+    .analysis-item .value.danger { color: var(--accent-red); }
+    .analysis-item .value.warning { color: var(--accent-yellow); }
+
+    .entry-time {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-align: right;
+      margin-top: 6px;
+    }
+
+    .empty-ledger {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-ledger .icon { font-size: 3rem; display: block; margin-bottom: 15px; }
+    .empty-ledger .text { font-size: 0.9rem; }
+
+    /* ===== FOOTER ===== */
+    footer {
+      margin-top: 30px;
+      padding: 15px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+
+    footer span { display: flex; align-items: center; gap: 6px; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      h1 { font-size: 1.8rem; }
+      .controls button { font-size: 0.7rem; padding: 8px 10px; min-width: 50px; }
+      .ledger-card { max-height: 500px; }
+      .entry-analysis { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
+  </style>
 </head>
 
 <body>
-  <!-- Header -->
+  <!-- HEADER -->
   <header>
-    <div id="logoWrapper">
-      <a href="https://qtum-hub-4048d1.gitlab.io/" target="_blank">
-        <svg id="quantumLogo" viewBox="0 0 100 100">
-          <image href="Q.jpg" width="100" height="100" />
-        </svg>
-      </a>
+    <div class="logo-container">
+      <img id="quantumLogo" src="Q.jpg" alt="QAI Logo" />
+      <h1>QAI Barcode Analyzer</h1>
     </div>
-    <h1>⚛ QTUM(LOG)</h1>
-    <h2>Quantum AI Scanner • v2.1 • Powered by Hugging Face + PyTorch</h2>
+    <div class="subtitle">Powered by <span>Hugging Face</span> • <span>PyTorch</span> • <span>ZXing</span></div>
   </header>
 
-  <!-- Main Scanner Interface -->
-  <main>
-    <div id="scannerShell">
-      <!-- Video/Scanner Area -->
-      <div id="videoWrapper">
+  <!-- MAIN APP -->
+  <div class="app-container">
+    <!-- LEFT: SCANNER -->
+    <div class="scanner-card">
+      <div class="scanner-header">
+        <div class="scanner-title">
+          📷 Scanner
+          <span class="badge">v3.0</span>
+        </div>
+        <div class="ai-status">
+          <span class="dot initializing" id="aiDot"></span>
+          <span id="aiStatusText">Initializing...</span>
+        </div>
+      </div>
+
+      <!-- Video -->
+      <div class="video-wrapper">
         <video id="video" autoplay playsinline></video>
-        <img id="photoPreview" alt="Preview" style="display:none;">
-        <div id="scanIndicator"></div>
-        <div id="scanOverlay">
+        <img id="photoPreview" alt="Preview">
+        <div class="scan-overlay" id="scanOverlay">
           <div class="scan-corner tl"></div>
           <div class="scan-corner tr"></div>
           <div class="scan-corner bl"></div>
           <div class="scan-corner br"></div>
           <div class="scan-line"></div>
         </div>
+        <div id="scanIndicator"></div>
       </div>
 
       <!-- Controls -->
-      <div id="controls">
-        <button id="startBtn" class="primary">▶ Camera</button>
-        <button id="flipBtn" class="secondary">⟳ Flip</button>
-        <button id="uploadBtn" class="secondary">⬆ Upload</button>
-        <button id="photoBtn" class="secondary">📸 Snap</button>
-        <button id="sendBtn" class="primary">✦ Signal</button>
-        <button id="clearBtn" class="danger">✕ Clear</button>
-        <button id="exportBtn" class="secondary">📤 Export</button>
+      <div class="controls">
+        <button id="startBtn" class="btn-primary">▶ Camera</button>
+        <button id="flipBtn" class="btn-secondary">⟳ Flip</button>
+        <button id="uploadBtn" class="btn-secondary">⬆ Upload</button>
+        <button id="photoBtn" class="btn-secondary">📸 Snap</button>
+        <button id="sendBtn" class="btn-success">✦ Signal</button>
+        <button id="clearBtn" class="btn-danger">✕ Clear</button>
         <input type="file" id="fileInput" accept="image/*" hidden>
-        <input type="file" id="importInput" accept=".json" hidden>
       </div>
 
       <!-- Output -->
-      <div id="output">
-        <div id="status" class="neutral">⚡ QAI v2.0 initializing...</div>
-        <div id="payload">Ready</div>
+      <div class="output-area">
+        <div id="status" class="neutral">
+          <span class="icon">⚡</span> QAI v3.0 ready
+        </div>
+        <div id="payload">Awaiting scan...</div>
       </div>
     </div>
 
-    <!-- Ledger Sidebar -->
-    <aside id="ledgerShell">
-      <div id="ledgerHeader">
-        <span id="ledgerTitle">⏺ Scan Ledger</span>
-        <span id="ledgerCount">0 entries</span>
-        <button id="importBtn" class="mini">📥 Import</button>
+    <!-- RIGHT: LEDGER -->
+    <div class="ledger-card">
+      <div class="ledger-header">
+        <div class="ledger-title">
+          📊 Barcode Ledger
+          <span class="count" id="ledgerCount">0 entries</span>
+        </div>
+        <div class="ledger-actions">
+          <button id="exportBtn">📤 Export</button>
+          <button id="importBtn">📥 Import</button>
+          <input type="file" id="importInput" accept=".json" hidden>
+        </div>
       </div>
       <div id="ledger"></div>
-    </aside>
-  </main>
+    </div>
+  </div>
 
-  <!-- Footer -->
+  <!-- FOOTER -->
   <footer>
-    <span>🔬 QAI v2.0 • Hugging Face 🤗 • PyTorch 🔥</span>
-    <span id="aiStatus">🧠 Models: Loading...</span>
+    <span>🧠 QAI v3.0 • Barcode Dominator</span>
+    <span>⚡ Real-time Analysis</span>
+    <span>🔍 7-Point Barcode Intelligence</span>
   </footer>
 
-  <!-- Scripts in correct order -->
+  <!-- SCRIPTS -->
   <script src="ledger.js"></script>
   <script src="Qai.js"></script>
   <script src="scanner.js"></script>
 
-  <!-- Initialization -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Initialize components directly
+      // Initialize components
       const qai = new Qai();
       const ledger = new QuantumLedger('ledger');
       const scanner = new QtumScanner(qai, ledger);
 
-      // Expose to window for debugging
+      // Expose to window
       window.__qai = qai;
       window.__ledger = ledger;
       window.__scanner = scanner;
 
-      // Update footer with AI status
-      const aiStatus = document.getElementById('aiStatus');
-      
-      qai.addEventListener('ready', (e) => {
-        const features = Object.keys(e.detail.features).filter(f => e.detail.features[f]);
-        aiStatus.textContent = `🧠 AI Active: ${features.join(', ') || 'Base'}`;
-        aiStatus.style.color = '#4a4';
-        document.getElementById('status').textContent = '✅ QAI v2.0 ready with AI capabilities';
-        document.getElementById('status').className = 'success';
+      // AI Status Updates
+      const aiDot = document.getElementById('aiDot');
+      const aiStatusText = document.getElementById('aiStatusText');
+
+      qai.addEventListener('ready', () => {
+        aiDot.className = 'dot online';
+        aiStatusText.textContent = 'AI Online';
       });
 
-      qai.addEventListener('status', (e) => {
-        if (e.detail.type === 'warning') {
-          aiStatus.textContent = '⚠️ ' + e.detail.message;
-          aiStatus.style.color = '#aa4';
-        }
+      qai.addEventListener('error', () => {
+        aiDot.className = 'dot offline';
+        aiStatusText.textContent = 'AI Fallback';
       });
 
-      qai.addEventListener('error', (e) => {
-        aiStatus.textContent = '⚠️ AI Fallback Mode';
-        aiStatus.style.color = '#aa4';
-        document.getElementById('status').textContent = '⚠️ QAI in fallback mode';
-        document.getElementById('status').className = 'warning';
+      // Update status from scanner
+      scanner.addEventListener('status', (e) => {
+        const statusEl = document.getElementById('status');
+        const icons = {
+          success: '✅',
+          warning: '⚠️',
+          error: '❌',
+          info: 'ℹ️',
+          neutral: '⚡'
+        };
+        statusEl.innerHTML = `<span class="icon">${icons[e.detail.type] || '⚡'}</span> ${e.detail.message}`;
+        statusEl.className = e.detail.type || 'neutral';
       });
 
-      console.log('🚀 QTUM(LOG) v2.1 initialized with AI');
+      console.log('🚀 QAI Barcode Analyzer v3.0 initialized');
     });
   </script>
 </body>
