@@ -1,13 +1,12 @@
 /**
- * QtumScanner v2.0 - Vision-enabled scanner with event system
+ * QtumScanner v2.0 - Vision-enabled scanner with direct AI integration
  */
 
 class QtumScanner extends EventTarget {
-  constructor(qai, ledger, mastermind) {
+  constructor(qai, ledger) {
     super();
     this.qai = qai;
     this.ledger = ledger;
-    this.mastermind = mastermind;
 
     // DOM Elements
     this.video = document.getElementById('video');
@@ -17,6 +16,7 @@ class QtumScanner extends EventTarget {
     this.status = document.getElementById('status');
     this.payloadDiv = document.getElementById('payload');
     this.indicator = document.getElementById('scanIndicator');
+    this.scanOverlay = document.getElementById('scanOverlay');
 
     // State
     this.currentPayload = '';
@@ -25,9 +25,12 @@ class QtumScanner extends EventTarget {
     this.stream = null;
     this.isScanning = false;
     this.isProcessing = false;
+    this.totalScans = 0;
+    this.flaggedItems = 0;
 
     // Initialize
     this.bindEvents();
+    this.setupExportImport();
     console.log('📷 Scanner initialized');
   }
 
@@ -39,6 +42,9 @@ class QtumScanner extends EventTarget {
     const photoBtn = document.getElementById('photoBtn');
     const sendBtn = document.getElementById('sendBtn');
     const clearBtn = document.getElementById('clearBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importInput = document.getElementById('importInput');
 
     if (startBtn) startBtn.addEventListener('click', () => this.toggleCamera());
     if (flipBtn) flipBtn.addEventListener('click', () => this.flipCamera());
@@ -46,12 +52,15 @@ class QtumScanner extends EventTarget {
     if (fileInput) fileInput.addEventListener('change', (e) => this.handleUpload(e));
     if (photoBtn) photoBtn.addEventListener('click', () => this.takePhoto());
     if (sendBtn) sendBtn.addEventListener('click', () => this.sendSignal());
-    if (clearBtn) clearBtn.addEventListener('click', () => this.mastermind?.clearAll());
+    if (clearBtn) clearBtn.addEventListener('click', () => this.clearAll());
+    if (exportBtn) exportBtn.addEventListener('click', () => this.exportData());
+    if (importBtn) importBtn.addEventListener('click', () => importInput?.click());
+    if (importInput) importInput.addEventListener('change', (e) => this.importData(e));
 
     if (this.preview) {
       this.preview.addEventListener('click', () => {
         this.preview.style.display = 'none';
-        this.emit('status', { message: 'Ready', type: 'neutral' });
+        this.setStatus('Ready', 'neutral');
       });
     }
 
@@ -60,9 +69,18 @@ class QtumScanner extends EventTarget {
       if (e.key === 'Enter' && this.currentPayload) {
         this.sendSignal();
       }
+      if (e.key === ' ' && e.target === document.body) {
+        e.preventDefault();
+        this.toggleCamera();
+      }
     });
   }
 
+  setupExportImport() {
+    // Export/Import already bound in bindEvents
+  }
+
+  // ========== CAMERA CONTROLS ==========
   async toggleCamera() {
     if (this.stream) {
       await this.stopCamera();
@@ -73,7 +91,7 @@ class QtumScanner extends EventTarget {
 
   async startCamera() {
     try {
-      this.emit('status', { message: '⏳ Starting camera...', type: 'warning' });
+      this.setStatus('⏳ Starting camera...', 'warning');
 
       if (this.stream) {
         this.stream.getTracks().forEach(t => t.stop());
@@ -101,7 +119,12 @@ class QtumScanner extends EventTarget {
         await this.video.play();
       }
 
-      this.emit('status', { message: '📷 Camera ready - scanning...', type: 'success' });
+      // Show scan overlay
+      if (this.scanOverlay) {
+        this.scanOverlay.classList.add('active');
+      }
+
+      this.setStatus('📷 Camera ready - scanning...', 'success');
       this.startScanning();
       
       // Update button
@@ -109,8 +132,8 @@ class QtumScanner extends EventTarget {
       if (startBtn) startBtn.textContent = '⏹ Stop';
       
     } catch (err) {
-      this.emit('error', err);
-      this.emit('status', { message: `❌ Camera error: ${err.message}`, type: 'error' });
+      this.setStatus(`❌ Camera error: ${err.message}`, 'error');
+      console.error('Camera error:', err);
     }
   }
 
@@ -122,10 +145,15 @@ class QtumScanner extends EventTarget {
     this.stopScanning();
     if (this.video) this.video.srcObject = null;
     
+    // Hide scan overlay
+    if (this.scanOverlay) {
+      this.scanOverlay.classList.remove('active');
+    }
+    
     const startBtn = document.getElementById('startBtn');
     if (startBtn) startBtn.textContent = '▶ Camera';
     
-    this.emit('status', { message: 'Camera stopped', type: 'info' });
+    this.setStatus('Camera stopped', 'info');
   }
 
   async flipCamera() {
@@ -133,7 +161,7 @@ class QtumScanner extends EventTarget {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cameras = devices.filter(d => d.kind === 'videoinput');
       if (cameras.length < 2) {
-        this.emit('status', { message: '⚠️ Only one camera available', type: 'warning' });
+        this.setStatus('⚠️ Only one camera available', 'warning');
         return;
       }
       const currentIdx = cameras.findIndex(d => d.deviceId === this.cameraId);
@@ -142,10 +170,11 @@ class QtumScanner extends EventTarget {
       await this.stopCamera();
       await this.startCamera();
     } catch (err) {
-      this.emit('error', err);
+      this.setStatus(`❌ Flip failed: ${err.message}`, 'error');
     }
   }
 
+  // ========== SCANNING ==========
   startScanning() {
     if (this.isScanning) return;
     this.isScanning = true;
@@ -185,6 +214,7 @@ class QtumScanner extends EventTarget {
     }
   }
 
+  // ========== SCAN HANDLING ==========
   async handleScan(text) {
     if (!text) return;
     
@@ -192,41 +222,49 @@ class QtumScanner extends EventTarget {
     if (this.payloadDiv) this.payloadDiv.textContent = text;
     if (this.preview) this.preview.style.display = 'none';
 
+    this.totalScans++;
+
     // Visual feedback
     if (this.indicator) {
-      this.indicator.style.background = '#4af';
+      this.indicator.classList.add('active');
       setTimeout(() => {
-        if (this.indicator) this.indicator.style.background = '#1f2c3d';
-      }, 300);
+        if (this.indicator) this.indicator.classList.remove('active');
+      }, 500);
     }
 
     try {
+      // Use QAI for processing
       const report = await this.qai.process(text);
       const clean = report.moderation.allow;
       const tag = clean ? 'SCAN' : 'FLAGGED';
       
+      if (!clean) this.flaggedItems++;
+      
+      // Add to ledger with AI report
       this.ledger.addEntry(text, tag, report);
       
-      this.emit('scan', { 
-        text, 
-        clean, 
-        tag, 
-        report,
-        timestamp: Date.now() 
-      });
+      this.setStatus(
+        clean ? `✅ Scanned (clean) - #${this.totalScans}` : `⚠️ Scanned (flagged) - #${this.totalScans}`, 
+        clean ? 'success' : 'warning'
+      );
       
-      this.emit('status', { 
-        message: clean ? '✅ Scanned (clean)' : '⚠️ Scanned (flagged)', 
-        type: clean ? 'success' : 'warning' 
-      });
+      // Update ledger count
+      this.updateLedgerCount();
+      
+      // Emit scan event
+      this.dispatchEvent(new CustomEvent('scan', { 
+        detail: { text, clean, tag, report, total: this.totalScans }
+      }));
       
     } catch (err) {
       console.error('QAI error:', err);
       this.ledger.addEntry(text, 'SCAN');
-      this.emit('status', { message: 'QAI offline — scan logged', type: 'warning' });
+      this.setStatus('QAI offline — scan logged', 'warning');
+      this.updateLedgerCount();
     }
   }
 
+  // ========== IMAGE HANDLING ==========
   async handleUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -248,7 +286,8 @@ class QtumScanner extends EventTarget {
         };
 
         this.ledger.addEntry("[IMAGE]", "IMAGE", report);
-        this.emit('status', { message: "🖼 Image uploaded", type: 'success' });
+        this.setStatus("🖼 Image uploaded", 'success');
+        this.updateLedgerCount();
       };
       img.src = e.target.result;
     };
@@ -258,7 +297,7 @@ class QtumScanner extends EventTarget {
 
   async takePhoto() {
     if (!this.video || !this.video.videoWidth) {
-      this.emit('status', { message: '⚠️ Start camera first', type: 'warning' });
+      this.setStatus('⚠️ Start camera first', 'warning');
       return;
     }
 
@@ -280,21 +319,24 @@ class QtumScanner extends EventTarget {
     };
 
     this.ledger.addEntry("[SNAPSHOT]", "IMAGE", report);
-    this.emit('status', { message: "📸 Snapshot captured", type: 'success' });
+    this.setStatus("📸 Snapshot captured", 'success');
+    this.updateLedgerCount();
   }
 
+  // ========== SIGNAL ==========
   sendSignal(payload) {
     const signal = payload || this.currentPayload || ('SIGNAL_' + Date.now());
     
     if (Array.isArray(signal)) {
       this.ledger.addBatch(signal, 'SIGNAL');
-      this.emit('status', { message: `✦ ${signal.length} signals sent`, type: 'success' });
+      this.setStatus(`✦ ${signal.length} signals sent`, 'success');
       if (this.payloadDiv) this.payloadDiv.textContent = signal.join(', ');
+      this.updateLedgerCount();
       return;
     }
 
     this.ledger.addEntry(signal, 'SIGNAL');
-    this.emit('status', { message: '✦ Signal sent', type: 'success' });
+    this.setStatus('✦ Signal sent', 'success');
     if (this.payloadDiv) this.payloadDiv.textContent = signal;
 
     if (!this.currentPayload) this.currentPayload = signal;
@@ -306,20 +348,102 @@ class QtumScanner extends EventTarget {
         if (this.indicator) this.indicator.style.background = '#1f2c3d';
       }, 400);
     }
+    
+    this.updateLedgerCount();
 
-    this.emit('signal', { payload: signal, timestamp: Date.now() });
+    this.dispatchEvent(new CustomEvent('signal', { 
+      detail: { payload: signal, timestamp: Date.now() }
+    }));
   }
 
-  // Event emitter
-  emit(event, detail) {
-    this.dispatchEvent(new CustomEvent(event, { detail }));
+  // ========== LEDGER MANAGEMENT ==========
+  clearAll() {
+    if (confirm('Clear all ledger entries?')) {
+      this.ledger.clear();
+      this.totalScans = 0;
+      this.flaggedItems = 0;
+      this.updateLedgerCount();
+      this.setStatus('🗑️ Ledger cleared', 'info');
+    }
   }
 
-  // Cleanup
+  updateLedgerCount() {
+    const countEl = document.getElementById('ledgerCount');
+    if (countEl && this.ledger) {
+      const entries = this.ledger.getEntries();
+      countEl.textContent = `${entries.length} entries`;
+    }
+  }
+
+  // ========== EXPORT / IMPORT ==========
+  exportData() {
+    const entries = this.ledger.getEntries();
+    const data = {
+      version: '2.0',
+      timestamp: Date.now(),
+      totalScans: this.totalScans,
+      flaggedItems: this.flaggedItems,
+      ledger: entries,
+      qai: {
+        version: this.qai?.version || 'unknown',
+        ready: this.qai?.isReady() || false
+      }
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `qtum_log_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    this.setStatus('📤 Data exported', 'success');
+  }
+
+  importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.ledger && Array.isArray(data.ledger)) {
+          this.ledger.import(data.ledger);
+          this.totalScans = data.totalScans || data.ledger.length;
+          this.flaggedItems = data.flaggedItems || 0;
+          this.updateLedgerCount();
+          this.setStatus(`📥 Imported ${data.ledger.length} entries`, 'success');
+          
+          this.dispatchEvent(new CustomEvent('import', { 
+            detail: { count: data.ledger.length }
+          }));
+        } else {
+          throw new Error('Invalid data format');
+        }
+      } catch (error) {
+        this.setStatus(`❌ Import failed: ${error.message}`, 'error');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
+  // ========== UI HELPERS ==========
+  setStatus(text, cls = 'neutral') {
+    if (this.status) {
+      this.status.textContent = text;
+      this.status.className = cls;
+    }
+  }
+
+  // ========== CLEANUP ==========
   destroy() {
     this.stopCamera();
     this.stopScanning();
   }
 }
 
+// Export for use
 window.QtumScanner = QtumScanner;
