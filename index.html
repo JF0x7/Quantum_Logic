@@ -4,74 +4,82 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="Q.jpg">
-
-  <title>QTUM(LOG)</title>
+  <title>QTUM(LOG) v2.0</title>
 
   <!-- ZXing Library -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
-
+  
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
-  <div id="logoWrapper">
-    <a href="https://qtum-hub-4048d1.gitlab.io/" target="_blank">
-      <svg id="quantumLogo" viewBox="0 0 100 100">
-        <image href="Q.jpg" width="100" height="100" />
-      </svg>
-    </a>
-  </div>
+  <!-- Header -->
+  <header>
+    <div id="logoWrapper">
+      <a href="https://qtum-hub-4048d1.gitlab.io/" target="_blank">
+        <svg id="quantumLogo" viewBox="0 0 100 100">
+          <image href="Q.jpg" width="100" height="100" />
+        </svg>
+      </a>
+    </div>
+    <h1>QTUM(LOG)</h1>
+    <h2>Native Tools of Julius Hirsch • Verified by Jared Beler v2.0 • QAI v0.90</h2>
+  </header>
 
-  <h1>QTUM(LOG)</h1>
-  <h2>Native Tools of Julius Hirsch • Verified by Jared Beler v1.10777 • QAI v0.90</h2>
+  <!-- Main Scanner Interface -->
+  <main>
+    <div id="scannerShell">
+      <div id="videoWrapper">
+        <video id="video" autoplay playsinline></video>
+        <img id="photoPreview" alt="preview" style="display:none;">
+        <div id="scanIndicator"></div>
+      </div>
 
-  <div id="scannerShell">
-    <div id="videoWrapper">
-      <video id="video" autoplay playsinline></video>
-      <img id="photoPreview" alt="preview">
+      <div id="controls">
+        <button id="startBtn" class="primary">▶ Camera</button>
+        <button id="flipBtn" class="secondary">⟳ Flip</button>
+        <button id="uploadBtn" class="secondary">⬆ Upload</button>
+        <button id="photoBtn" class="secondary">📸 Snap</button>
+        <button id="sendBtn" class="primary">✦ Signal</button>
+        <button id="clearBtn" class="danger">✕ Clear</button>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+      </div>
+
+      <div id="output">
+        <div id="status" class="neutral">⚡ QAI ⏻ ready</div>
+        <div id="payload"></div>
+      </div>
     </div>
 
-    <div id="controls">
-      <button id="startBtn">▶ Camera</button>
-      <button id="flipBtn" class="secondary">⟳ Flip</button>
-      <button id="uploadBtn" class="secondary">⬆ Upload</button>
-      <button id="sendBtn" class="secondary">✦ Signal</button>
-      <button id="photoBtn">📸 Snap</button>
-      <button id="resetLedgerBtn" class="secondary">✕ Reset</button>
-      <input type="file" id="fileInput" accept="image/*" hidden>
-    </div>
+    <!-- Ledger Sidebar -->
+    <aside id="ledgerShell">
+      <div id="ledgerHeader">
+        <span id="ledgerTitle">⏺ Scan Ledger</span>
+        <span id="ledgerCount">0 entries</span>
+      </div>
+      <div id="ledger"></div>
+    </aside>
+  </main>
 
-    <div id="scanIndicator"></div>
-
-    <div id="output">
-      <div id="status" class="neutral">QAI ⏻ ready</div>
-      <div id="payload"></div>
-    </div>
-  </div>
-
-  <div id="ledgerShell">
-    <div id="ledgerTitle">⏺ Scan Ledger</div>
-    <div id="ledger"></div>
-  </div>
-
-  <!-- Correct load order: QAI → Ledger → Scanner -->
+  <!-- Scripts in correct order -->
   <script type="module" src="Qai.js"></script>
   <script src="ledger.js"></script>
   <script src="scanner.js"></script>
+  <script src="mastermind.js"></script>
 
   <!-- Initialization -->
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const qai = new Qai();
-      const ledger = new QuantumLedger('ledger');
-      const scanner = new QtumScanner(qai, ledger);
-
-      window.__qai = qai;
-      window.__ledger = ledger;
-      window.__scanner = scanner;
-
-      console.log('QTUM(LOG) v1.10777 initialized with QAI v0.90');
+    document.addEventListener('DOMContentLoaded', function() {
+      // Wait for all scripts to load
+      setTimeout(() => {
+        if (typeof Mastermind !== 'undefined') {
+          window.mastermind = new Mastermind();
+          console.log('🚀 QTUM(LOG) v2.0 initialized');
+        } else {
+          console.error('❌ Mastermind failed to load');
+        }
+      }, 100);
     });
   </script>
 </body>
