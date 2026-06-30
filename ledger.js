@@ -1,16 +1,16 @@
 /**
- * QuantumLedger v1.0 - Secure transaction ledger with events
+ * QuantumLedger v1.0 - Secure transaction ledger
  */
 
-class QuantumLedger {
+class QuantumLedger extends EventTarget {
   constructor(containerId) {
+    super();
     this.container = document.getElementById(containerId);
     this.entries = [];
-    this.eventBus = new EventTarget();
     this.maxEntries = 1000;
     this.loadFromStorage();
     
-    // Auto-save on update
+    // Auto-save and render on update
     this.addEventListener('update', () => {
       this.saveToStorage();
       this.render();
@@ -34,7 +34,9 @@ class QuantumLedger {
       this.entries = this.entries.slice(0, this.maxEntries);
     }
 
-    this.emit('update', { entry, total: this.entries.length });
+    this.dispatchEvent(new CustomEvent('update', { 
+      detail: { entry, total: this.entries.length }
+    }));
     return entry;
   }
 
@@ -43,7 +45,9 @@ class QuantumLedger {
     items.forEach(item => {
       results.push(this.addEntry(item, tag));
     });
-    this.emit('batch', { items: results, count: results.length });
+    this.dispatchEvent(new CustomEvent('batch', { 
+      detail: { items: results, count: results.length }
+    }));
     return results;
   }
 
@@ -53,7 +57,7 @@ class QuantumLedger {
 
   clear() {
     this.entries = [];
-    this.emit('clear', { timestamp: Date.now() });
+    this.dispatchEvent(new CustomEvent('clear', { timestamp: Date.now() }));
     this.saveToStorage();
     this.render();
   }
@@ -79,10 +83,14 @@ class QuantumLedger {
                    entry.data.slice(0, 50) : 
                    JSON.stringify(entry.data).slice(0, 50);
       
+      // Add AI analysis indicator if available
+      const aiBadge = entry.report?.moderation ? 
+        `<span class="ai-badge">🧠</span>` : '';
+      
       html += `
         <div class="ledger-entry" data-id="${entry.id}">
           <div class="ledger-index">#${this.entries.length - index}</div>
-          <div class="ledger-data">${this.escapeHtml(data)}</div>
+          <div class="ledger-data">${this.escapeHtml(data)} ${aiBadge}</div>
           <div class="ledger-tag ${tagClass}">${entry.tag}</div>
           <div class="ledger-time">${time}</div>
         </div>
@@ -97,7 +105,6 @@ class QuantumLedger {
   }
 
   generateHash(data) {
-    // Simple hash function
     let hash = 0;
     for (let i = 0; i < data.length; i++) {
       const char = data.charCodeAt(i);
@@ -145,21 +152,10 @@ class QuantumLedger {
       this.entries = entries;
       this.render();
       this.saveToStorage();
-      this.emit('import', { count: entries.length });
+      this.dispatchEvent(new CustomEvent('import', { 
+        detail: { count: entries.length }
+      }));
     }
-  }
-
-  // Event system
-  emit(event, detail) {
-    this.eventBus.dispatchEvent(new CustomEvent(event, { detail }));
-  }
-
-  addEventListener(event, callback) {
-    this.eventBus.addEventListener(event, callback);
-  }
-
-  removeEventListener(event, callback) {
-    this.eventBus.removeEventListener(event, callback);
   }
 }
 
