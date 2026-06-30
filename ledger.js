@@ -1,5 +1,5 @@
 // -----------------------------------------------------
-//       Ledger version 3.2 — QAI Personality Edition
+//       Ledger version 3.3 — Single-entry, QAI-aware
 // -----------------------------------------------------
 class QuantumLedger {
   constructor(containerId = "ledger") {
@@ -124,9 +124,9 @@ class QuantumLedger {
   }
 
   // -----------------------------------------------------
-  // 🧾 LEDGER ENTRY
+  // 🧾 SINGLE LEDGER ENTRY PER SCAN (QAI-aware)
   // -----------------------------------------------------
-  addEntry(payload, tag = "SCAN") {
+  addEntry(payload, tag = "SCAN", qaiReport = null) {
     if (!this.container) return;
 
     const meta = this.analyzePayload(payload);
@@ -158,10 +158,10 @@ class QuantumLedger {
       previewEl.className = "ledger-meta";
 
       const preview =
-        decrypt.json ? JSON.stringify(decrypt.json).slice(0, 120) :
-        decrypt.base64 ? decrypt.base64.slice(0, 120) :
-        decrypt.hex ? decrypt.hex.slice(0, 120) :
-        decrypt.rot13 ? decrypt.rot13.slice(0, 120) :
+        decrypt.json ? JSON.stringify(decrypt.json).slice(0, 160) :
+        decrypt.base64 ? decrypt.base64.slice(0, 160) :
+        decrypt.hex ? decrypt.hex.slice(0, 160) :
+        decrypt.rot13 ? decrypt.rot13.slice(0, 160) :
         decrypt.url ? decrypt.url :
         "unknown";
 
@@ -171,15 +171,32 @@ class QuantumLedger {
     }
 
     // -----------------------------------------------------
-    // ⭐ QAI PERSONALITY NOTE SUPPORT
+    // ⭐ QAI REPORT BLOCK (item type + vibe + verdict)
     // -----------------------------------------------------
-    if (payload.startsWith("QAI_NOTE:")) {
-      const noteEl = document.createElement("div");
-      noteEl.className = "ledger-qai-note";
-      noteEl.textContent = payload.replace("QAI_NOTE:", "");
+    if (qaiReport) {
+      const qMeta = document.createElement("div");
+      qMeta.className = "ledger-meta";
 
-      item.dataset.classification = "qai-personality";
-      item.appendChild(noteEl);
+      const m = qaiReport.moderation;
+      const itemType = qaiReport.itemType || "unknown artifact";
+      const vibe = qaiReport.vibe || "";
+      const response = qaiReport.response || "";
+
+      qMeta.innerHTML =
+        `<span><strong>QAI Item Guess:</strong> ${itemType}</span>` +
+        `<span><strong>QAI Verdict:</strong> ${m.verdict} (entropy ${m.entropy})</span>` +
+        (m.flags.length
+          ? `<span><strong>QAI Flags:</strong> ${m.flags.join(", ")}</span>`
+          : "") +
+        (vibe
+          ? `<span><strong>QAI Vibe:</strong> ${vibe}</span>`
+          : "") +
+        (response
+          ? `<span><strong>QAI Response:</strong> ${response}</span>`
+          : "");
+
+      item.dataset.classification = "qai-annotated";
+      item.appendChild(qMeta);
     }
 
     // Footer block
