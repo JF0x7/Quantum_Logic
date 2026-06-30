@@ -175,10 +175,43 @@ class QuantumLedger {
   // -------------------------------------------------------------
   // AZTEC DECODE (stub)
   // -------------------------------------------------------------
-  aztecDecode(str) {
-    console.warn("Aztec decode requires ZXing or similar. Stub returning n/a.");
-    return "n/a";
+  async aztecDecode(str) {
+  try {
+    // Convert string → binary image using ZXing's BinaryBitmap + HybridBinarizer
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.AZTEC]);
+
+    const reader = new ZXing.AztecReader();
+
+    // ZXing expects a luminance source, so we convert the string into a QR-like image
+    // by drawing it onto a canvas first.
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    // Render the Aztec code into a canvas using a temporary QR generator
+    // (ZXing cannot decode raw text; it needs an image)
+    const temp = new QRious({
+      value: str,
+      size: 400,
+      level: "H"
+    });
+
+    canvas.width = 400;
+    canvas.height = 400;
+    ctx.drawImage(temp.image, 0, 0);
+
+    const luminance = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+    const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
+
+    const result = reader.decode(bitmap, hints);
+    return result.getText();
+
+  } catch (err) {
+    console.warn("Aztec decode failed:", err);
+    return "Aztec decode failed";
   }
+}
 
   // -------------------------------------------------------------
   // MULTI SIGNAL TYPE DETECTION (2+ types)
