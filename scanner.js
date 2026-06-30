@@ -1,92 +1,34 @@
-/* 
-  QtumScanner v4.0 — Vision-enabled, HF-powered, Memory-aware
-  Requires QAI v0.70+ (browser HF + memory mode)
-*/
+/**
+ * QtumScanner v2.0 - Vision-enabled scanner with event system
+ */
 
-import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
-
-// Import ZXing library
-const ZXingScript = document.createElement('script');
-ZXingScript.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js';
-document.head.appendChild(ZXingScript);
-
-class QtumScanner {
-  constructor(qai, ledger) {
+class QtumScanner extends EventTarget {
+  constructor(qai, ledger, mastermind) {
+    super();
     this.qai = qai;
     this.ledger = ledger;
+    this.mastermind = mastermind;
 
-    // DOM elements with fallbacks
-    this.video = document.getElementById('video') || this.createFallbackElement('video');
+    // DOM Elements
+    this.video = document.getElementById('video');
     this.canvas = document.createElement('canvas');
     this.ctx = this.canvas.getContext('2d');
-    this.preview = document.getElementById('photoPreview') || this.createFallbackElement('img');
-    this.status = document.getElementById('status') || this.createFallbackElement('div');
-    this.payloadDiv = document.getElementById('payload') || this.createFallbackElement('div');
-    this.indicator = document.getElementById('scanIndicator') || this.createFallbackElement('div');
+    this.preview = document.getElementById('photoPreview');
+    this.status = document.getElementById('status');
+    this.payloadDiv = document.getElementById('payload');
+    this.indicator = document.getElementById('scanIndicator');
 
+    // State
     this.currentPayload = '';
     this.codeReader = null;
     this.cameraId = null;
     this.stream = null;
     this.isScanning = false;
     this.isProcessing = false;
-    this.scanTimeout = null;
 
-    // HF vision pipelines
-    this.visionReady = this.initVision();
-    this.imageClassifier = null;
-    this.imageEmbedder = null;
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => this.bindEvents());
-    } else {
-      this.bindEvents();
-    }
-  }
-
-  createFallbackElement(type) {
-    const el = document.createElement(type === 'video' ? 'video' : 
-                                  type === 'img' ? 'img' : 'div');
-    el.id = type + '_fallback';
-    if (type === 'video') {
-      el.style.display = 'none';
-      document.body.appendChild(el);
-    } else if (type === 'img') {
-      el.style.display = 'none';
-      document.body.appendChild(el);
-    } else {
-      el.style.display = 'none';
-      document.body.appendChild(el);
-    }
-    return el;
-  }
-
-  async initVision() {
-    try {
-      this.imageClassifier = await pipeline("image-classification", {
-        model: "google/vit-base-patch16-224",
-        quantized: true
-      });
-
-      this.imageEmbedder = await pipeline("feature-extraction", {
-        model: "google/vit-base-patch16-224",
-        quantized: true
-      });
-
-      console.log("Scanner: HF vision pipelines ready.");
-    } catch (err) {
-      console.error("Scanner: HF vision init failed:", err);
-      this.imageClassifier = null;
-      this.imageEmbedder = null;
-    }
-  }
-
-  setStatus(text, cls = '') {
-    if (this.status) {
-      this.status.textContent = text;
-      this.status.className = cls || 'neutral';
-    }
-    console.log('Status:', text);
+    // Initialize
+    this.bindEvents();
+    console.log('📷 Scanner initialized');
   }
 
   bindEvents() {
@@ -96,41 +38,46 @@ class QtumScanner {
     const fileInput = document.getElementById('fileInput');
     const photoBtn = document.getElementById('photoBtn');
     const sendBtn = document.getElementById('sendBtn');
-    const resetBtn = document.getElementById('resetLedgerBtn');
+    const clearBtn = document.getElementById('clearBtn');
 
-    if (startBtn) startBtn.addEventListener('click', () => this.startCamera());
+    if (startBtn) startBtn.addEventListener('click', () => this.toggleCamera());
     if (flipBtn) flipBtn.addEventListener('click', () => this.flipCamera());
-    if (uploadBtn) uploadBtn.addEventListener('click', () => {
-      if (fileInput) fileInput.click();
-    });
+    if (uploadBtn) uploadBtn.addEventListener('click', () => fileInput?.click());
     if (fileInput) fileInput.addEventListener('change', (e) => this.handleUpload(e));
     if (photoBtn) photoBtn.addEventListener('click', () => this.takePhoto());
     if (sendBtn) sendBtn.addEventListener('click', () => this.sendSignal());
-    if (resetBtn) resetBtn.addEventListener('click', () => location.reload());
+    if (clearBtn) clearBtn.addEventListener('click', () => this.mastermind?.clearAll());
 
     if (this.preview) {
       this.preview.addEventListener('click', () => {
         this.preview.style.display = 'none';
-        this.setStatus('QAI ⏻ ready', 'neutral');
+        this.emit('status', { message: 'Ready', type: 'neutral' });
       });
     }
 
-    console.log('QtumScanner events bound');
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && this.currentPayload) {
+        this.sendSignal();
+      }
+    });
+  }
+
+  async toggleCamera() {
+    if (this.stream) {
+      await this.stopCamera();
+    } else {
+      await this.startCamera();
+    }
   }
 
   async startCamera() {
     try {
-      this.setStatus('⏳ Starting camera...', 'status-warning');
+      this.emit('status', { message: '⏳ Starting camera...', type: 'warning' });
 
-      // Stop any existing stream
       if (this.stream) {
         this.stream.getTracks().forEach(t => t.stop());
         this.stream = null;
-      }
-
-      // Stop scanning if active
-      if (this.isScanning) {
-        this.stopScanning();
       }
 
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -142,7 +89,9 @@ class QtumScanner {
       const constraints = {
         video: {
           deviceId: { exact: this.cameraId },
-          facingMode: 'environment'
+          facingMode: 'environment',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
         }
       };
 
@@ -152,12 +101,31 @@ class QtumScanner {
         await this.video.play();
       }
 
-      this.setStatus('📷 Camera ready - scanning...', 'status-success');
+      this.emit('status', { message: '📷 Camera ready - scanning...', type: 'success' });
       this.startScanning();
+      
+      // Update button
+      const startBtn = document.getElementById('startBtn');
+      if (startBtn) startBtn.textContent = '⏹ Stop';
+      
     } catch (err) {
-      this.setStatus('❌ Camera error: ' + err.message, 'status-error');
-      console.error('Camera error:', err);
+      this.emit('error', err);
+      this.emit('status', { message: `❌ Camera error: ${err.message}`, type: 'error' });
     }
+  }
+
+  async stopCamera() {
+    if (this.stream) {
+      this.stream.getTracks().forEach(t => t.stop());
+      this.stream = null;
+    }
+    this.stopScanning();
+    if (this.video) this.video.srcObject = null;
+    
+    const startBtn = document.getElementById('startBtn');
+    if (startBtn) startBtn.textContent = '▶ Camera';
+    
+    this.emit('status', { message: 'Camera stopped', type: 'info' });
   }
 
   async flipCamera() {
@@ -165,15 +133,16 @@ class QtumScanner {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cameras = devices.filter(d => d.kind === 'videoinput');
       if (cameras.length < 2) {
-        this.setStatus('⚠️ Only one camera available', 'status-warning');
+        this.emit('status', { message: '⚠️ Only one camera available', type: 'warning' });
         return;
       }
       const currentIdx = cameras.findIndex(d => d.deviceId === this.cameraId);
       const nextIdx = (currentIdx + 1) % cameras.length;
       this.cameraId = cameras[nextIdx].deviceId;
+      await this.stopCamera();
       await this.startCamera();
     } catch (err) {
-      this.setStatus('❌ Flip failed: ' + err.message, 'status-error');
+      this.emit('error', err);
     }
   }
 
@@ -182,35 +151,26 @@ class QtumScanner {
     this.isScanning = true;
 
     try {
-      // Check if ZXing is available
       if (typeof ZXing === 'undefined') {
-        console.warn('ZXing not loaded yet, retrying...');
+        console.warn('ZXing not loaded, retrying...');
         setTimeout(() => this.startScanning(), 1000);
         return;
       }
 
       this.codeReader = new ZXing.BrowserMultiFormatReader();
-      this.codeReader.decodeFromVideoDevice(this.cameraId, this.video, async (result, err) => {
-        if (result && !this.isProcessing && this.isScanning) {
-          this.isProcessing = true;
-          await this.handleScan(result.text);
-          if (this.indicator) {
-            this.indicator.style.background = '#4af';
-            setTimeout(() => {
-              if (this.indicator) this.indicator.style.background = '#1f2c3d';
-              this.isProcessing = false;
-            }, 300);
+      this.codeReader.decodeFromVideoDevice(
+        this.cameraId, 
+        this.video, 
+        async (result, err) => {
+          if (result && !this.isProcessing && this.isScanning) {
+            this.isProcessing = true;
+            await this.handleScan(result.text);
+            this.isProcessing = false;
           }
         }
-        if (err &&
-          !(err instanceof ZXing.NotFoundException) &&
-          !(err instanceof ZXing.ChecksumException)) {
-          console.warn('Scan error:', err);
-        }
-      });
+      );
     } catch (err) {
-      console.error('Scanning init error:', err);
-      this.setStatus('❌ Scanner error: ' + err.message, 'status-error');
+      console.error('Scanning error:', err);
       this.isScanning = false;
     }
   }
@@ -220,69 +180,51 @@ class QtumScanner {
     if (this.codeReader) {
       try {
         this.codeReader.reset();
-      } catch (e) {
-        console.warn('Error resetting reader:', e);
-      }
+      } catch (e) {}
       this.codeReader = null;
     }
-    if (this.scanTimeout) {
-      clearTimeout(this.scanTimeout);
-      this.scanTimeout = null;
-    }
-  }
-
-  async analyzeImage(img) {
-    await this.visionReady;
-
-    let classification = null;
-    let embedding = null;
-
-    try {
-      if (this.imageClassifier) {
-        const out = await this.imageClassifier(img);
-        classification = out[0];
-      }
-    } catch (err) {
-      console.warn("Image classification failed:", err);
-    }
-
-    try {
-      if (this.imageEmbedder) {
-        const out = await this.imageEmbedder(img);
-        embedding = out[0];
-      }
-    } catch (err) {
-      console.warn("Image embedding failed:", err);
-    }
-
-    return { classification, embedding };
   }
 
   async handleScan(text) {
     if (!text) return;
-
+    
     this.currentPayload = text;
     if (this.payloadDiv) this.payloadDiv.textContent = text;
     if (this.preview) this.preview.style.display = 'none';
 
-    try {
-      const report = await this.qai.process(text);
-      console.log('QAI report:', report);
-
-      const clean = report.moderation.allow;
-      const tag = clean ? 'SCAN' : 'FLAGGED';
-      const statusText = clean ? '✅ Scanned (clean)' : '⚠️ Scanned (flagged)';
-      const statusClass = clean ? 'status-success' : 'status-warning';
-
-      this.ledger.addEntry(text, tag, report);
-      this.setStatus(statusText, statusClass);
-    } catch (err) {
-      console.error('QAI processing error:', err);
-      this.ledger.addEntry(text, 'SCAN');
-      this.setStatus('QAI offline — scan logged', 'status-warning');
+    // Visual feedback
+    if (this.indicator) {
+      this.indicator.style.background = '#4af';
+      setTimeout(() => {
+        if (this.indicator) this.indicator.style.background = '#1f2c3d';
+      }, 300);
     }
 
-    console.log('Scanned:', text);
+    try {
+      const report = await this.qai.process(text);
+      const clean = report.moderation.allow;
+      const tag = clean ? 'SCAN' : 'FLAGGED';
+      
+      this.ledger.addEntry(text, tag, report);
+      
+      this.emit('scan', { 
+        text, 
+        clean, 
+        tag, 
+        report,
+        timestamp: Date.now() 
+      });
+      
+      this.emit('status', { 
+        message: clean ? '✅ Scanned (clean)' : '⚠️ Scanned (flagged)', 
+        type: clean ? 'success' : 'warning' 
+      });
+      
+    } catch (err) {
+      console.error('QAI error:', err);
+      this.ledger.addEntry(text, 'SCAN');
+      this.emit('status', { message: 'QAI offline — scan logged', type: 'warning' });
+    }
   }
 
   async handleUpload(event) {
@@ -298,19 +240,15 @@ class QtumScanner {
           this.preview.style.display = 'block';
         }
 
-        const vision = await this.analyzeImage(img);
-
         const report = {
           original: "[IMAGE UPLOAD]",
-          vision,
           moderation: { allow: true, verdict: "image", flags: [], entropy: 0 },
           itemType: "image artifact",
-          vibe: "QAI: Image processed.",
-          response: "QAI: Image classified."
+          timestamp: Date.now()
         };
 
         this.ledger.addEntry("[IMAGE]", "IMAGE", report);
-        this.setStatus("🖼 Image analyzed", "status-success");
+        this.emit('status', { message: "🖼 Image uploaded", type: 'success' });
       };
       img.src = e.target.result;
     };
@@ -320,7 +258,7 @@ class QtumScanner {
 
   async takePhoto() {
     if (!this.video || !this.video.videoWidth) {
-      this.setStatus('⚠️ Start camera first', 'status-warning');
+      this.emit('status', { message: '⚠️ Start camera first', type: 'warning' });
       return;
     }
 
@@ -333,44 +271,35 @@ class QtumScanner {
       this.preview.src = dataUrl;
       this.preview.style.display = 'block';
     }
-    this.setStatus('📸 Photo captured', 'status-success');
 
-    const img = new Image();
-    img.onload = async () => {
-      const vision = await this.analyzeImage(img);
-
-      const report = {
-        original: "[SNAPSHOT]",
-        vision,
-        moderation: { allow: true, verdict: "image", flags: [], entropy: 0 },
-        itemType: "snapshot artifact",
-        vibe: "QAI: Snapshot processed.",
-        response: "QAI: Snapshot classified."
-      };
-
-      this.ledger.addEntry("[SNAPSHOT]", "IMAGE", report);
-      this.setStatus("📸 Snapshot analyzed", "status-success");
+    const report = {
+      original: "[SNAPSHOT]",
+      moderation: { allow: true, verdict: "image", flags: [], entropy: 0 },
+      itemType: "snapshot artifact",
+      timestamp: Date.now()
     };
-    img.src = dataUrl;
+
+    this.ledger.addEntry("[SNAPSHOT]", "IMAGE", report);
+    this.emit('status', { message: "📸 Snapshot captured", type: 'success' });
   }
 
-  sendSignal(payloadOverride) {
-    if (Array.isArray(payloadOverride)) {
-      this.ledger.addBatch(payloadOverride, 'SIGNAL');
-      this.setStatus('✦ Multi‑signal dispatched', 'status-success');
-      if (this.payloadDiv) this.payloadDiv.textContent = payloadOverride.join(', ');
+  sendSignal(payload) {
+    const signal = payload || this.currentPayload || ('SIGNAL_' + Date.now());
+    
+    if (Array.isArray(signal)) {
+      this.ledger.addBatch(signal, 'SIGNAL');
+      this.emit('status', { message: `✦ ${signal.length} signals sent`, type: 'success' });
+      if (this.payloadDiv) this.payloadDiv.textContent = signal.join(', ');
       return;
     }
 
-    const payload =
-      payloadOverride ||
-      this.currentPayload ||
-      ('VOID_SIGNAL_' + Date.now());
+    this.ledger.addEntry(signal, 'SIGNAL');
+    this.emit('status', { message: '✦ Signal sent', type: 'success' });
+    if (this.payloadDiv) this.payloadDiv.textContent = signal;
 
-    this.ledger.addEntry(payload, 'SIGNAL');
-    this.setStatus('✦ Signal sent', 'status-success');
-    if (this.payloadDiv) this.payloadDiv.textContent = payload;
+    if (!this.currentPayload) this.currentPayload = signal;
 
+    // Visual feedback
     if (this.indicator) {
       this.indicator.style.background = '#f0a';
       setTimeout(() => {
@@ -378,21 +307,18 @@ class QtumScanner {
       }, 400);
     }
 
-    if (!this.currentPayload) this.currentPayload = payload;
-
-    console.log('Signal sent:', payload);
+    this.emit('signal', { payload: signal, timestamp: Date.now() });
   }
 
-  // Cleanup method to prevent memory leaks
+  // Event emitter
+  emit(event, detail) {
+    this.dispatchEvent(new CustomEvent(event, { detail }));
+  }
+
+  // Cleanup
   destroy() {
+    this.stopCamera();
     this.stopScanning();
-    if (this.stream) {
-      this.stream.getTracks().forEach(t => t.stop());
-      this.stream = null;
-    }
-    if (this.video) {
-      this.video.srcObject = null;
-    }
   }
 }
 
