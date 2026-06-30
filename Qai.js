@@ -1,4 +1,4 @@
-// QAI v0.30 — Internet-enabled moderator / encryptor / decryptor / chill buddy
+// QAI v0.31 — Internet-enabled moderator / decryptor / encryptor / personality engine
 class Qai {
   constructor() {
     this.name = "QAI";
@@ -141,18 +141,14 @@ class Qai {
   decrypt(payload) {
     const results = {
       base64: null,
-      rot13: null,
       hex: null,
+      rot13: null,
+      json: null,
       success: false
     };
 
     try {
       results.base64 = atob(payload);
-      results.success = true;
-    } catch {}
-
-    try {
-      results.rot13 = this._rot13(payload);
       results.success = true;
     } catch {}
 
@@ -164,25 +160,50 @@ class Qai {
       }
     } catch {}
 
+    try {
+      results.rot13 = this._rot13(payload);
+      results.success = true;
+    } catch {}
+
+    try {
+      const candidate =
+        results.base64 ||
+        results.hex ||
+        results.rot13 ||
+        payload;
+
+      if (candidate.startsWith("{") || candidate.startsWith("[")) {
+        results.json = JSON.parse(candidate);
+        results.success = true;
+      }
+    } catch {}
+
     return results;
   }
 
   // -----------------------------------------------------
-  // 😎 CHILL BUDDY ENGINE
+  // 😎 PERSONALITY ENGINE (vibe + response)
   // -----------------------------------------------------
   vibe(payload) {
     const lines = [
-      "QAI online. Vibes stable.",
+      "QAI hums softly… this one feels good.",
       "Quantum breeze detected. Payload feels smooth.",
       "Processing with maximum chill.",
       "Your scan energy is immaculate.",
       "Signal absorbed. No turbulence.",
-      "QAI hums softly… this one feels good.",
+      "QAI online. Vibes stable.",
       "Payload resonates with cosmic harmony."
     ];
 
     const pick = lines[Math.floor(Math.random() * lines.length)];
     return `${pick} → "${payload}"`;
+  }
+
+  response(payload, report) {
+    if (!report.moderation.allow) {
+      return `QAI: That one felt spicy… I flagged it for safety.`;
+    }
+    return `QAI: Clean scan. Entropy ${report.moderation.entropy}. Smooth signal.`;
   }
 
   // -----------------------------------------------------
@@ -204,7 +225,8 @@ class Qai {
       encrypted,
       decrypted,
       web,
-      vibe: this.vibe(payload)
+      vibe: this.vibe(payload),
+      response: this.response(payload, { moderation })
     };
   }
 }
