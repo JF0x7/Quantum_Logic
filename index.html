@@ -55,15 +55,15 @@
     <div id="ledger"></div>
   </div>
 
-  <!-- Load order: QAI → Scanner → Ledger -->
+  <!-- Correct load order: QAI → Ledger → Scanner -->
   <script type="module" src="Qai.js"></script>
-  <script src="scanner.js"></script>
   <script src="ledger.js"></script>
+  <script src="scanner.js"></script>
 
   <!-- Initialization -->
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      const qai = new Qai(); 
+      const qai = new Qai();
       const ledger = new QuantumLedger('ledger');
       const scanner = new QtumScanner(qai, ledger);
 
@@ -71,7 +71,7 @@
       window.__ledger = ledger;
       window.__scanner = scanner;
 
-      console.log('QTUM(LOG) v1.107 initialized with QAI v0.90');
+      console.log('QTUM(LOG) v1.1077 initialized with QAI v0.90');
     });
   </script>
 </body>
