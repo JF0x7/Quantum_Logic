@@ -1,13 +1,11 @@
 // ============================================================================
-//  PREDECLARE AZTECDB (fixes QAI analysis failed)
+//  Qtum Aztec Ledger System (QAI‑AZTEC)
 // ============================================================================
 let AztecDB;
 
 
 // ============================================================================
-//  QUANTUM LEDGER  (TOP OF FILE)
-//  — Clean, modular, tweak‑friendly
-//  — Greeting Q‑Note included
+//  
 // ============================================================================
 
 class QuantumLedger {
@@ -281,7 +279,7 @@ class QuantumLedger {
 
 
     // ------------------------------------------------------------------------
-    //  Q‑NOTES (AUTO INTELLIGENCE + GREETING DETECTION)
+    //  Q‑NOTES (AUTO INTELLIGENCE + GREETING + REACTIONS)
     // ------------------------------------------------------------------------
     generateQNotes(str, classification, entropy) {
 
@@ -314,6 +312,16 @@ class QuantumLedger {
         if (/^[A-Za-z\s!?.]+$/.test(str) && str.length <= 20 && entropy < 3.5) {
             const pick = greetingOptions[Math.floor(Math.random() * greetingOptions.length)];
             notes.push(`AI interprets this as a greeting → ${pick}`);
+        }
+
+        // ---- Encryption Reaction (JEEEZ!) ----
+        if (str.length > 20 && entropy > 3.8) {
+            notes.push("Encryption reaction → JEEEZ!");
+        }
+
+        // ---- Aztec Reaction (SHeesh!) ----
+        if (str.includes("AZTEC") || str.includes("AZTEC_ENC")) {
+            notes.push("Aztec reaction → SHeesh!");
         }
 
         return notes.join(" ");
@@ -396,7 +404,14 @@ class QuantumLedger {
             <span><strong>SHA256 Full:</strong> ${shaFull}</span>
             <span><strong>Signal Types:</strong> ${meta.signalTypes}</span>
             <span><strong>Location:</strong> ${meta.signalLocation}</span>
+
             <span style="flex:1 1 100%"><strong>Q‑Notes:</strong> ${meta.qNotes}</span>
+
+            <span><strong>Greeting Decode:</strong> ${
+                meta.qNotes.includes("AI interprets this as a greeting")
+                    ? meta.qNotes.split("→")[1].trim()
+                    : "No Greeting Found, Hi anyway!"
+            }</span>
 
             ${extraMeta.type ? `<span><strong>QAI:</strong> ${extraMeta.type}</span>` : ""}
             ${extraMeta.pattern ? `<span><strong>Pattern:</strong> ${extraMeta.pattern}</span>` : ""}
@@ -442,6 +457,7 @@ class QuantumLedger {
 // ============================================================================
 //  AZTEC ENCRYPTION DATABASE (BOTTOM OF FILE)
 //  — Clean, modular, tweak‑friendly
+//  — SHeesh! reaction included
 // ============================================================================
 
 AztecDB = {
@@ -472,7 +488,8 @@ AztecDB = {
                 aztec: "[pending offline decode]",
                 rot13: null,
                 sha256: null,
-                altbash: null
+                altbash: null,
+                reaction: "SHeesh!"
             }
         }
     ],
@@ -481,7 +498,8 @@ AztecDB = {
 
         aztec: () => ({
             status: "offline",
-            message: "Aztec decode module placeholder. Insert ZXing or custom parser."
+            message: "Aztec decode module placeholder. Insert ZXing or custom parser.",
+            reaction: "SHeesh!"
         }),
 
         rot13: (str) =>
@@ -519,4 +537,4 @@ AztecDB = {
             }
         };
     }
-};
+  }
