@@ -1,5 +1,6 @@
 /**
- * QtumScanner v2.0 - Vision-enabled scanner with direct AI integration
+ * QtumScanner v3.0 - Rich Barcode Analyzer
+ * Displays 7-8 pieces of barcode info in ledger
  */
 
 class QtumScanner extends EventTarget {
@@ -26,12 +27,9 @@ class QtumScanner extends EventTarget {
     this.isScanning = false;
     this.isProcessing = false;
     this.totalScans = 0;
-    this.flaggedItems = 0;
 
-    // Initialize
     this.bindEvents();
-    this.setupExportImport();
-    console.log('📷 Scanner initialized');
+    console.log('📷 Scanner v3.0 initialized');
   }
 
   bindEvents() {
@@ -63,30 +61,11 @@ class QtumScanner extends EventTarget {
         this.setStatus('Ready', 'neutral');
       });
     }
-
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && this.currentPayload) {
-        this.sendSignal();
-      }
-      if (e.key === ' ' && e.target === document.body) {
-        e.preventDefault();
-        this.toggleCamera();
-      }
-    });
   }
 
-  setupExportImport() {
-    // Export/Import already bound in bindEvents
-  }
-
-  // ========== CAMERA CONTROLS ==========
+  // ===== CAMERA =====
   async toggleCamera() {
-    if (this.stream) {
-      await this.stopCamera();
-    } else {
-      await this.startCamera();
-    }
+    this.stream ? await this.stopCamera() : await this.startCamera();
   }
 
   async startCamera() {
@@ -119,18 +98,14 @@ class QtumScanner extends EventTarget {
         await this.video.play();
       }
 
-      // Show scan overlay
-      if (this.scanOverlay) {
-        this.scanOverlay.classList.add('active');
-      }
+      if (this.scanOverlay) this.scanOverlay.classList.add('active');
 
       this.setStatus('📷 Camera ready - scanning...', 'success');
       this.startScanning();
-      
-      // Update button
+
       const startBtn = document.getElementById('startBtn');
       if (startBtn) startBtn.textContent = '⏹ Stop';
-      
+
     } catch (err) {
       this.setStatus(`❌ Camera error: ${err.message}`, 'error');
       console.error('Camera error:', err);
@@ -144,15 +119,11 @@ class QtumScanner extends EventTarget {
     }
     this.stopScanning();
     if (this.video) this.video.srcObject = null;
-    
-    // Hide scan overlay
-    if (this.scanOverlay) {
-      this.scanOverlay.classList.remove('active');
-    }
-    
+    if (this.scanOverlay) this.scanOverlay.classList.remove('active');
+
     const startBtn = document.getElementById('startBtn');
     if (startBtn) startBtn.textContent = '▶ Camera';
-    
+
     this.setStatus('Camera stopped', 'info');
   }
 
@@ -174,22 +145,21 @@ class QtumScanner extends EventTarget {
     }
   }
 
-  // ========== SCANNING ==========
+  // ===== SCANNING =====
   startScanning() {
     if (this.isScanning) return;
     this.isScanning = true;
 
     try {
       if (typeof ZXing === 'undefined') {
-        console.warn('ZXing not loaded, retrying...');
         setTimeout(() => this.startScanning(), 1000);
         return;
       }
 
       this.codeReader = new ZXing.BrowserMultiFormatReader();
       this.codeReader.decodeFromVideoDevice(
-        this.cameraId, 
-        this.video, 
+        this.cameraId,
+        this.video,
         async (result, err) => {
           if (result && !this.isProcessing && this.isScanning) {
             this.isProcessing = true;
@@ -207,17 +177,15 @@ class QtumScanner extends EventTarget {
   stopScanning() {
     this.isScanning = false;
     if (this.codeReader) {
-      try {
-        this.codeReader.reset();
-      } catch (e) {}
+      try { this.codeReader.reset(); } catch (e) {}
       this.codeReader = null;
     }
   }
 
-  // ========== SCAN HANDLING ==========
+  // ===== SCAN HANDLING - RICH OUTPUT =====
   async handleScan(text) {
     if (!text) return;
-    
+
     this.currentPayload = text;
     if (this.payloadDiv) this.payloadDiv.textContent = text;
     if (this.preview) this.preview.style.display = 'none';
@@ -227,223 +195,106 @@ class QtumScanner extends EventTarget {
     // Visual feedback
     if (this.indicator) {
       this.indicator.classList.add('active');
-      setTimeout(() => {
-        if (this.indicator) this.indicator.classList.remove('active');
-      }, 500);
+      setTimeout(() => this.indicator.classList.remove('active'), 500);
     }
 
     try {
-      // Use QAI for processing
+      // Process with QAI - gets rich barcode analysis
       const report = await this.qai.process(text);
-      const clean = report.moderation.allow;
-      const tag = clean ? 'SCAN' : 'FLAGGED';
-      
-      if (!clean) this.flaggedItems++;
-      
-      // Add to ledger with AI report
-      this.ledger.addEntry(text, tag, report);
-      
-      this.setStatus(
-        clean ? `✅ Scanned (clean) - #${this.totalScans}` : `⚠️ Scanned (flagged) - #${this.totalScans}`, 
-        clean ? 'success' : 'warning'
-      );
-      
-      // Update ledger count
+
+      // Build rich entry with 8 pieces of info
+      const entry = this.buildRichEntry(text, report);
+
+      // Add to ledger with rich data
+      this.ledger.addEntry(entry, entry.tag, report);
+
+      // Update UI
+      this.setStatus(`✅ Scanned #${this.totalScans} - ${entry.barcodeType || 'Data'}`, 'success');
       this.updateLedgerCount();
-      
-      // Emit scan event
-      this.dispatchEvent(new CustomEvent('scan', { 
-        detail: { text, clean, tag, report, total: this.totalScans }
+
+      // Emit event
+      this.dispatchEvent(new CustomEvent('scan', {
+        detail: { text, report, entry, total: this.totalScans }
       }));
-      
+
     } catch (err) {
       console.error('QAI error:', err);
-      this.ledger.addEntry(text, 'SCAN');
+      // Fallback entry
+      const fallbackEntry = {
+        raw: text,
+        type: 'UNKNOWN',
+        tag: 'SCAN',
+        timestamp: Date.now(),
+        info: {
+          'Raw Data': text.slice(0, 50) + (text.length > 50 ? '...' : ''),
+          'Length': text.length,
+          'Type': 'Unknown',
+          'Valid': 'N/A',
+          'Confidence': 'Low',
+          'Status': 'Fallback Mode'
+        }
+      };
+      this.ledger.addEntry(fallbackEntry, 'SCAN');
       this.setStatus('QAI offline — scan logged', 'warning');
       this.updateLedgerCount();
     }
   }
 
-  // ========== IMAGE HANDLING ==========
-  async handleUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+  // ===== BUILD RICH ENTRY WITH 8 PIECES OF INFO =====
+  buildRichEntry(text, report) {
+    const now = new Date();
+    const barcode = report.barcode || {};
+    const patterns = report.patterns || {};
+    const moderation = report.moderation || {};
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = async () => {
-        if (this.preview) {
-          this.preview.src = e.target.result;
-          this.preview.style.display = 'block';
-        }
+    // Determine barcode type
+    let barcodeType = barcode.type || 'Unknown';
+    let barcodeValid = barcode.valid ? '✅ Valid' : '❌ Invalid';
+    let barcodeConfidence = barcode.confidence ? `${Math.round(barcode.confidence * 100)}%` : 'N/A';
 
-        const report = {
-          original: "[IMAGE UPLOAD]",
-          moderation: { allow: true, verdict: "image", flags: [], entropy: 0 },
-          itemType: "image artifact",
-          timestamp: Date.now()
-        };
+    // Pattern detection
+    let patternType = patterns.type || 'None';
+    let hasPattern = patterns.matched || false;
 
-        this.ledger.addEntry("[IMAGE]", "IMAGE", report);
-        this.setStatus("🖼 Image uploaded", 'success');
-        this.updateLedgerCount();
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-    event.target.value = '';
-  }
+    // Determine tag
+    let tag = 'SCAN';
+    if (barcode.valid) tag = 'BARCODE';
+    else if (hasPattern) tag = 'PATTERN';
+    if (!moderation.allow) tag = 'FLAGGED';
 
-  async takePhoto() {
-    if (!this.video || !this.video.videoWidth) {
-      this.setStatus('⚠️ Start camera first', 'warning');
-      return;
-    }
+    // Build rich entry with 8 pieces of info
+    return {
+      // 1. Raw Data
+      raw: text,
 
-    this.canvas.width = this.video.videoWidth;
-    this.canvas.height = this.video.videoHeight;
-    this.ctx.drawImage(this.video, 0, 0);
+      // 2. Barcode Type
+      barcodeType: barcodeType,
 
-    const dataUrl = this.canvas.toDataURL('image/jpeg');
-    if (this.preview) {
-      this.preview.src = dataUrl;
-      this.preview.style.display = 'block';
-    }
+      // 3. Validation Status
+      valid: barcodeValid,
 
-    const report = {
-      original: "[SNAPSHOT]",
-      moderation: { allow: true, verdict: "image", flags: [], entropy: 0 },
-      itemType: "snapshot artifact",
-      timestamp: Date.now()
-    };
+      // 4. Confidence Score
+      confidence: barcodeConfidence,
 
-    this.ledger.addEntry("[SNAPSHOT]", "IMAGE", report);
-    this.setStatus("📸 Snapshot captured", 'success');
-    this.updateLedgerCount();
-  }
+      // 5. Pattern Detected
+      pattern: patternType,
 
-  // ========== SIGNAL ==========
-  sendSignal(payload) {
-    const signal = payload || this.currentPayload || ('SIGNAL_' + Date.now());
-    
-    if (Array.isArray(signal)) {
-      this.ledger.addBatch(signal, 'SIGNAL');
-      this.setStatus(`✦ ${signal.length} signals sent`, 'success');
-      if (this.payloadDiv) this.payloadDiv.textContent = signal.join(', ');
-      this.updateLedgerCount();
-      return;
-    }
+      // 6. Content Moderation
+      status: moderation.allow ? 'Clean ✅' : 'Flagged ⚠️',
 
-    this.ledger.addEntry(signal, 'SIGNAL');
-    this.setStatus('✦ Signal sent', 'success');
-    if (this.payloadDiv) this.payloadDiv.textContent = signal;
+      // 7. Severity
+      severity: moderation.severity || 'Low',
 
-    if (!this.currentPayload) this.currentPayload = signal;
+      // 8. Length & Metadata
+      length: text.length,
+      timestamp: now.toLocaleString(),
+      tag: tag,
 
-    // Visual feedback
-    if (this.indicator) {
-      this.indicator.style.background = '#f0a';
-      setTimeout(() => {
-        if (this.indicator) this.indicator.style.background = '#1f2c3d';
-      }, 400);
-    }
-    
-    this.updateLedgerCount();
-
-    this.dispatchEvent(new CustomEvent('signal', { 
-      detail: { payload: signal, timestamp: Date.now() }
-    }));
-  }
-
-  // ========== LEDGER MANAGEMENT ==========
-  clearAll() {
-    if (confirm('Clear all ledger entries?')) {
-      this.ledger.clear();
-      this.totalScans = 0;
-      this.flaggedItems = 0;
-      this.updateLedgerCount();
-      this.setStatus('🗑️ Ledger cleared', 'info');
-    }
-  }
-
-  updateLedgerCount() {
-    const countEl = document.getElementById('ledgerCount');
-    if (countEl && this.ledger) {
-      const entries = this.ledger.getEntries();
-      countEl.textContent = `${entries.length} entries`;
-    }
-  }
-
-  // ========== EXPORT / IMPORT ==========
-  exportData() {
-    const entries = this.ledger.getEntries();
-    const data = {
-      version: '2.0',
-      timestamp: Date.now(),
-      totalScans: this.totalScans,
-      flaggedItems: this.flaggedItems,
-      ledger: entries,
-      qai: {
-        version: this.qai?.version || 'unknown',
-        ready: this.qai?.isReady() || false
-      }
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `qtum_log_${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    this.setStatus('📤 Data exported', 'success');
-  }
-
-  importData(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target.result);
-        if (data.ledger && Array.isArray(data.ledger)) {
-          this.ledger.import(data.ledger);
-          this.totalScans = data.totalScans || data.ledger.length;
-          this.flaggedItems = data.flaggedItems || 0;
-          this.updateLedgerCount();
-          this.setStatus(`📥 Imported ${data.ledger.length} entries`, 'success');
-          
-          this.dispatchEvent(new CustomEvent('import', { 
-            detail: { count: data.ledger.length }
-          }));
-        } else {
-          throw new Error('Invalid data format');
-        }
-      } catch (error) {
-        this.setStatus(`❌ Import failed: ${error.message}`, 'error');
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-  }
-
-  // ========== UI HELPERS ==========
-  setStatus(text, cls = 'neutral') {
-    if (this.status) {
-      this.status.textContent = text;
-      this.status.className = cls;
-    }
-  }
-
-  // ========== CLEANUP ==========
-  destroy() {
-    this.stopCamera();
-    this.stopScanning();
-  }
-}
-
-// Export for use
-window.QtumScanner = QtumScanner;
+      // Additional info object for display
+      info: {
+        'Barcode Type': barcodeType,
+        'Valid': barcodeValid,
+        'Confidence': barcodeConfidence,
+        'Pattern': patternType,
+        'Status': moderation.allow ? '✅ Clean' : '⚠️ Flagged',
+        'Severity': (moderation.severity || 'Low').
