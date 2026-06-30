@@ -13,6 +13,7 @@
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div id="logoWrapper">
     <a href="https://qtum-hub-4048d1.gitlab.io/" target="_blank">
@@ -23,7 +24,7 @@
   </div>
 
   <h1>QTUM(LOG)</h1>
-  <h2>Native Tools of Julius Hirsch • Verified by Jared Beler v1.107 • QAI v0.321</h2>
+  <h2>Native Tools of Julius Hirsch • Verified by Jared Beler v1.107 • QAI v0.40</h2>
 
   <div id="scannerShell">
     <div id="videoWrapper">
@@ -44,7 +45,7 @@
     <div id="scanIndicator"></div>
 
     <div id="output">
-      <div id="status" class="neutral">Qai ⏻ ready</div>
+      <div id="status" class="neutral">QAI ⏻ ready</div>
       <div id="payload"></div>
     </div>
   </div>
@@ -54,11 +55,12 @@
     <div id="ledger"></div>
   </div>
 
-  <!-- Scripts MUST load in this order -->
-  <script src="Qai.js"></script>       <!-- QAI FIRST -->
-  <script src="scanner.js"></script>   <!-- Scanner 2nd -->
-  <script src="ledger.js"></script>    <!-- Ledger third -->
-  
+  <!-- Load order: QAI → Scanner → Ledger -->
+  <script src="Qai.js"></script>
+  <script src="scanner.js"></script>
+  <script src="ledger.js"></script>
+
+  <!-- Initialization -->
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       const qai = new Qai(); 
@@ -68,9 +70,8 @@
       window.__qai = qai;
       window.__ledger = ledger;
       window.__scanner = scanner;
-      
 
-      console.log('QTUM(LOG) v1.107 initialized with QAI v0.321');
+      console.log('QTUM(LOG) v1.107 initialized with QAI v0.40');
     });
   </script>
 </body>
