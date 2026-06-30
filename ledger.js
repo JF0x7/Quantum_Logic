@@ -1,4 +1,10 @@
 // ============================================================================
+//  PREDECLARE AZTECDB (fixes QAI analysis failed)
+// ============================================================================
+let AztecDB;
+
+
+// ============================================================================
 //  QUANTUM LEDGER  (TOP OF FILE)
 //  — Clean, modular, tweak‑friendly
 //  — Greeting Q‑Note included
@@ -438,7 +444,7 @@ class QuantumLedger {
 //  — Clean, modular, tweak‑friendly
 // ============================================================================
 
-const AztecDB = {
+AztecDB = {
 
     meta: {
         version: "1.0",
