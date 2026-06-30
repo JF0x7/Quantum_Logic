@@ -2,117 +2,90 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" href="Q.jpg">
+  <title>QTUM(LOG) Scanner</title>
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QAI · Scanner</title>
-  
-  <!-- ZXing Library -->
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
-  
+
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
+
+  <!-- ZXing Barcode Scanner -->
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+
+  <!-- App Scripts -->
+  <script defer src="ledger.js"></script>
+  <script defer src="scanner.js"></script>
 </head>
+
 <body>
 
-  <!-- MINIMAL HEADER -->
-  <header>
-    <div class="logo">⏺</div>
-    <div>
-      <h1>qai<span style="color:var(--muted)">·scan</span></h1>
-      <div class="status-bar">
-        <span class="dot" id="aiDot"></span>
-        <span id="aiStatus">initializing</span>
-        <span class="divider">|</span>
-        <span id="scanCount">0</span>
-      </div>
-    </div>
-  </header>
+  <!-- QTUM Logo -->
+  <div id="logoWrapper">
+    <a href="https://qtum-hub-4048d1.gitlab.io/" target="_blank" id="qtumLink">
+      <svg
+        id="quantumLogo"
+        viewBox="0 0 100 100"
+        aria-label="Quantum Crest"
+        role="img"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <image
+          href="Q.jpg"
+          x="0"
+          y="0"
+          width="100"
+          height="100"
+          preserveAspectRatio="xMidYMid slice"
+        />
+      </svg>
+    </a>
+  </div>
 
-  <!-- MAIN - EYES (Scanner) -->
-  <main>
-    <div class="scanner-view">
-      <div class="viewport">
-        <video id="video" autoplay playsinline></video>
-        <img id="photoPreview" alt="preview" />
-        <div class="scan-frame" id="scanFrame">
-          <div class="corner tl"></div>
-          <div class="corner tr"></div>
-          <div class="corner bl"></div>
-          <div class="corner br"></div>
-          <div class="scan-line"></div>
-        </div>
-        <div id="scanIndicator"></div>
-      </div>
+  <h1>QTUM(LOG)</h1>
+  <h2>Native Tools of Julius Hirsch • Verified by Beler Industries</h2>
 
-      <div class="controls">
-        <button id="startBtn" class="primary">○</button>
-        <button id="flipBtn">↻</button>
-        <button id="photoBtn">◻</button>
-        <button id="uploadBtn">⌂</button>
-        <button id="sendBtn">✦</button>
-        <button id="clearBtn" class="danger">✕</button>
-        <input type="file" id="fileInput" accept="image/*" hidden />
-      </div>
+  <!-- Scanner Shell -->
+  <div id="scannerShell">
 
-      <div class="output">
-        <div id="payload"></div>
-        <div id="status">ready</div>
-      </div>
+    <!-- Live Camera Feed -->
+    <div id="videoWrapper">
+      <video id="video" autoplay playsinline></video>
     </div>
 
-    <!-- BODY (Ledger) -->
-    <div class="ledger-view">
-      <div class="ledger-header">
-        <span>ledger</span>
-        <span id="ledgerCount">0</span>
-        <div class="ledger-actions">
-          <button id="exportBtn" title="export">↓</button>
-          <button id="importBtn" title="import">↑</button>
-          <input type="file" id="importInput" accept=".json" hidden />
-        </div>
-      </div>
-      <div id="ledger"></div>
+    <!-- Hidden Canvas for Captures -->
+    <canvas id="canvas"></canvas>
+
+    <!-- Controls -->
+    <div id="controls" role="group" aria-label="Scanner Controls">
+      <button id="startBtn" type="button">Enable Camera</button>
+      <button id="flipBtn" type="button" class="secondary">Flip Camera</button>
+      <button id="uploadBtn" type="button" class="secondary">Upload Image</button>
+      <button id="sendBtn" type="button" class="secondary">Send Signal</button>
+      <button id="photoBtn" type="button">📸 Take Photo</button>
+      <button id="resetLedgerBtn" type="button" class="secondary">Reset Ledger</button>
+      <input type="file" id="fileInput" accept="image/*" hidden>
     </div>
-  </main>
 
-  <!-- SCRIPTS - Brain (QAI) → Eyes (Scanner) → Body (Ledger) -->
-  <script src="Qai.js"></script>
-  <script src="scanner.js"></script>
-  <script src="ledger.js"></script>
+    <!-- Photo Preview -->
+    <img id="photoPreview" alt="Captured Photo Preview">
 
-  <script>
-    // Initialize: Brain → Eyes → Body
-    document.addEventListener('DOMContentLoaded', () => {
-      const qai = new Qai();
-      const scanner = new QtumScanner(qai);
-      const ledger = new QuantumLedger('ledger', scanner);
+    <!-- Scan Indicator -->
+    <div id="scanIndicator" aria-label="Scan Status Indicator"></div>
 
-      // Connect scanner to ledger
-      scanner.setLedger(ledger);
+    <!-- Output -->
+    <div id="output">
+      <div id="status" class="neutral">Waiting for scan…</div>
+      <div id="payload"></div>
+    </div>
 
-      // Status updates
-      qai.addEventListener('ready', () => {
-        document.getElementById('aiDot').className = 'dot online';
-        document.getElementById('aiStatus').textContent = 'online';
-      });
+  </div>
 
-      qai.addEventListener('error', () => {
-        document.getElementById('aiDot').className = 'dot offline';
-        document.getElementById('aiStatus').textContent = 'fallback';
-      });
-
-      // Update scan count
-      scanner.addEventListener('scan', (e) => {
-        document.getElementById('scanCount').textContent = e.detail.total;
-      });
-
-      // Expose for debugging
-      window.__qai = qai;
-      window.__scanner = scanner;
-      window.__ledger = ledger;
-
-      console.log('⏺ QAI·Scanner ready');
-    });
-  </script>
+  <!-- Ledger -->
+  <div id="ledgerShell">
+    <div id="ledgerTitle">Scan Ledger</div>
+    <div id="ledger"></div>
+  </div>
 
 </body>
 </html>

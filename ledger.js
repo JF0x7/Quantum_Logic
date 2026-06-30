@@ -1,209 +1,119 @@
-/**
- * QuantumLedger v2.0 - Rich Barcode Display
- */
-
-class QuantumLedger extends EventTarget {
+class QuantumLedger {
   constructor(containerId) {
-    super();
     this.container = document.getElementById(containerId);
-    this.entries = [];
-    this.maxEntries = 500;
-    this.loadFromStorage();
-    
-    this.addEventListener('update', () => {
-      this.saveToStorage();
-      this.render();
-    });
+    if (!this.container) {
+      console.warn(`Ledger container #${containerId} not found.`);
+    }
   }
 
-  addEntry(data, tag = 'SCAN', report = null) {
-    // Handle rich entry objects
-    let entry;
-    if (typeof data === 'object' && data.raw) {
-      // Already a rich entry
-      entry = {
-        id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-        timestamp: Date.now(),
-        ...data,
-        tag: tag || data.tag || 'SCAN'
-      };
-    } else {
-      // Simple entry - convert to rich
-      entry = {
-        id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-        timestamp: Date.now(),
-        raw: data,
-        barcodeType: 'Unknown',
-        valid: 'N/A',
-        confidence: 'N/A',
-        pattern: 'None',
-        status: 'Clean',
-        severity: 'Low',
-        length: data.length,
-        timestamp: new Date().toLocaleString(),
-        tag: tag,
-        info: {
-          'Raw Data': data.slice(0, 50) + (data.length > 50 ? '...' : ''),
-          'Length': data.length,
-          'Type': 'Unknown',
-          'Valid': 'N/A',
-          'Confidence': 'N/A',
-          'Status': 'Clean',
-          'Severity': 'Low'
-        }
-      };
-    }
+  /**
+   * Safe payload analysis with precise heuristics
+   */
+  analyzePayload(payload) {
+    const trimmed = payload.trim();
+    const length = payload.length;
+    const entropy = this.calculateEntropy(payload);
 
-    this.entries.unshift(entry);
+    // Heuristics
+    const isURL = /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(trimmed);
+    const isJSON = this.tryParseJSON(trimmed);
+    const isHex = /^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0;
     
-    if (this.entries.length > this.maxEntries) {
-      this.entries = this.entries.slice(0, this.maxEntries);
-    }
+    // Stricter Base64 pattern requiring length to be a multiple of 4 and avoiding pure alphabet words
+    const isBase64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(trimmed) 
+                     && trimmed.length >= 4 
+                     && (/[+/=]/.test(trimmed) || entropy > 4.5);
 
-    this.dispatchEvent(new CustomEvent('update', { 
-      detail: { entry, total: this.entries.length }
-    }));
-    return entry;
+    let classification = "UNKNOWN SIGNAL";
+    if (isURL) classification = "URL";
+    else if (isJSON) classification = "JSON OBJECT";
+    else if (isHex) classification = "HEX STRING";
+    else if (isBase64) classification = "BASE64 ENCODED";
+    else if (length < 8) classification = "SHORT CODE";
+    else if (length > 80) classification = "LONG FORM DATA";
+
+    return { length, entropy, classification };
   }
 
-  getEntries() {
-    return this.entries;
+  calculateEntropy(str) {
+    if (!str) return "0.00";
+    const map = {};
+    for (const char of str) {
+      map[char] = (map[char] || 0) + 1;
+    }
+
+    let entropy = 0;
+    const len = str.length;
+    for (const char in map) {
+      const p = map[char] / len;
+      entropy -= p * Math.log2(p);
+    }
+    return entropy.toFixed(2);
+  }
+
+  tryParseJSON(str) {
+    if (!str.startsWith("{") && !str.startsWith("[")) return false;
+    try {
+      JSON.parse(str);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Appends an entry safely using DOM elements
+   */
+  addEntry(payload, tag = "SCAN") {
+    if (!this.container) return;
+
+    const meta = this.analyzePayload(payload);
+    const time = new Date().toLocaleTimeString();
+
+    // Create container safely
+    const item = document.createElement("div");
+    item.className = "ledger-item";
+    item.setAttribute("data-classification", meta.classification.toLowerCase().replace(" ", "-"));
+
+    // Construct children using innerText/textContent to prevent script injection
+    const payloadEl = document.createElement("div");
+    payloadEl.className = "ledger-payload";
+    payloadEl.textContent = payload;
+
+    const footerEl = document.createElement("div");
+    footerEl.className = "ledger-footer";
+
+    const tagEl = document.createElement("span");
+    tagEl.className = `ledger-tag tag-${tag.toLowerCase()}`;
+    tagEl.textContent = tag;
+
+    const timeEl = document.createElement("span");
+    timeEl.className = "ledger-time";
+    timeEl.textContent = time;
+
+    footerEl.appendChild(tagEl);
+    footerEl.appendChild(timeEl);
+
+    // Metadata Panel
+    const metaEl = document.createElement("div");
+    metaEl.className = "ledger-meta";
+    metaEl.innerHTML = `
+      <span><strong>Len:</strong> ${meta.length}</span>
+      <span><strong>Entropy:</strong> ${meta.entropy}</span>
+      <span><strong>Type:</strong> ${meta.classification}</span>
+    `;
+
+    item.appendChild(payloadEl);
+    item.appendChild(metaEl);
+    item.appendChild(footerEl);
+
+    this.container.prepend(item);
   }
 
   clear() {
-    this.entries = [];
-    this.dispatchEvent(new CustomEvent('clear', { timestamp: Date.now() }));
-    this.saveToStorage();
-    this.render();
-  }
-
-  render() {
     if (!this.container) return;
-    
-    if (this.entries.length === 0) {
-      this.container.innerHTML = `
-        <div class="empty-ledger">
-          <span class="icon">📭</span>
-          <div class="text">No barcodes scanned yet</div>
-          <div style="font-size:0.7rem;color:var(--text-muted);margin-top:8px;">
-            Scan a barcode to see 8-point analysis
-          </div>
-        </div>
-      `;
-      return;
-    }
-
-    let html = '';
-    const displayEntries = this.entries.slice(0, 50);
-    
-    displayEntries.forEach((entry, index) => {
-      // Determine tag class
-      const tagClass = entry.tag === 'FLAGGED' ? 'tag-flagged' : 
-                      entry.tag === 'SIGNAL' ? 'tag-signal' : 
-                      entry.tag === 'IMAGE' ? 'tag-image' : 
-                      entry.tag === 'BARCODE' ? 'tag-barcode' : 'tag-scan';
-      
-      // Build info items (8 pieces of barcode info)
-      const infoItems = entry.info || {
-        'Barcode Type': entry.barcodeType || 'Unknown',
-        'Valid': entry.valid || 'N/A',
-        'Confidence': entry.confidence || 'N/A',
-        'Pattern': entry.pattern || 'None',
-        'Status': entry.status || 'Clean',
-        'Severity': entry.severity || 'Low',
-        'Length': entry.length || 'N/A',
-        'Scanned': entry.timestamp || new Date().toLocaleString()
-      };
-      
-      // Build info grid
-      let infoHtml = '';
-      for (const [label, value] of Object.entries(infoItems)) {
-        const valueClass = 
-          value === '✅ Valid' || value === 'Clean' || value === '✅ Clean' ? 'success' :
-          value === '❌ Invalid' || value === 'Flagged' || value === '⚠️ Flagged' ? 'danger' :
-          value === 'High' ? 'danger' :
-          value === 'Medium' ? 'warning' :
-          value === 'Low' ? 'highlight' : '';
-          
-        infoHtml += `
-          <div class="analysis-item">
-            <span class="label">${label}</span>
-            <span class="value ${valueClass}">${value}</span>
-          </div>
-        `;
-      }
-      
-      // Display raw data
-      const rawDisplay = typeof entry.raw === 'string' ? 
-        entry.raw.slice(0, 80) + (entry.raw.length > 80 ? '...' : '') :
-        JSON.stringify(entry.raw).slice(0, 80);
-      
-      html += `
-        <div class="ledger-entry" data-id="${entry.id}">
-          <div class="entry-header">
-            <span class="entry-id">#${this.entries.length - index}</span>
-            <span class="entry-tag ${tagClass}">${entry.tag || 'SCAN'}</span>
-          </div>
-          <div class="entry-data">${this.escapeHtml(rawDisplay)}</div>
-          <div class="entry-analysis">
-            ${infoHtml}
-          </div>
-          <div class="entry-time">${entry.timestamp || new Date(entry.timestamp).toLocaleString()}</div>
-        </div>
-      `;
-    });
-
-    if (this.entries.length > 50) {
-      html += `<div class="ledger-more">+ ${this.entries.length - 50} more entries</div>`;
-    }
-
-    this.container.innerHTML = html;
-  }
-
-  escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  // Storage
-  saveToStorage() {
-    try {
-      localStorage.setItem('qtum_ledger_v2', JSON.stringify({
-        entries: this.entries,
-        savedAt: Date.now()
-      }));
-    } catch (error) {
-      console.warn('Failed to save ledger:', error);
-    }
-  }
-
-  loadFromStorage() {
-    try {
-      const data = localStorage.getItem('qtum_ledger_v2');
-      if (data) {
-        const parsed = JSON.parse(data);
-        if (parsed.entries && Array.isArray(parsed.entries)) {
-          this.entries = parsed.entries;
-          this.render();
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to load ledger:', error);
-    }
-  }
-
-  import(entries) {
-    if (Array.isArray(entries)) {
-      this.entries = entries;
-      this.render();
-      this.saveToStorage();
-      this.dispatchEvent(new CustomEvent('import', { 
-        detail: { count: entries.length }
-      }));
+    if (confirm("Clear all ledger entries?")) {
+      this.container.innerHTML = "";
     }
   }
 }
-
-window.QuantumLedger = QuantumLedger;
