@@ -91,9 +91,9 @@
   <!-- ⭐ FIXED: Initialization -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const qai = new Qai();          // your AI brain
-      const ledger = new QuantumLedger(); // your ledger system
-      const scanner = new QtumScanner(ledger, qai); // your scanner engine
+      const qai = new Qai();                     // QAI brain
+      const ledger = new QuantumLedger("ledger"); // FIXED: pass container ID
+      const scanner = new QtumScanner(ledger, qai); // scanner engine
     });
   </script>
 

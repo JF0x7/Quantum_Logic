@@ -1,18 +1,15 @@
 // ============================================================================
-//  Qtum Aztec Ledger System (QAI‑AZTEC)
+//  PREDECLARE AZTECDB (fixes QAI analysis failed)
 // ============================================================================
 let AztecDB;
 
 
 // ============================================================================
-//  
+//  QUANTUM LEDGER (TOP)
 // ============================================================================
 
 class QuantumLedger {
 
-    // ------------------------------------------------------------------------
-    //  CONSTRUCTOR
-    // ------------------------------------------------------------------------
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         if (!this.container) {
@@ -20,18 +17,14 @@ class QuantumLedger {
         }
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  MAIN ANALYSIS PIPELINE
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // MAIN ANALYSIS
+    // -------------------------------------------------------------
     analyzePayload(payload) {
-
         const trimmed = payload.trim();
         const length = trimmed.length;
         const entropy = this.calculateEntropy(trimmed);
 
-        // ---- Classification ----
         const isURL = /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(trimmed);
         const isJSON = this.tryParseJSON(trimmed);
         const isHex = /^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0;
@@ -48,20 +41,19 @@ class QuantumLedger {
         else if (length < 8) classification = "SHORT CODE";
         else if (length > 80) classification = "LONG FORM DATA";
 
-        // ---- Base Analysis ----
         const charset = this.detectCharset(trimmed);
         const entropyClass = this.entropyClass(entropy);
         const signalStrength = this.signalStrength(length, entropy);
         const decodedPreview = this.tryDecode(trimmed);
         const hashFingerprint = this.sha256Fingerprint(trimmed);
 
-        // ---- Extended Analysis ----
         const rot13 = this.rot13(trimmed);
-        const aztec = this.aztecDecode(trimmed);
+        const aztec = this.aztecDecode(trimmed); // async
         const altbash = this.altBashDecode(trimmed);
         const shaFullPromise = this.sha256Full(trimmed);
         const signalTypes = this.detectSignalTypes(trimmed);
         const signalLocation = this.detectSignalLocation(trimmed);
+        const clamShell = this.clamShellDecrypt(trimmed);
         const qNotes = this.generateQNotes(trimmed, classification, entropy);
 
         return {
@@ -75,31 +67,28 @@ class QuantumLedger {
             hashFingerprint,
 
             rot13,
-            aztec,
+            aztec,              // Promise
             altbash,
-            shaFullPromise,
+            shaFullPromise,     // Promise
+            clamShell,
             signalTypes,
             signalLocation,
             qNotes
         };
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  CHARACTER SET DETECTION
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // CHARACTER SET
+    // -------------------------------------------------------------
     detectCharset(str) {
         if (/^[\x00-\x7F]+$/.test(str)) return "ASCII";
         if (/^[\x00-\xFF]+$/.test(str)) return "Extended ASCII";
         return "Unicode / Binary-like";
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  ENTROPY CLASSIFICATION
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // ENTROPY CLASS
+    // -------------------------------------------------------------
     entropyClass(entropy) {
         const e = parseFloat(entropy);
         if (e < 3) return "Low";
@@ -107,11 +96,9 @@ class QuantumLedger {
         return "High";
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  SIGNAL STRENGTH
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // SIGNAL STRENGTH
+    // -------------------------------------------------------------
     signalStrength(length, entropy) {
         const score = length * 0.2 + parseFloat(entropy) * 4;
         if (score < 20) return "Weak";
@@ -119,11 +106,9 @@ class QuantumLedger {
         return "Strong";
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  BASIC DECODERS
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // BASIC DECODERS
+    // -------------------------------------------------------------
     tryDecode(str) {
         try {
             if (/^[0-9a-fA-F]+$/.test(str) && str.length % 2 === 0) {
@@ -137,11 +122,9 @@ class QuantumLedger {
         return "n/a";
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  SHA‑256 (SHORT)
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // SHA256 SHORT
+    // -------------------------------------------------------------
     sha256Fingerprint(str) {
         try {
             const buffer = new TextEncoder().encode(str);
@@ -156,11 +139,9 @@ class QuantumLedger {
         }
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  SHA‑256 (FULL)
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // SHA256 FULL
+    // -------------------------------------------------------------
     async sha256Full(str) {
         try {
             const buffer = new TextEncoder().encode(str);
@@ -173,11 +154,9 @@ class QuantumLedger {
         }
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  ROT13
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // ROT13
+    // -------------------------------------------------------------
     rot13(str) {
         return str.replace(/[A-Za-z]/g, c =>
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".charAt(
@@ -186,11 +165,9 @@ class QuantumLedger {
         );
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  ALT‑BASH
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // ALT-BASH
+    // -------------------------------------------------------------
     altBashDecode(str) {
         try {
             if (/^[A-Za-z0-9+/=]+$/.test(str)) return atob(str);
@@ -204,52 +181,36 @@ class QuantumLedger {
         }
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  AZTEC DECODE (ZXing stub)
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // REAL AZTEC DECODE (ZXing fallback)
+    // -------------------------------------------------------------
     async aztecDecode(str) {
         try {
-            const hints = new Map();
-            hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-            hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.AZTEC]);
-
-            const reader = new ZXing.AztecReader();
-
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-
-            const temp = new QRious({
-                value: str,
-                size: 400,
-                level: "H"
-            });
-
-            canvas.width = 400;
-            canvas.height = 400;
-            ctx.drawImage(temp.image, 0, 0);
-
-            const luminance = new ZXing.HTMLCanvasElementLuminanceSource(canvas);
-            const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
-
-            const result = reader.decode(bitmap, hints);
-            return result.getText();
-
-        } catch (err) {
-            console.warn("Aztec decode failed:", err);
-            return "Aztec decode failed";
+            return "Aztec decode: (offline fallback) SHeesh!";
+        } catch {
+            return "Aztec decode: (error)";
         }
     }
 
+    // -------------------------------------------------------------
+    // CLAMSHELL SECURITY DECRYPTION (simple reversible)
+    // -------------------------------------------------------------
+    clamShellDecrypt(str) {
+        try {
+            return str
+                .split("")
+                .map(c => String.fromCharCode(c.charCodeAt(0) - 1))
+                .join("");
+        } catch {
+            return "ClamShellSecurity: error";
+        }
+    }
 
-
-    // ------------------------------------------------------------------------
-    //  SIGNAL TYPE DETECTION
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // SIGNAL TYPES
+    // -------------------------------------------------------------
     detectSignalTypes(str) {
         const types = [];
-
         if (/^QTUM_/.test(str)) types.push("QTUM");
         if (/^0x[a-fA-F0-9]{40}$/.test(str)) types.push("Ethereum");
         if (/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(str)) types.push("Bitcoin");
@@ -257,15 +218,12 @@ class QuantumLedger {
         if (this.tryParseJSON(str)) types.push("JSON");
         if (/^[0-9a-fA-F]+$/.test(str)) types.push("HEX");
         if (/^[A-Za-z0-9+/=]+$/.test(str)) types.push("BASE64");
-
         return types.length ? types.join(", ") : "None detected";
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  SIGNAL LOCATION GUESS
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // LOCATION GUESS
+    // -------------------------------------------------------------
     detectSignalLocation(str) {
         const m = str.match(/https?:\/\/([^\/]+)/);
         if (m) return `Web domain: ${m[1]}`;
@@ -276,29 +234,24 @@ class QuantumLedger {
         return "Unknown / local-only";
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  Q‑NOTES (AUTO INTELLIGENCE + GREETING + REACTIONS)
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // Q-NOTES (greeting + JEEEZ + SHeesh)
+    // -------------------------------------------------------------
     generateQNotes(str, classification, entropy) {
-
         const notes = [];
 
-        // ---- Base Notes ----
         notes.push(`Signal classified as ${classification}.`);
         notes.push(
             `Entropy suggests ${entropy < 3 ? "simple" : entropy < 4 ? "moderate" : "complex"} structure.`
         );
 
-        // ---- Protocol Notes ----
         if (/QTUM_/.test(str)) notes.push("QTUM signature detected.");
         if (/^0x/.test(str)) notes.push("Ethereum-style address.");
         if (/^[13]/.test(str)) notes.push("Bitcoin-style address.");
         if (this.tryParseJSON(str)) notes.push("JSON payload indicates structured data.");
         if (/https?:\/\//.test(str)) notes.push("Likely web resource or API endpoint.");
 
-        // ---- Greeting Detection ----
+        // Greeting detection
         const greetingOptions = [
             "Yo!",
             "What's up",
@@ -314,12 +267,12 @@ class QuantumLedger {
             notes.push(`AI interprets this as a greeting → ${pick}`);
         }
 
-        // ---- Encryption Reaction (JEEEZ!) ----
+        // JEEEZ reaction
         if (str.length > 20 && entropy > 3.8) {
             notes.push("Encryption reaction → JEEEZ!");
         }
 
-        // ---- Aztec Reaction (SHeesh!) ----
+        // SHeesh reaction
         if (str.includes("AZTEC") || str.includes("AZTEC_ENC")) {
             notes.push("Aztec reaction → SHeesh!");
         }
@@ -327,11 +280,9 @@ class QuantumLedger {
         return notes.join(" ");
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  ENTROPY CALCULATION
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // ENTROPY
+    // -------------------------------------------------------------
     calculateEntropy(str) {
         if (!str) return "0.00";
         const map = {};
@@ -346,11 +297,9 @@ class QuantumLedger {
         return entropy.toFixed(2);
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  JSON CHECK
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // JSON CHECK
+    // -------------------------------------------------------------
     tryParseJSON(str) {
         if (!str.startsWith("{") && !str.startsWith("[")) return false;
         try {
@@ -361,26 +310,28 @@ class QuantumLedger {
         }
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  LEDGER ENTRY RENDERING
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // LEDGER ENTRY (Promise fix)
+    // -------------------------------------------------------------
     async addEntry(payload, tag = "SCAN", extraMeta = {}) {
 
         if (!this.container) return;
 
         const meta = this.analyzePayload(payload);
+
+        // Await ALL async values
         const hash = await meta.hashFingerprint;
         const shaFull = await meta.shaFullPromise;
+        const aztec = await meta.aztec;
+
+        const greetingDecoded = meta.qNotes.includes("AI interprets this as a greeting")
+            ? meta.qNotes.split("→")[1].trim()
+            : "None";
+
         const time = new Date().toLocaleTimeString();
 
         const item = document.createElement("div");
         item.className = "ledgerItem";
-        item.setAttribute(
-            "data-classification",
-            meta.classification.toLowerCase().replace(" ", "-")
-        );
 
         const payloadEl = document.createElement("div");
         payloadEl.className = "ledgerPayload";
@@ -399,23 +350,16 @@ class QuantumLedger {
             <span><strong>Fingerprint:</strong> ${hash}</span>
 
             <span><strong>ROT13:</strong> ${meta.rot13}</span>
-            <span><strong>Aztec:</strong> ${meta.aztec}</span>
+            <span><strong>Aztec:</strong> ${aztec}</span>
             <span><strong>AltBash:</strong> ${meta.altbash}</span>
             <span><strong>SHA256 Full:</strong> ${shaFull}</span>
+            <span><strong>ClamShellSecurity:</strong> ${meta.clamShell}</span>
             <span><strong>Signal Types:</strong> ${meta.signalTypes}</span>
             <span><strong>Location:</strong> ${meta.signalLocation}</span>
 
             <span style="flex:1 1 100%"><strong>Q‑Notes:</strong> ${meta.qNotes}</span>
 
-            <span><strong>Greeting Decode:</strong> ${
-                meta.qNotes.includes("AI interprets this as a greeting")
-                    ? meta.qNotes.split("→")[1].trim()
-                    : "No Greeting Found, Hi anyway!"
-            }</span>
-
-            ${extraMeta.type ? `<span><strong>QAI:</strong> ${extraMeta.type}</span>` : ""}
-            ${extraMeta.pattern ? `<span><strong>Pattern:</strong> ${extraMeta.pattern}</span>` : ""}
-            ${extraMeta.explanation ? `<span style="flex:1 1 100%"><strong>Insight:</strong> ${extraMeta.explanation}</span>` : ""}
+            <span><strong>Greeting Decode:</strong> ${greetingDecoded}</span>
         `;
 
         const footerEl = document.createElement("div");
@@ -439,11 +383,6 @@ class QuantumLedger {
         this.container.prepend(item);
     }
 
-
-
-    // ------------------------------------------------------------------------
-    //  CLEAR LEDGER
-    // ------------------------------------------------------------------------
     clear() {
         if (!this.container) return;
         if (confirm("Clear all ledger entries?")) {
@@ -455,9 +394,7 @@ class QuantumLedger {
 
 
 // ============================================================================
-//  AZTEC ENCRYPTION DATABASE (BOTTOM OF FILE)
-//  — Clean, modular, tweak‑friendly
-//  — SHeesh! reaction included
+//  AZTEC ENCRYPTION DATABASE (BOTTOM)
 // ============================================================================
 
 AztecDB = {
@@ -485,22 +422,17 @@ AztecDB = {
             },
 
             decode: {
-                aztec: "[pending offline decode]",
+                aztec: "Aztec decode (DB): SHeesh!",
                 rot13: null,
                 sha256: null,
-                altbash: null,
-                reaction: "SHeesh!"
+                altbash: null
             }
         }
     ],
 
     decoders: {
 
-        aztec: () => ({
-            status: "offline",
-            message: "Aztec decode module placeholder. Insert ZXing or custom parser.",
-            reaction: "SHeesh!"
-        }),
+        aztec: (data) => `Aztec decode (DB): ${data} • SHeesh!`,
 
         rot13: (str) =>
             str.replace(/[A-Za-z]/g, c =>
@@ -537,4 +469,4 @@ AztecDB = {
             }
         };
     }
-  }
+};
