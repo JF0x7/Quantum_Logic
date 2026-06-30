@@ -1,20 +1,13 @@
-// QAI v0.40 — Internet-aware, item classifier, personality engine
+// QAI v0.60 — Browser HF (Transformers.js), item guessing, moderation
+
+import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+
 class Qai {
   constructor() {
     this.name = "QAI";
-    this.version = "0.40";
-
-    // pseudo "model registry" (for flavor)
-    this.models = {
-      pytorch: {
-        backend: "PyTorch-style conceptual model",
-        note: "Simulated in JS; not actual PyTorch."
-      },
-      huggingface: {
-        backend: "HuggingFace-style conceptual model",
-        note: "Simulated in JS; not actual HF runtime."
-      }
-    };
+    this.version = "0.60-browser-HF";
+    this.hfReady = this.initHF();
+    this.hfClassifier = null;
 
     this.vocab = [
       "signal", "payload", "quantum", "resonance", "artifact",
@@ -22,84 +15,15 @@ class Qai {
     ];
   }
 
-  // -----------------------------------------------------
-  // 🌐 INTERNET ACCESS (fetch + JSON + search)
-  // -----------------------------------------------------
-  async fetchURL(url) {
+  async initHF() {
     try {
-      const res = await fetch(url);
-      const text = await res.text();
-      return {
-        ok: true,
-        status: res.status,
-        content: text
-      };
+      // sentiment-analysis pipeline (HF model in browser)
+      this.hfClassifier = await pipeline("sentiment-analysis");
+      console.log("QAI: Hugging Face browser pipeline ready.");
     } catch (err) {
-      return {
-        ok: false,
-        error: err.message
-      };
+      console.error("QAI: HF init failed:", err);
+      this.hfClassifier = null;
     }
-  }
-
-  async fetchJSON(url) {
-    try {
-      const res = await fetch(url);
-      const json = await res.json();
-      return {
-        ok: true,
-        status: res.status,
-        json
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        error: err.message
-      };
-    }
-  }
-
-  async search(query) {
-    const encoded = encodeURIComponent(query);
-    const url = `https://api.duckduckgo.com/?q=${encoded}&format=json&no_redirect=1`;
-
-    try {
-      const res = await fetch(url);
-      const json = await res.json();
-
-      return {
-        ok: true,
-        query,
-        abstract: json.Abstract || null,
-        heading: json.Heading || null,
-        related: json.RelatedTopics || []
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        error: err.message
-      };
-    }
-  }
-
-  // -----------------------------------------------------
-  // 📚 VOCABULARY ENRICHMENT (internet-assisted)
-  // -----------------------------------------------------
-  async enrichVocabulary() {
-    // lightweight, optional enrichment using a public word API
-    try {
-      const res = await fetch("https://api.datamuse.com/words?ml=signal&max=20");
-      const json = await res.json();
-      const words = json.map(w => w.word).filter(w => w.length < 20);
-      this.vocab = [...new Set([...this.vocab, ...words])];
-    } catch {
-      // if it fails, we just keep the base vocab
-    }
-  }
-
-  pickWord() {
-    if (!this.vocab.length) return "signal";
-    return this.vocab[Math.floor(Math.random() * this.vocab.length)];
   }
 
   // -----------------------------------------------------
@@ -219,7 +143,7 @@ class Qai {
   }
 
   // -----------------------------------------------------
-  // 🧩 ITEM TYPE GUESSING (book, crypto, bottle, etc.)
+  // 🧩 ITEM TYPE GUESSING
   // -----------------------------------------------------
   guessItemType(payload, decrypted) {
     const text = payload.toLowerCase();
@@ -246,8 +170,13 @@ class Qai {
   }
 
   // -----------------------------------------------------
-  // 😎 PERSONALITY ENGINE (vibe + response)
+  // 😎 PERSONALITY ENGINE
   // -----------------------------------------------------
+  pickWord() {
+    if (!this.vocab.length) return "signal";
+    return this.vocab[Math.floor(Math.random() * this.vocab.length)];
+  }
+
   vibe(payload, itemType, moderation) {
     const word = this.pickWord();
     const baseLines = [
@@ -278,23 +207,34 @@ class Qai {
   }
 
   // -----------------------------------------------------
-  // 🧠 FULL PIPELINE (async)
+  // 🧠 FULL PIPELINE (HF in browser)
   // -----------------------------------------------------
   async process(payload) {
-    await this.enrichVocabulary(); // try to expand vocab (non-blocking if it fails)
+    await this.hfReady; // wait for HF pipeline
 
     const moderation = this.moderate(payload);
     const encrypted = this.encrypt(payload);
     const decrypted = this.decrypt(payload);
     const itemType = this.guessItemType(payload, decrypted);
 
-    let web = null;
-    if (payload.startsWith("http")) {
-      web = await this.fetchURL(payload);
+    let hf = null;
+    if (this.hfClassifier) {
+      try {
+        const out = await this.hfClassifier(payload);
+        const r = out[0];
+        hf = {
+          label: r.label,
+          score: r.score
+        };
+      } catch (err) {
+        console.error("QAI HF classify error:", err);
+      }
     }
 
     const vibe = this.vibe(payload, itemType, moderation);
-    const response = this.response(payload, { moderation }, itemType);
+    const response = hf
+      ? `QAI (HF browser): ${hf.label} (${hf.score.toFixed(3)}).`
+      : this.response(payload, { moderation }, itemType);
 
     return {
       original: payload,
@@ -302,10 +242,9 @@ class Qai {
       encrypted,
       decrypted,
       itemType,
-      web,
+      hf,
       vibe,
-      response,
-      models: this.models
+      response
     };
   }
 }
