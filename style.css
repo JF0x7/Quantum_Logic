@@ -1,4 +1,9 @@
+/* ============================================================================
+   QUANTUM LOGIC SCANNER — MOBILE-FIRST RESPONSIVE DESIGN
+   ============================================================================ */
+
 :root {
+  /* Colors */
   --bg: #05060a;
   --panel: #020617;
   --border: #111827;
@@ -11,76 +16,105 @@
   --accent2: #06b6d4;
   --accent-glow: rgba(6, 182, 212, 0.45);
 
+  /* Spacing (mobile-first) */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+
+  /* Radius */
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 10px;
 
+  /* Transitions */
   --transition-fast: 0.12s ease;
   --transition-mid: 0.18s ease;
 }
+
+/* ============================================================================
+   RESET & BASE
+   ============================================================================ */
 
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  font-size: 16px;
+}
+
 body {
   margin: 0;
-  padding: 20px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Ubuntu, "DejaVu Sans", sans-serif;
+  padding: var(--spacing-lg);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Ubuntu,
+    "DejaVu Sans", sans-serif;
   background: var(--bg);
   color: var(--text);
   text-align: center;
   -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
 }
 
-/* LOGO */
+/* ============================================================================
+   LOGO
+   ============================================================================ */
 
 #logoWrapper {
   display: flex;
   justify-content: center;
-  margin-top: 10px;
-  margin-bottom: 6px;
+  margin-bottom: var(--spacing-md);
 }
 
 #quantumLogo {
-  width: 100px;
-  height: 100px;
+  width: 70px;
+  height: 70px;
   filter: drop-shadow(0 0 12px var(--accent-glow));
 }
 
-/* HEADINGS */
+/* ============================================================================
+   HEADINGS
+   ============================================================================ */
 
 h1 {
-  margin: 4px 0;
-  font-size: 2.2rem;
+  margin: var(--spacing-xs) 0;
+  font-size: 1.6rem;
   letter-spacing: 0.08em;
   text-shadow: 0 0 12px rgba(79, 70, 229, 0.4);
+  line-height: 1.2;
 }
 
 h2 {
-  margin: 0 0 18px;
-  font-size: 1rem;
+  margin: var(--spacing-xs) 0 var(--spacing-md);
+  font-size: 0.9rem;
   color: var(--text-muted);
+  font-weight: 500;
 }
 
-/* SCANNER SHELL */
+/* ============================================================================
+   SCANNER SHELL (Main Container)
+   ============================================================================ */
 
 #scannerShell {
+  width: 100%;
   max-width: 520px;
   margin: 0 auto;
   background: var(--panel);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: var(--spacing-lg);
   border: 1px solid var(--border);
   filter: drop-shadow(0 0 22px rgba(0, 0, 0, 0.6));
 }
 
-/* VIDEO / CANVAS */
+/* ============================================================================
+   VIDEO / CANVAS
+   ============================================================================ */
 
 #videoWrapper {
   width: 100%;
-  height: 300px;
+  height: 220px;
   border-radius: var(--radius-md);
   overflow: hidden;
   background: #000;
@@ -100,26 +134,32 @@ h2 {
   display: none;
 }
 
-/* CONTROLS */
+/* ============================================================================
+   CONTROLS - MOBILE OPTIMIZED
+   ============================================================================ */
 
 #controls {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 12px;
-  margin-top: 18px;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
 }
 
 button {
+  flex: 1 1 auto;
+  min-width: 120px;
+  max-width: 100%;
   border: none;
   cursor: pointer;
   border-radius: 999px;
-  padding: 12px 20px;
-  font-size: 1rem;
+  padding: 12px 16px;
+  font-size: 0.95rem;
   font-weight: 600;
   background: linear-gradient(135deg, var(--accent1), var(--accent2));
   color: var(--text);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-mid);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+    opacity var(--transition-mid);
   box-shadow: 0 0 14px var(--accent-glow);
   will-change: transform;
 }
@@ -141,67 +181,97 @@ button:active {
   opacity: 0.85;
 }
 
-/* PHOTO PREVIEW */
+/* ============================================================================
+   PHOTO PREVIEW
+   ============================================================================ */
 
 #photoPreview {
   display: none;
+  width: 100%;
   max-width: 100%;
-  margin-top: 14px;
+  margin-top: var(--spacing-md);
   border-radius: var(--radius-sm);
   filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.6));
 }
 
-/* SCAN INDICATOR */
+/* ============================================================================
+   SCAN INDICATOR
+   ============================================================================ */
 
 #scanIndicator {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
-  margin: 14px auto 0;
+  margin: var(--spacing-md) auto 0;
   background: #4b5563;
   animation: pulse 1.8s infinite ease-in-out;
 }
 
 @keyframes pulse {
-  0%, 100% { background: #4b5563; }
-  50% { background: var(--accent2); }
+  0%,
+  100% {
+    background: #4b5563;
+  }
+  50% {
+    background: var(--accent2);
+  }
 }
 
-/* OUTPUT */
+/* ============================================================================
+   OUTPUT (Status & Payload)
+   ============================================================================ */
 
 #output {
-  margin-top: 14px;
+  margin-top: var(--spacing-md);
   text-align: left;
 }
 
 #status {
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  background: var(--panel);
-  border: 1px solid var(--border-soft);
-  font-size: 0.95rem;
-  margin-bottom: 8px;
-}
-
-#status.neutral { color: var(--text-soft); }
-#status.success { color: #bbf7d0; border-color: #16a34a; }
-#status.error { color: #fecaca; border-color: #dc2626; }
-
-#payload {
-  padding: 12px;
+  padding: var(--spacing-md);
   border-radius: var(--radius-sm);
   background: var(--panel);
   border: 1px solid var(--border-soft);
   font-size: 0.9rem;
+  margin-bottom: var(--spacing-sm);
   word-wrap: break-word;
 }
 
-/* LEDGER */
+#status.neutral {
+  color: var(--text-soft);
+}
+
+#status.success {
+  color: #bbf7d0;
+  border-color: #16a34a;
+}
+
+#status.error {
+  color: #fecaca;
+  border-color: #dc2626;
+}
+
+#payload {
+  padding: var(--spacing-md);
+  border-radius: var(--spacing-sm);
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  font-size: 0.85rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+/* ============================================================================
+   LEDGER
+   ============================================================================ */
 
 #ledgerShell {
+  width: 100%;
   max-width: 520px;
-  margin: 22px auto 0;
-  padding: 20px;
+  margin: var(--spacing-lg) auto 0;
+  padding: var(--spacing-lg);
   background: var(--panel);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
@@ -209,14 +279,15 @@ button:active {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 12px;
+  gap: var(--spacing-md);
 }
 
 #ledgerTitle {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--text-muted);
+  font-weight: 600;
 }
 
 #ledger {
@@ -227,97 +298,318 @@ button:active {
   width: 100%;
   background: var(--panel);
   border-radius: var(--radius-sm);
-  padding: 14px;
+  padding: var(--spacing-md);
   border: 1px solid var(--border-soft);
-  margin-bottom: 10px;
+  margin-bottom: var(--spacing-sm);
   text-align: left;
 }
 
 .ledgerPayload {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-soft);
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  margin-bottom: var(--spacing-sm);
+  font-family: monospace;
 }
 
 .ledgerMeta {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
   font-size: 0.75rem;
   color: var(--text-muted);
-  gap: 8px;
-  flex-wrap: wrap;
+  margin-bottom: var(--spacing-sm);
+}
+
+.ledgerMeta span {
+  background: var(--border);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 4px;
+  overflow-wrap: break-word;
+}
+
+.ledgerMeta span strong {
+  color: var(--accent2);
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
 }
 
 .ledgerFooter {
   display: flex;
   justify-content: space-between;
-  margin-top: 8px;
+  align-items: center;
   font-size: 0.75rem;
   color: var(--text-muted);
+  gap: var(--spacing-sm);
 }
 
 .ledgerTag {
-  padding: 2px 8px;
+  padding: 4px 8px;
   border-radius: 999px;
   background: var(--border);
   border: 1px solid var(--border-soft);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
 }
 
 .ledgerTime {
-  opacity: 0.8;
+  opacity: 0.7;
+  font-size: 0.7rem;
 }
 
-/* MOBILE */
+/* ============================================================================
+   TABLET (768px+)
+   ============================================================================ */
 
-@media (max-width: 480px) {
-  body {
-    padding: 0 8px;
-    font-size: 15px;
+@media (min-width: 768px) {
+  :root {
+    --spacing-lg: 20px;
+    --spacing-xl: 24px;
   }
 
-  h1 {
-    font-size: 1.8rem;
-    margin-top: 10px;
+  html {
+    font-size: 17px;
+  }
+
+  body {
+    padding: var(--spacing-xl);
   }
 
   #quantumLogo {
-    width: 80px;
-    height: 80px;
+    width: 85px;
+    height: 85px;
   }
 
-  #scannerShell {
-    padding: 12px;
+  h1 {
+    font-size: 2rem;
   }
 
-  #videoWrapper {
-    height: 260px;
-  }
-
-  button {
-    width: 100%;
-    max-width: 260px;
-    padding: 14px 18px;
+  h2 {
     font-size: 1rem;
   }
 
-  #output {
-    padding: 0 10px;
+  #videoWrapper {
+    height: 280px;
   }
 
-  #ledgerShell {
-    padding: 18px;
-    margin: 20px auto;
+  button {
+    flex: 0 1 auto;
+    min-width: 140px;
+    padding: 14px 20px;
+    font-size: 1rem;
   }
 
-  #scanIndicator {
-    width: 32px;
-    height: 32px;
+  .ledgerMeta {
+    grid-template-columns: 1fr 1fr 1fr;
   }
 }
 
+/* ============================================================================
+   DESKTOP (1024px+)
+   ============================================================================ */
+
+@media (min-width: 1024px) {
+  :root {
+    --spacing-lg: 24px;
+    --spacing-xl: 28px;
+  }
+
+  html {
+    font-size: 18px;
+  }
+
+  body {
+    padding: var(--spacing-xl);
+  }
+
+  #quantumLogo {
+    width: 100px;
+    height: 100px;
+  }
+
+  h1 {
+    font-size: 2.4rem;
+    margin: var(--spacing-md) 0;
+  }
+
+  h2 {
+    font-size: 1.1rem;
+    margin-bottom: var(--spacing-lg);
+  }
+
+  #scannerShell {
+    padding: 24px;
+  }
+
+  #videoWrapper {
+    height: 340px;
+  }
+
+  button {
+    padding: 14px 24px;
+    font-size: 1.05rem;
+    min-width: 160px;
+  }
+
+  #scanIndicator {
+    width: 36px;
+    height: 36px;
+  }
+
+  .ledgerMeta {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+}
+
+/* ============================================================================
+   SMALL PHONES (320px - 480px) - Extra Adjustments
+   ============================================================================ */
+
+@media (max-width: 480px) {
+  :root {
+    --spacing-lg: 12px;
+    --spacing-xl: 16px;
+  }
+
+  html {
+    font-size: 14px;
+  }
+
+  body {
+    padding: var(--spacing-md);
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    margin: var(--spacing-xs) 0;
+  }
+
+  h2 {
+    font-size: 0.85rem;
+    margin: var(--spacing-xs) 0 var(--spacing-md);
+  }
+
+  #quantumLogo {
+    width: 60px;
+    height: 60px;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  #scannerShell {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+  }
+
+  #videoWrapper {
+    height: 200px;
+  }
+
+  #controls {
+    gap: var(--spacing-sm);
+  }
+
+  button {
+    min-width: 100%;
+    max-width: 100%;
+    flex: 1 1 100%;
+    padding: 12px 14px;
+    font-size: 0.9rem;
+  }
+
+  #output {
+    margin-top: var(--spacing-sm);
+  }
+
+  #status,
+  #payload {
+    padding: var(--spacing-sm);
+    font-size: 0.8rem;
+  }
+
+  #ledgerShell {
+    margin: var(--spacing-md) auto 0;
+    padding: var(--spacing-md);
+  }
+
+  #ledgerTitle {
+    font-size: 0.8rem;
+  }
+
+  .ledgerItem {
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .ledgerPayload {
+    font-size: 0.75rem;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .ledgerMeta {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xs);
+  }
+
+  .ledgerMeta span {
+    padding: 3px 6px;
+    font-size: 0.7rem;
+  }
+
+  .ledgerFooter {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+
+  .ledgerTag {
+    padding: 3px 6px;
+    font-size: 0.65rem;
+  }
+
+  .ledgerTime {
+    font-size: 0.65rem;
+  }
+}
+
+/* ============================================================================
+   ULTRA-SMALL (< 360px)
+   ============================================================================ */
+
 @media (max-width: 360px) {
-  h1 { font-size: 1.6rem; }
-  #videoWrapper { height: 220px; }
-  button { max-width: 230px; }
+  html {
+    font-size: 13px;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+  }
+
+  #quantumLogo {
+    width: 50px;
+    height: 50px;
+  }
+
+  #videoWrapper {
+    height: 180px;
+  }
+
+  button {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+
+  .ledgerMeta {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================================
+   UTILITY: Hide File Input
+   ============================================================================ */
+
+#fileInput {
+  display: none;
 }
