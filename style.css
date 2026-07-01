@@ -128,6 +128,7 @@ h2 {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform var(--transition-mid);
 }
 
 #canvas {
@@ -144,6 +145,16 @@ h2 {
   justify-content: center;
   gap: var(--spacing-md);
   margin-top: var(--spacing-lg);
+}
+
+#advancedControls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-soft);
 }
 
 button {
@@ -252,7 +263,7 @@ button:active {
 
 #payload {
   padding: var(--spacing-md);
-  border-radius: var(--spacing-sm);
+  border-radius: var(--radius-sm);
   background: var(--panel);
   border: 1px solid var(--border-soft);
   font-size: 0.85rem;
@@ -261,10 +272,11 @@ button:active {
   min-height: 40px;
   display: flex;
   align-items: center;
+  font-family: "Courier New", monospace;
 }
 
 /* ============================================================================
-   LEDGER
+   LEDGER - IMPROVED SPACING & LAYOUT
    ============================================================================ */
 
 #ledgerShell {
@@ -286,22 +298,31 @@ button:active {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--text-muted);
-  font-weight: 600;
+  color: var(--accent2);
+  font-weight: 700;
+  margin-bottom: var(--spacing-sm);
 }
 
 #ledger {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .ledgerItem {
   width: 100%;
-  background: var(--panel);
-  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8));
+  border-radius: var(--radius-md);
   padding: var(--spacing-md);
   border: 1px solid var(--border-soft);
-  margin-bottom: var(--spacing-sm);
   text-align: left;
+  transition: all var(--transition-mid);
+}
+
+.ledgerItem:hover {
+  border-color: var(--accent2);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
 }
 
 .ledgerPayload {
@@ -309,8 +330,12 @@ button:active {
   color: var(--text-soft);
   word-wrap: break-word;
   overflow-wrap: break-word;
-  margin-bottom: var(--spacing-sm);
-  font-family: monospace;
+  margin-bottom: var(--spacing-md);
+  font-family: "Courier New", monospace;
+  background: rgba(0, 0, 0, 0.3);
+  padding: var(--spacing-sm);
+  border-radius: 4px;
+  line-height: 1.4;
 }
 
 .ledgerMeta {
@@ -319,21 +344,35 @@ button:active {
   gap: var(--spacing-sm);
   font-size: 0.75rem;
   color: var(--text-muted);
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
 }
 
 .ledgerMeta span {
-  background: var(--border);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: 4px;
+  background: rgba(17, 24, 39, 0.8);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: 6px;
+  border: 1px solid var(--border-soft);
   overflow-wrap: break-word;
+  transition: all var(--transition-fast);
+}
+
+.ledgerMeta span:hover {
+  border-color: var(--accent2);
+  background: rgba(79, 70, 229, 0.1);
 }
 
 .ledgerMeta span strong {
   color: var(--accent2);
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
+  margin-bottom: var(--spacing-xs);
+  letter-spacing: 0.05em;
+}
+
+.ledgerMeta span span {
+  color: var(--text-soft);
+  font-size: 0.7rem;
 }
 
 .ledgerFooter {
@@ -342,22 +381,28 @@ button:active {
   align-items: center;
   font-size: 0.75rem;
   color: var(--text-muted);
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--border-soft);
+  margin-top: var(--spacing-md);
 }
 
 .ledgerTag {
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: var(--border);
-  border: 1px solid var(--border-soft);
-  font-weight: 600;
+  background: linear-gradient(135deg, var(--accent1), var(--accent2));
+  border: none;
+  color: var(--text);
+  font-weight: 700;
   text-transform: uppercase;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
 }
 
 .ledgerTime {
-  opacity: 0.7;
+  opacity: 0.6;
   font-size: 0.7rem;
+  font-family: "Courier New", monospace;
 }
 
 /* ============================================================================
@@ -402,8 +447,21 @@ button:active {
     font-size: 1rem;
   }
 
+  #controls,
+  #advancedControls {
+    gap: var(--spacing-lg);
+  }
+
   .ledgerMeta {
     grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  #ledger {
+    gap: var(--spacing-lg);
+  }
+
+  .ledgerItem {
+    padding: var(--spacing-lg);
   }
 }
 
@@ -454,6 +512,11 @@ button:active {
     min-width: 160px;
   }
 
+  #controls,
+  #advancedControls {
+    gap: var(--spacing-xl);
+  }
+
   #scanIndicator {
     width: 36px;
     height: 36px;
@@ -461,6 +524,14 @@ button:active {
 
   .ledgerMeta {
     grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+
+  #ledger {
+    gap: var(--spacing-xl);
+  }
+
+  .ledgerItem {
+    padding: var(--spacing-xl);
   }
 }
 
@@ -507,7 +578,8 @@ button:active {
     height: 200px;
   }
 
-  #controls {
+  #controls,
+  #advancedControls {
     gap: var(--spacing-sm);
   }
 
@@ -536,37 +608,50 @@ button:active {
 
   #ledgerTitle {
     font-size: 0.8rem;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  #ledger {
+    gap: var(--spacing-md);
   }
 
   .ledgerItem {
     padding: var(--spacing-sm);
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 0;
   }
 
   .ledgerPayload {
     font-size: 0.75rem;
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
+    padding: var(--spacing-xs);
   }
 
   .ledgerMeta {
     grid-template-columns: 1fr;
     gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
   }
 
   .ledgerMeta span {
-    padding: 3px 6px;
-    font-size: 0.7rem;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.65rem;
+  }
+
+  .ledgerMeta span strong {
+    font-size: 0.6rem;
   }
 
   .ledgerFooter {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-xs);
+    padding-top: var(--spacing-xs);
+    margin-top: var(--spacing-sm);
   }
 
   .ledgerTag {
-    padding: 3px 6px;
-    font-size: 0.65rem;
+    padding: 3px 8px;
+    font-size: 0.6rem;
   }
 
   .ledgerTime {
@@ -603,6 +688,10 @@ button:active {
 
   .ledgerMeta {
     grid-template-columns: 1fr;
+  }
+
+  .ledgerItem {
+    padding: var(--spacing-xs);
   }
 }
 
