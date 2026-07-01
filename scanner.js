@@ -32,6 +32,7 @@ class QtumScanner {
       upload: document.getElementById("uploadBtn"),
       send: document.getElementById("sendBtn"),
       photo: document.getElementById("photoBtn"),
+      test: document.getElementById("testBtn"),
       resetLedger: document.getElementById("resetLedgerBtn"),
       fileInput: document.getElementById("fileInput"),
       canvas: document.getElementById("canvas"),
@@ -269,11 +270,9 @@ class QtumScanner {
     this.captureFallbackActive = true;
 
     if (err && err.name === "NotAllowedError") {
-      this.setStatus("Camera permission blocked. Using camera capture instead.", "error");
-    } else if (err && err.message && /HTTPS/i.test(err.message)) {
-      this.setStatus("Using camera capture fallback for iPhone.", "error");
+      this.setStatus("Camera permission blocked. Please allow access and try again.", "error");
     } else {
-      this.setStatus("Using camera capture fallback.", "error");
+      this.setStatus("Camera access unavailable. Please try again.", "error");
     }
 
     if (this.el.fileInput) {
@@ -375,6 +374,24 @@ class QtumScanner {
         ctx.drawImage(this.el.video, 0, 0, this.el.canvas.width, this.el.canvas.height);
         this.el.photoPreview.src = this.el.canvas.toDataURL("image/png");
         this.el.photoPreview.style.display = "block";
+      };
+    }
+
+    if (this.el.test) {
+      this.el.test.onclick = async () => {
+        this.setStatus("Trying sample decode…", "neutral");
+        try {
+          const sampleUrl = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=QTUM%20SCAN%20TEST";
+          const result = await this.decodeImage(sampleUrl);
+          if (result) {
+            this.handleScan(result.data);
+          } else {
+            this.setStatus("No QR code found in sample image", "error");
+          }
+        } catch (err) {
+          console.warn(err);
+          this.setStatus("Sample decode failed", "error");
+        }
       };
     }
 
