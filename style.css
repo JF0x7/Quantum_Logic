@@ -1,9 +1,4 @@
-/* ============================================================================
-   QUANTUM LOGIC SCANNER — MOBILE-FIRST RESPONSIVE DESIGN
-   ============================================================================ */
-
 :root {
-  /* Colors */
   --bg: #05060a;
   --panel: #020617;
   --border: #111827;
@@ -16,105 +11,76 @@
   --accent2: #06b6d4;
   --accent-glow: rgba(6, 182, 212, 0.45);
 
-  /* Spacing (mobile-first) */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 20px;
-
-  /* Radius */
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 10px;
 
-  /* Transitions */
   --transition-fast: 0.12s ease;
   --transition-mid: 0.18s ease;
 }
-
-/* ============================================================================
-   RESET & BASE
-   ============================================================================ */
 
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
 }
 
-html {
-  font-size: 16px;
-}
-
 body {
   margin: 0;
-  padding: var(--spacing-lg);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Ubuntu,
-    "DejaVu Sans", sans-serif;
+  padding: 20px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Ubuntu, "DejaVu Sans", sans-serif;
   background: var(--bg);
   color: var(--text);
   text-align: center;
   -webkit-font-smoothing: antialiased;
-  line-height: 1.5;
 }
 
-/* ============================================================================
-   LOGO
-   ============================================================================ */
+/* LOGO */
 
 #logoWrapper {
   display: flex;
   justify-content: center;
-  margin-bottom: var(--spacing-md);
+  margin-top: 10px;
+  margin-bottom: 6px;
 }
 
 #quantumLogo {
-  width: 70px;
-  height: 70px;
+  width: 100px;
+  height: 100px;
   filter: drop-shadow(0 0 12px var(--accent-glow));
 }
 
-/* ============================================================================
-   HEADINGS
-   ============================================================================ */
+/* HEADINGS */
 
 h1 {
-  margin: var(--spacing-xs) 0;
-  font-size: 1.6rem;
+  margin: 4px 0;
+  font-size: 2.2rem;
   letter-spacing: 0.08em;
   text-shadow: 0 0 12px rgba(79, 70, 229, 0.4);
-  line-height: 1.2;
 }
 
 h2 {
-  margin: var(--spacing-xs) 0 var(--spacing-md);
-  font-size: 0.9rem;
+  margin: 0 0 18px;
+  font-size: 1rem;
   color: var(--text-muted);
-  font-weight: 500;
 }
 
-/* ============================================================================
-   SCANNER SHELL (Main Container)
-   ============================================================================ */
+/* SCANNER SHELL */
 
 #scannerShell {
-  width: 100%;
   max-width: 520px;
   margin: 0 auto;
   background: var(--panel);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
+  padding: 20px;
   border: 1px solid var(--border);
   filter: drop-shadow(0 0 22px rgba(0, 0, 0, 0.6));
 }
 
-/* ============================================================================
-   VIDEO / CANVAS
-   ============================================================================ */
+/* VIDEO / CANVAS */
 
 #videoWrapper {
   width: 100%;
-  height: 220px;
+  height: 300px;
   border-radius: var(--radius-md);
   overflow: hidden;
   background: #000;
@@ -128,49 +94,32 @@ h2 {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform var(--transition-mid);
 }
 
 #canvas {
   display: none;
 }
 
-/* ============================================================================
-   CONTROLS - MOBILE OPTIMIZED
-   ============================================================================ */
+/* CONTROLS */
 
 #controls {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-lg);
-}
-
-#advancedControls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-md);
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--border-soft);
+  gap: 12px;
+  margin-top: 18px;
 }
 
 button {
-  flex: 1 1 auto;
-  min-width: 120px;
-  max-width: 100%;
   border: none;
   cursor: pointer;
   border-radius: 999px;
-  padding: 12px 16px;
-  font-size: 0.95rem;
+  padding: 12px 20px;
+  font-size: 1rem;
   font-weight: 600;
   background: linear-gradient(135deg, var(--accent1), var(--accent2));
   color: var(--text);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast),
-    opacity var(--transition-mid);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-mid);
   box-shadow: 0 0 14px var(--accent-glow);
   will-change: transform;
 }
@@ -192,98 +141,67 @@ button:active {
   opacity: 0.85;
 }
 
-/* ============================================================================
-   PHOTO PREVIEW
-   ============================================================================ */
+/* PHOTO PREVIEW */
 
 #photoPreview {
   display: none;
-  width: 100%;
   max-width: 100%;
-  margin-top: var(--spacing-md);
+  margin-top: 14px;
   border-radius: var(--radius-sm);
   filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.6));
 }
 
-/* ============================================================================
-   SCAN INDICATOR
-   ============================================================================ */
+/* SCAN INDICATOR */
 
 #scanIndicator {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
-  margin: var(--spacing-md) auto 0;
+  margin: 14px auto 0;
   background: #4b5563;
   animation: pulse 1.8s infinite ease-in-out;
 }
 
 @keyframes pulse {
-  0%,
-  100% {
-    background: #4b5563;
-  }
-  50% {
-    background: var(--accent2);
-  }
+  0%, 100% { background: #4b5563; }
+  50% { background: var(--accent2); }
 }
 
-/* ============================================================================
-   OUTPUT (Status & Payload)
-   ============================================================================ */
+/* OUTPUT */
 
 #output {
-  margin-top: var(--spacing-md);
+  margin-top: 14px;
   text-align: left;
 }
 
 #status {
-  padding: var(--spacing-md);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+#status.neutral { color: var(--text-soft); }
+#status.success { color: #bbf7d0; border-color: #16a34a; }
+#status.error { color: #fecaca; border-color: #dc2626; }
+
+#payload {
+  padding: 12px;
   border-radius: var(--radius-sm);
   background: var(--panel);
   border: 1px solid var(--border-soft);
   font-size: 0.9rem;
-  margin-bottom: var(--spacing-sm);
   word-wrap: break-word;
 }
 
-#status.neutral {
-  color: var(--text-soft);
-}
-
-#status.success {
-  color: #bbf7d0;
-  border-color: #16a34a;
-}
-
-#status.error {
-  color: #fecaca;
-  border-color: #dc2626;
-}
-
-#payload {
-  padding: var(--spacing-md);
-  border-radius: var(--radius-sm);
-  background: var(--panel);
-  border: 1px solid var(--border-soft);
-  font-size: 0.85rem;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  font-family: "Courier New", monospace;
-}
-
-/* ============================================================================
-   LEDGER - IMPROVED SPACING & LAYOUT
-   ============================================================================ */
+/* LEDGER */
 
 #ledgerShell {
-  width: 100%;
   max-width: 520px;
-  margin: var(--spacing-lg) auto 0;
-  padding: var(--spacing-lg);
+  margin: 22px auto 0;
+  padding: 20px;
   background: var(--panel);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
@@ -291,414 +209,115 @@ button:active {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: var(--spacing-md);
+  gap: 12px;
 }
 
 #ledgerTitle {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--accent2);
-  font-weight: 700;
-  margin-bottom: var(--spacing-sm);
+  color: var(--text-muted);
 }
 
 #ledger {
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
 }
 
 .ledgerItem {
   width: 100%;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8));
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md);
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  padding: 14px;
   border: 1px solid var(--border-soft);
+  margin-bottom: 10px;
   text-align: left;
-  transition: all var(--transition-mid);
-}
-
-.ledgerItem:hover {
-  border-color: var(--accent2);
-  box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
 }
 
 .ledgerPayload {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--text-soft);
   word-wrap: break-word;
-  overflow-wrap: break-word;
-  margin-bottom: var(--spacing-md);
-  font-family: "Courier New", monospace;
-  background: rgba(0, 0, 0, 0.3);
-  padding: var(--spacing-sm);
-  border-radius: 4px;
-  line-height: 1.4;
 }
 
 .ledgerMeta {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-sm);
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
   font-size: 0.75rem;
   color: var(--text-muted);
-  margin-bottom: var(--spacing-md);
-}
-
-.ledgerMeta span {
-  background: rgba(17, 24, 39, 0.8);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: 6px;
-  border: 1px solid var(--border-soft);
-  overflow-wrap: break-word;
-  transition: all var(--transition-fast);
-}
-
-.ledgerMeta span:hover {
-  border-color: var(--accent2);
-  background: rgba(79, 70, 229, 0.1);
-}
-
-.ledgerMeta span strong {
-  color: var(--accent2);
-  display: block;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  margin-bottom: var(--spacing-xs);
-  letter-spacing: 0.05em;
-}
-
-.ledgerMeta span span {
-  color: var(--text-soft);
-  font-size: 0.7rem;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .ledgerFooter {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  margin-top: 8px;
   font-size: 0.75rem;
   color: var(--text-muted);
-  gap: var(--spacing-md);
-  padding-top: var(--spacing-sm);
-  border-top: 1px solid var(--border-soft);
-  margin-top: var(--spacing-md);
 }
 
 .ledgerTag {
-  padding: 4px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--accent1), var(--accent2));
-  border: none;
-  color: var(--text);
-  font-weight: 700;
-  text-transform: uppercase;
-  font-size: 0.65rem;
-  box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+  background: var(--border);
+  border: 1px solid var(--border-soft);
 }
 
 .ledgerTime {
-  opacity: 0.6;
-  font-size: 0.7rem;
-  font-family: "Courier New", monospace;
+  opacity: 0.8;
 }
 
-/* ============================================================================
-   TABLET (768px+)
-   ============================================================================ */
-
-@media (min-width: 768px) {
-  :root {
-    --spacing-lg: 20px;
-    --spacing-xl: 24px;
-  }
-
-  html {
-    font-size: 17px;
-  }
-
-  body {
-    padding: var(--spacing-xl);
-  }
-
-  #quantumLogo {
-    width: 85px;
-    height: 85px;
-  }
-
-  h1 {
-    font-size: 2rem;
-  }
-
-  h2 {
-    font-size: 1rem;
-  }
-
-  #videoWrapper {
-    height: 280px;
-  }
-
-  button {
-    flex: 0 1 auto;
-    min-width: 140px;
-    padding: 14px 20px;
-    font-size: 1rem;
-  }
-
-  #controls,
-  #advancedControls {
-    gap: var(--spacing-lg);
-  }
-
-  .ledgerMeta {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
-
-  #ledger {
-    gap: var(--spacing-lg);
-  }
-
-  .ledgerItem {
-    padding: var(--spacing-lg);
-  }
-}
-
-/* ============================================================================
-   DESKTOP (1024px+)
-   ============================================================================ */
-
-@media (min-width: 1024px) {
-  :root {
-    --spacing-lg: 24px;
-    --spacing-xl: 28px;
-  }
-
-  html {
-    font-size: 18px;
-  }
-
-  body {
-    padding: var(--spacing-xl);
-  }
-
-  #quantumLogo {
-    width: 100px;
-    height: 100px;
-  }
-
-  h1 {
-    font-size: 2.4rem;
-    margin: var(--spacing-md) 0;
-  }
-
-  h2 {
-    font-size: 1.1rem;
-    margin-bottom: var(--spacing-lg);
-  }
-
-  #scannerShell {
-    padding: 24px;
-  }
-
-  #videoWrapper {
-    height: 340px;
-  }
-
-  button {
-    padding: 14px 24px;
-    font-size: 1.05rem;
-    min-width: 160px;
-  }
-
-  #controls,
-  #advancedControls {
-    gap: var(--spacing-xl);
-  }
-
-  #scanIndicator {
-    width: 36px;
-    height: 36px;
-  }
-
-  .ledgerMeta {
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-  }
-
-  #ledger {
-    gap: var(--spacing-xl);
-  }
-
-  .ledgerItem {
-    padding: var(--spacing-xl);
-  }
-}
-
-/* ============================================================================
-   SMALL PHONES (320px - 480px) - Extra Adjustments
-   ============================================================================ */
+/* MOBILE */
 
 @media (max-width: 480px) {
-  :root {
-    --spacing-lg: 12px;
-    --spacing-xl: 16px;
-  }
-
-  html {
-    font-size: 14px;
-  }
-
   body {
-    padding: var(--spacing-md);
+    padding: 0 8px;
+    font-size: 15px;
   }
 
   h1 {
-    font-size: 1.4rem;
-    margin: var(--spacing-xs) 0;
-  }
-
-  h2 {
-    font-size: 0.85rem;
-    margin: var(--spacing-xs) 0 var(--spacing-md);
+    font-size: 1.8rem;
+    margin-top: 10px;
   }
 
   #quantumLogo {
-    width: 60px;
-    height: 60px;
-    margin-bottom: var(--spacing-sm);
+    width: 80px;
+    height: 80px;
   }
 
   #scannerShell {
-    padding: var(--spacing-md);
-    margin-bottom: var(--spacing-md);
+    padding: 12px;
   }
 
   #videoWrapper {
-    height: 200px;
-  }
-
-  #controls,
-  #advancedControls {
-    gap: var(--spacing-sm);
+    height: 260px;
   }
 
   button {
-    min-width: 100%;
-    max-width: 100%;
-    flex: 1 1 100%;
-    padding: 12px 14px;
-    font-size: 0.9rem;
+    width: 100%;
+    max-width: 260px;
+    padding: 14px 18px;
+    font-size: 1rem;
   }
 
   #output {
-    margin-top: var(--spacing-sm);
-  }
-
-  #status,
-  #payload {
-    padding: var(--spacing-sm);
-    font-size: 0.8rem;
+    padding: 0 10px;
   }
 
   #ledgerShell {
-    margin: var(--spacing-md) auto 0;
-    padding: var(--spacing-md);
+    padding: 18px;
+    margin: 20px auto;
   }
 
-  #ledgerTitle {
-    font-size: 0.8rem;
-    margin-bottom: var(--spacing-xs);
-  }
-
-  #ledger {
-    gap: var(--spacing-md);
-  }
-
-  .ledgerItem {
-    padding: var(--spacing-sm);
-    margin-bottom: 0;
-  }
-
-  .ledgerPayload {
-    font-size: 0.75rem;
-    margin-bottom: var(--spacing-sm);
-    padding: var(--spacing-xs);
-  }
-
-  .ledgerMeta {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-xs);
-    margin-bottom: var(--spacing-sm);
-  }
-
-  .ledgerMeta span {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    font-size: 0.65rem;
-  }
-
-  .ledgerMeta span strong {
-    font-size: 0.6rem;
-  }
-
-  .ledgerFooter {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-xs);
-    padding-top: var(--spacing-xs);
-    margin-top: var(--spacing-sm);
-  }
-
-  .ledgerTag {
-    padding: 3px 8px;
-    font-size: 0.6rem;
-  }
-
-  .ledgerTime {
-    font-size: 0.65rem;
+  #scanIndicator {
+    width: 32px;
+    height: 32px;
   }
 }
-
-/* ============================================================================
-   ULTRA-SMALL (< 360px)
-   ============================================================================ */
 
 @media (max-width: 360px) {
-  html {
-    font-size: 13px;
-  }
-
-  h1 {
-    font-size: 1.2rem;
-  }
-
-  #quantumLogo {
-    width: 50px;
-    height: 50px;
-  }
-
-  #videoWrapper {
-    height: 180px;
-  }
-
-  button {
-    padding: 10px 12px;
-    font-size: 0.85rem;
-  }
-
-  .ledgerMeta {
-    grid-template-columns: 1fr;
-  }
-
-  .ledgerItem {
-    padding: var(--spacing-xs);
-  }
-}
-
-/* ============================================================================
-   UTILITY: Hide File Input
-   ============================================================================ */
-
-#fileInput {
-  display: none;
+  h1 { font-size: 1.6rem; }
+  #videoWrapper { height: 220px; }
+  button { max-width: 230px; }
 }
