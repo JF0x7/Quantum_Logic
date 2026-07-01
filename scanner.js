@@ -14,11 +14,13 @@ class QtumScanner {
     this.state = {
       deviceId: null,
       devices: [],
-      reader: null,
       cooldown: false,
       lastScan: null,
       ready: false
     };
+
+    this.scanTimer = null;
+    this.scanActive = false;
 
     this.el = {
       video: document.getElementById("video"),
@@ -87,28 +89,11 @@ class QtumScanner {
   }
 
   async init() {
-    if (typeof ZXing === "undefined") {
-      this.setStatus("ZXing missing", "error");
+    if (typeof window.jsQR !== "function") {
+      this.setStatus("QR scanner library missing", "error");
       return;
     }
 
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-      ZXing.BarcodeFormat.QR_CODE,
-      ZXing.BarcodeFormat.DATA_MATRIX,
-      ZXing.BarcodeFormat.EAN_13,
-      ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.UPC_A,
-      ZXing.BarcodeFormat.CODE_128,
-      ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.PDF_417,
-      ZXing.BarcodeFormat.AZTEC,
-      ZXing.BarcodeFormat.ITF,
-      ZXing.BarcodeFormat.CODABAR
-    ]);
-
-    this.state.reader = new ZXing.BrowserMultiFormatReader(hints);
     this.state.ready = true;
 
     if (this.el.video) {
@@ -156,7 +141,7 @@ class QtumScanner {
     return candidates;
   }
 
-  async attachStream(constraints, deviceId) {
+  async attachStream(deviceId) {
     const video = this.el.video;
     if (!video) throw new Error("Video element missing");
 
@@ -176,31 +161,7 @@ class QtumScanner {
         const stream = await navigator.mediaDevices.getUserMedia(candidate);
         video.srcObject = stream;
         await video.play().catch(() => {});
-
-        const decodeCallback = (result, err) => {
-          if (result) this.handleScan(result.getText());
-          if (err && !(err instanceof ZXing.NotFoundException)) {
-            console.debug(err);
-          }
-        };
-
-        try {
-          if (this.state.reader.decodeFromVideoElement) {
-            await this.state.reader.decodeFromVideoElement(video, decodeCallback);
-          } else if (this.state.reader.decodeFromConstraints) {
-            await this.state.reader.decodeFromConstraints(candidate, video, decodeCallback);
-          } else if (this.state.reader.decodeFromVideoDevice) {
-            await this.state.reader.decodeFromVideoDevice(deviceId || null, video, decodeCallback);
-          } else {
-            throw new Error("No compatible decoder available");
-          }
-        } catch (err) {
-          console.warn("Decoder startup failed", err);
-          if (this.state.reader.decodeFromVideoDevice) {
-            await this.state.reader.decodeFromVideoDevice(deviceId || null, video, decodeCallback);
-          }
-        }
-
+        this.startScanningLoop();
         return stream;
       } catch (err) {
         lastError = err;
@@ -209,6 +170,63 @@ class QtumScanner {
     }
 
     throw lastError || new Error("Camera access failed");
+  }
+
+  startScanningLoop() {
+    this.stopScanningLoop();
+    this.scanActive = true;
+    this.scanTimer = window.setInterval(() => {
+      if (!this.scanActive || !this.el.video || this.el.video.readyState < 2) return;
+      this.decodeCurrentFrame();
+    }, 250);
+  }
+
+  stopScanningLoop() {
+    if (this.scanTimer) {
+      window.clearInterval(this.scanTimer);
+      this.scanTimer = null;
+    }
+    this.scanActive = false;
+  }
+
+  decodeCurrentFrame() {
+    const video = this.el.video;
+    const canvas = this.el.canvas;
+    if (!video || !canvas || video.videoWidth <= 0 || video.videoHeight <= 0) return;
+
+    const ctx = canvas.getContext("2d");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: "dontInvert"
+    });
+
+    if (code) {
+      this.handleScan(code.data);
+    }
+  }
+
+  decodeImage(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = this.el.canvas;
+        const ctx = canvas.getContext("2d");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert"
+        });
+        resolve(code);
+      };
+      img.onerror = () => reject(new Error("Image load failed"));
+      img.src = url;
+    });
   }
 
   async start() {
@@ -228,7 +246,7 @@ class QtumScanner {
     }
 
     try {
-      await this.attachStream(null, this.state.deviceId);
+      await this.attachStream(this.state.deviceId);
       this.setStatus("Scanning…", "neutral");
     } catch (err) {
       console.warn("Scanner start failed", err);
@@ -251,7 +269,7 @@ class QtumScanner {
   }
 
   stop() {
-    this.state.reader?.reset();
+    this.stopScanningLoop();
     this.stopStreams();
     this.setStatus("Stopped", "neutral");
   }
@@ -308,8 +326,12 @@ class QtumScanner {
         if (!file) return;
         const url = URL.createObjectURL(file);
         try {
-          const result = await this.state.reader.decodeFromImageUrl(url);
-          this.handleScan(result.getText());
+          const result = await this.decodeImage(url);
+          if (result) {
+            this.handleScan(result.data);
+          } else {
+            this.setStatus("No QR code found", "error");
+          }
         } catch (err) {
           console.warn(err);
           this.setStatus("Upload decode failed", "error");
