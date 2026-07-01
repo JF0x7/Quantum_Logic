@@ -153,6 +153,10 @@ class QtumScanner {
       throw new Error("Camera requires HTTPS on iPhone Safari");
     }
 
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
+      throw new Error("Camera access is not available in this browser");
+    }
+
     const candidates = this.buildConstraintCandidates(deviceId);
     let lastError = null;
 
@@ -250,10 +254,14 @@ class QtumScanner {
       this.setStatus("Scanning…", "neutral");
     } catch (err) {
       console.warn("Scanner start failed", err);
-      if (err.message && /HTTPS/i.test(err.message)) {
-        this.setStatus("Use HTTPS for camera on iPhone", "error");
+      if (err && err.name === "NotAllowedError") {
+        this.setStatus("Camera permission blocked. Please allow camera access and refresh.", "error");
+      } else if (err.message && /HTTPS/i.test(err.message)) {
+        this.setStatus("Open this page via HTTPS or localhost for camera scanning on iPhone.", "error");
+      } else if (err.message && /not available/i.test(err.message)) {
+        this.setStatus(err.message, "error");
       } else {
-        this.setStatus("Camera access failed", "error");
+        this.setStatus("Camera access failed. Please allow camera access and try again.", "error");
       }
     }
   }
