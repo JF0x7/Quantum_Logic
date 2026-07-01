@@ -10,8 +10,8 @@
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
 
-  <!-- QR Scanner -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <!-- ZXing Barcode Scanner -->
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
 
   <!-- App Scripts -->
   <script defer src="Qai.js"></script>
@@ -43,7 +43,7 @@
     </a>
   </div>
 
-  <h1>⚛ QTUM(LOG) </h1>
+  <h1>QTUM(LOG)</h1>
   <h2>Native Tools of Julius Hirsch • Verified by Beler Industries</h2>
 
   <!-- Scanner Shell -->
@@ -64,9 +64,8 @@
       <button id="uploadBtn" type="button" class="secondary">Upload Image</button>
       <button id="sendBtn" type="button" class="secondary">Send Signal</button>
       <button id="photoBtn" type="button">📸 Take Photo</button>
-      <button id="testBtn" type="button" class="secondary">Test Decode</button>
       <button id="resetLedgerBtn" type="button" class="secondary">Reset Ledger</button>
-      <input type="file" id="fileInput" accept="image/*" capture="environment" hidden>
+      <input type="file" id="fileInput" accept="image/*" hidden>
     </div>
 
     <!-- Photo Preview -->
@@ -89,12 +88,12 @@
     <div id="ledger"></div>
   </div>
 
-  <!-- Initialization -->
+  <!-- ⭐ FIXED: Initialization -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const qai = new Qai();
-      const ledger = new QuantumLedger("ledger");
-      window.qtumScanner = new QtumScanner(ledger, qai);
+      const qai = new Qai();                     // QAI brain
+      const ledger = new QuantumLedger("ledger"); // FIXED: pass container ID
+      const scanner = new QtumScanner(ledger, qai); // scanner engine
     });
   </script>
 

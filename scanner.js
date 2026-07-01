@@ -2,407 +2,245 @@
  * Quantum Scanner Engine — ZXing + QAI + Ledger
  */
 
-class QtumScanner {
-  constructor(ledgerInstance = null, brainInstance = null) {
-    this.CONFIG = {
-      cooldown: 2000,
-      vibrate: true,
-      autoRedirect: true,
-      beep: { freq: 950, volume: 0.08, duration: 0.10 }
-    };
+const CONFIG = {
+  cooldown: 2000,
+  vibrate: true,
+  autoRedirect: true,
+  beep: { freq: 950, volume: 0.08, duration: 0.10 }
+};
 
-    this.state = {
-      deviceId: null,
-      devices: [],
-      cooldown: false,
-      lastScan: null,
-      ready: false
-    };
+const state = {
+  deviceId: null,
+  devices: [],
+  reader: null,
+  cooldown: false,
+  lastScan: null,
+  ready: false
+};
 
-    this.scanTimer = null;
-    this.scanActive = false;
-    this.captureFallbackActive = false;
+const el = {
+  video: document.getElementById("video"),
+  payload: document.getElementById("payload"),
+  status: document.getElementById("status"),
+  start: document.getElementById("startBtn"),
+  flip: document.getElementById("flipBtn"),
+  upload: document.getElementById("uploadBtn"),
+  send: document.getElementById("sendBtn"),
+  photo: document.getElementById("photoBtn"),
+  resetLedger: document.getElementById("resetLedgerBtn"),
+  fileInput: document.getElementById("fileInput"),
+  canvas: document.getElementById("canvas"),
+  photoPreview: document.getElementById("photoPreview")
+};
 
-    this.el = {
-      video: document.getElementById("video"),
-      payload: document.getElementById("payload"),
-      status: document.getElementById("status"),
-      start: document.getElementById("startBtn"),
-      flip: document.getElementById("flipBtn"),
-      upload: document.getElementById("uploadBtn"),
-      send: document.getElementById("sendBtn"),
-      photo: document.getElementById("photoBtn"),
-      test: document.getElementById("testBtn"),
-      resetLedger: document.getElementById("resetLedgerBtn"),
-      fileInput: document.getElementById("fileInput"),
-      canvas: document.getElementById("canvas"),
-      photoPreview: document.getElementById("photoPreview")
-    };
+const ledger = new QuantumLedger("ledger");
+const brain = new Qai();
 
-    this.ledger = ledgerInstance || new QuantumLedger("ledger");
-    this.brain = brainInstance || new Qai();
+function setStatus(msg, type = "neutral") {
+  if (el.status) {
+    el.status.textContent = `Status: ${msg}`;
+    el.status.classList.remove("neutral", "success", "error");
+    el.status.classList.add(type);
+  }
+  console.log(`[Scanner] ${msg}`);
+}
 
-    this.init();
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.frequency.value = CONFIG.beep.freq;
+    gain.gain.value = CONFIG.beep.volume;
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + CONFIG.beep.duration);
+
+    setTimeout(() => ctx.close(), 300);
+  } catch (_) {}
+}
+
+async function init() {
+  if (typeof ZXing === "undefined") {
+    setStatus("ZXing missing", "error");
+    return;
   }
 
-  setStatus(msg, type = "neutral") {
-    if (this.el.status) {
-      this.el.status.textContent = `Status: ${msg}`;
-      this.el.status.classList.remove("neutral", "success", "error");
-      this.el.status.classList.add(type);
+  const hints = new Map();
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+    ZXing.BarcodeFormat.QR_CODE,
+    ZXing.BarcodeFormat.DATA_MATRIX,
+    ZXing.BarcodeFormat.EAN_13,
+    ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.UPC_A,
+    ZXing.BarcodeFormat.CODE_128,
+    ZXing.BarcodeFormat.CODE_39,
+    ZXing.BarcodeFormat.PDF_417,
+    ZXing.BarcodeFormat.AZTEC,
+    ZXing.BarcodeFormat.ITF,
+    ZXing.BarcodeFormat.CODABAR
+  ]);
+
+  state.reader = new ZXing.BrowserMultiFormatReader(hints);
+  state.ready = true;
+
+  if (el.video) {
+    Object.assign(el.video, { autoplay: true, playsinline: true, muted: true });
+  }
+
+  bindEvents();
+  setStatus("Ready", "neutral");
+}
+
+async function start() {
+  if (!state.ready) return setStatus("Not ready", "error");
+
+  setStatus("Starting…", "neutral");
+  state.reader.reset();
+
+  const devices = await state.reader.listVideoInputDevices();
+  state.devices = devices;
+
+  if (!devices.length) return setStatus("No camera", "error");
+
+  if (!state.deviceId) {
+    const rear = devices.find(d => /back|rear|environment/i.test(d.label));
+    state.deviceId = rear ? rear.deviceId : devices[0].deviceId;
+  }
+
+  const constraints = {
+    video: {
+      deviceId: { exact: state.deviceId },
+      facingMode: "environment",
+      width: { ideal: 1280, max: 1920 },
+      height: { ideal: 720, max: 1080 },
+      frameRate: { ideal: 30 }
     }
-    console.log(`[Scanner] ${msg}`);
+  };
+
+  state.reader.decodeFromConstraints(constraints, el.video, (result, err) => {
+    if (result) handleScan(result.getText());
+    if (err && !(err instanceof ZXing.NotFoundException)) {
+      console.debug(err);
+    }
+  });
+
+  setStatus("Scanning…", "neutral");
+}
+
+function flip() {
+  if (state.devices.length < 2) return setStatus("Only one camera", "error");
+
+  const idx = state.devices.findIndex(d => d.deviceId === state.deviceId);
+  state.deviceId = state.devices[(idx + 1) % state.devices.length].deviceId;
+  setStatus("Swapping…", "neutral");
+  start();
+}
+
+function stop() {
+  state.reader?.reset();
+  setStatus("Stopped", "neutral");
+}
+
+async function handleScan(data) {
+  if (state.cooldown && data === state.lastScan) return;
+
+  state.lastScan = data;
+  state.cooldown = true;
+
+  if (el.payload) el.payload.textContent = data;
+  setStatus("Decoded!", "success");
+
+  beep();
+  if (CONFIG.vibrate && navigator.vibrate) navigator.vibrate(80);
+
+  try {
+    const analysis = await brain.process(data);
+    ledger.addEntry(data, "SCAN", {
+      type: analysis.format ? `${analysis.format.name} (${analysis.format.type})` : analysis.type,
+      pattern: analysis.pattern,
+      explanation: analysis.explanation
+    });
+  } catch (e) {
+    console.warn("QAI error", e);
+    ledger.addEntry(data, "SCAN");
   }
 
-  beep() {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.frequency.value = this.CONFIG.beep.freq;
-      gain.gain.value = this.CONFIG.beep.volume;
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + this.CONFIG.beep.duration);
-
-      setTimeout(() => ctx.close(), 300);
-    } catch (_) {}
+  if (CONFIG.autoRedirect) {
+    const isUrl = /^https?:\/\/[^\s]+/i.test(data);
+    const url = isUrl ? data : `https://www.google.com/search?q=${encodeURIComponent(data)}`;
+    window.open(url, "_blank");
   }
 
-  async getVideoInputDevices() {
-    if (this.state.reader?.listVideoInputDevices) {
+  setTimeout(() => { state.cooldown = false; }, CONFIG.cooldown);
+}
+
+function bindEvents() {
+  if (el.start) el.start.onclick = start;
+  if (el.flip) el.flip.onclick = flip;
+
+  if (el.upload && el.fileInput) {
+    el.upload.onclick = () => el.fileInput.click();
+    el.fileInput.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
       try {
-        return await this.state.reader.listVideoInputDevices();
-      } catch (_) {}
-    }
-
-    if (navigator.mediaDevices?.enumerateDevices) {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      return devices.filter(d => d.kind === "videoinput");
-    }
-
-    return [];
-  }
-
-  async init() {
-    if (typeof window.jsQR !== "function") {
-      this.setStatus("QR scanner library missing", "error");
-      return;
-    }
-
-    this.state.ready = true;
-
-    if (this.el.video) {
-      this.el.video.autoplay = true;
-      this.el.video.playsInline = true;
-      this.el.video.muted = true;
-      this.el.video.setAttribute("playsinline", "");
-      this.el.video.setAttribute("webkit-playsinline", "");
-    }
-
-    if (this.el.fileInput) {
-      this.el.fileInput.setAttribute("capture", "environment");
-      this.el.fileInput.setAttribute("accept", "image/*");
-    }
-
-    this.bindEvents();
-    this.setStatus("Ready", "neutral");
-  }
-
-  buildConstraintCandidates(deviceId) {
-    const candidates = [];
-
-    const base = {
-      audio: false,
-      video: {
-        width: { ideal: 640 },
-        height: { ideal: 480 }
-      }
-    };
-
-    if (deviceId) {
-      base.video.deviceId = { exact: deviceId };
-    }
-
-    candidates.push({
-      ...base,
-      video: { ...base.video, facingMode: { ideal: "environment" } }
-    });
-
-    candidates.push({
-      ...base,
-      video: { ...base.video, facingMode: { ideal: "user" } }
-    });
-
-    candidates.push({
-      audio: false,
-      video: true
-    });
-
-    return candidates;
-  }
-
-  async attachStream(deviceId) {
-    const video = this.el.video;
-    if (!video) throw new Error("Video element missing");
-
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error("Camera API not supported");
-    }
-
-    const candidates = this.buildConstraintCandidates(deviceId);
-    let lastError = null;
-
-    for (const candidate of candidates) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(candidate);
-        video.srcObject = stream;
-        await video.play().catch(() => {});
-        this.startScanningLoop();
-        return stream;
+        const result = await state.reader.decodeFromImageUrl(url);
+        handleScan(result.getText());
       } catch (err) {
-        lastError = err;
+        console.warn(err);
+        setStatus("Upload decode failed", "error");
+      } finally {
+        URL.revokeObjectURL(url);
       }
-    }
-
-    throw lastError || new Error("Camera access failed");
+    };
   }
 
-  startScanningLoop() {
-    this.stopScanningLoop();
-    this.scanActive = true;
-    this.scanTimer = window.setInterval(() => {
-      if (!this.scanActive || !this.el.video || this.el.video.readyState < 2) return;
-      this.decodeCurrentFrame();
-    }, 250);
+  if (el.photo && el.canvas && el.video && el.photoPreview) {
+    el.photo.onclick = () => {
+      const ctx = el.canvas.getContext("2d");
+      el.canvas.width = el.video.videoWidth || 640;
+      el.canvas.height = el.video.videoHeight || 480;
+      ctx.drawImage(el.video, 0, 0, el.canvas.width, el.canvas.height);
+      el.photoPreview.src = el.canvas.toDataURL("image/png");
+      el.photoPreview.style.display = "block";
+    };
   }
 
-  stopScanningLoop() {
-    if (this.scanTimer) {
-      window.clearInterval(this.scanTimer);
-      this.scanTimer = null;
-    }
-    this.scanActive = false;
-  }
-
-  decodeCurrentFrame() {
-    const video = this.el.video;
-    const canvas = this.el.canvas;
-    if (!video || !canvas || video.videoWidth <= 0 || video.videoHeight <= 0) return;
-
-    const ctx = canvas.getContext("2d");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: "dontInvert"
-    });
-
-    if (code) {
-      this.handleScan(code.data);
-    }
-  }
-
-  decodeImage(url) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const canvas = this.el.canvas;
-        const ctx = canvas.getContext("2d");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: "dontInvert"
-        });
-        resolve(code);
-      };
-      img.onerror = () => reject(new Error("Image load failed"));
-      img.src = url;
-    });
-  }
-
-  async start() {
-    if (!this.state.ready) return this.setStatus("Not ready", "error");
-
-    this.setStatus("Starting…", "neutral");
-    this.state.reader?.reset();
-
-    const devices = await this.getVideoInputDevices();
-    this.state.devices = devices;
-
-    if (!devices.length) return this.setStatus("No camera", "error");
-
-    if (!this.state.deviceId) {
-      const rear = devices.find(d => /back|rear|environment/i.test(d.label));
-      this.state.deviceId = rear ? rear.deviceId : devices[0]?.deviceId;
-    }
-
-    try {
-      await this.attachStream(this.state.deviceId);
-      this.setStatus("Scanning…", "neutral");
-    } catch (err) {
-      console.warn("Scanner start failed", err);
-      this.useCaptureFallback(err);
-    }
-  }
-
-  useCaptureFallback(err) {
-    if (this.captureFallbackActive) return;
-    this.captureFallbackActive = true;
-
-    if (err && err.name === "NotAllowedError") {
-      this.setStatus("Camera permission blocked", "error");
-    } else {
-      this.setStatus("Camera unavailable", "error");
-    }
-
-    if (this.el.fileInput) {
-      window.setTimeout(() => this.el.fileInput.click(), 250);
-    }
-  }
-
-  flip() {
-    if (this.state.devices.length < 2) return this.setStatus("Only one camera", "error");
-
-    const idx = this.state.devices.findIndex(d => d.deviceId === this.state.deviceId);
-    this.state.deviceId = this.state.devices[(idx + 1) % this.state.devices.length].deviceId;
-    this.setStatus("Swapping…", "neutral");
-    this.stopStreams();
-    this.start();
-  }
-
-  stop() {
-    this.stopScanningLoop();
-    this.stopStreams();
-    this.setStatus("Stopped", "neutral");
-  }
-
-  stopStreams() {
-    const video = this.el.video;
-    if (video?.srcObject) {
-      video.srcObject.getTracks().forEach(track => track.stop());
-      video.srcObject = null;
-    }
-  }
-
-  async handleScan(data) {
-    if (this.state.cooldown && data === this.state.lastScan) return;
-
-    this.state.lastScan = data;
-    this.state.cooldown = true;
-
-    if (this.el.payload) this.el.payload.textContent = data;
-    this.setStatus("Decoded!", "success");
-
-    this.beep();
-    if (this.CONFIG.vibrate && navigator.vibrate) navigator.vibrate(80);
-
-    try {
-      const analysis = await this.brain.process(data);
-      this.ledger.addEntry(data, "SCAN", {
-        type: analysis.format ? `${analysis.format.name} (${analysis.format.type})` : analysis.type,
-        pattern: analysis.pattern,
-        explanation: analysis.explanation
-      });
-    } catch (_) {
-      this.ledger.addEntry(data, "SCAN");
-    }
-
-    if (this.CONFIG.autoRedirect) {
-      const isUrl = /^https?:\/\/[^\s]+/i.test(data);
-      const url = isUrl ? data : `https://www.google.com/search?q=${encodeURIComponent(data)}`;
-      window.open(url, "_blank");
-    }
-
-    setTimeout(() => { this.state.cooldown = false; }, this.CONFIG.cooldown);
-  }
-
-  bindEvents() {
-    const attach = (el, fn) => { if (el) el.onclick = fn; };
-
-    attach(this.el.start, () => this.start());
-    attach(this.el.flip, () => this.flip());
-
-    if (this.el.upload && this.el.fileInput) {
-      attach(this.el.upload, () => {
-        this.captureFallbackActive = false;
-        this.el.fileInput.click();
-      });
-      this.el.fileInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const url = URL.createObjectURL(file);
-        try {
-          const result = await this.decodeImage(url);
-          if (result) {
-            this.handleScan(result.data);
-          } else {
-            this.setStatus("No QR code found", "error");
-          }
-        } catch (_) {
-          this.setStatus("Upload decode failed", "error");
-        } finally {
-          URL.revokeObjectURL(url);
-        }
-      };
-    }
-
-    if (this.el.photo && this.el.canvas && this.el.video && this.el.photoPreview) {
-      attach(this.el.photo, () => {
-        const ctx = this.el.canvas.getContext("2d");
-        this.el.canvas.width = this.el.video.videoWidth || 640;
-        this.el.canvas.height = this.el.video.videoHeight || 480;
-        ctx.drawImage(this.el.video, 0, 0, this.el.canvas.width, this.el.canvas.height);
-        this.el.photoPreview.src = this.el.canvas.toDataURL("image/png");
-        this.el.photoPreview.style.display = "block";
-      });
-    }
-
-    attach(this.el.test, async () => {
-      this.setStatus("Trying sample…", "neutral");
-      try {
-        const result = await this.decodeImage("https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=QTUM%20SCAN%20TEST");
-        if (result) {
-          this.handleScan(result.data);
-        } else {
-          this.setStatus("No QR code found", "error");
-        }
-      } catch (_) {
-        this.setStatus("Sample decode failed", "error");
-      }
-    });
-
-    attach(this.el.send, async () => {
-      const data = this.el.payload.textContent || "";
+  if (el.send) {
+    el.send.onclick = async () => {
+      const data = el.payload.textContent || "";
       if (!data) {
-        this.setStatus("No payload", "error");
+        setStatus("No payload to send", "error");
         return;
       }
-      this.setStatus("Analyzing…", "neutral");
+      setStatus("Analyzing payload…", "neutral");
       try {
-        const analysis = await this.brain.process(data);
-        this.ledger.addEntry(data, "MANUAL", {
+        const analysis = await brain.process(data);
+        ledger.addEntry(data, "MANUAL", {
           type: analysis.format ? `${analysis.format.name} (${analysis.format.type})` : analysis.type,
           pattern: analysis.pattern,
           explanation: analysis.explanation
         });
-        this.setStatus("Signal logged", "success");
-      } catch (_) {
-        this.setStatus("QAI analysis failed", "error");
+        setStatus("Signal logged", "success");
+      } catch (e) {
+        console.warn(e);
+        setStatus("QAI analysis failed", "error");
       }
-    });
+    };
+  }
 
-    attach(this.el.resetLedger, () => this.ledger.clear());
+  if (el.resetLedger) {
+    el.resetLedger.onclick = () => ledger.clear();
   }
 }
 
-window.QtumScanner = QtumScanner;
+document.readyState === "loading"
+  ? document.addEventListener("DOMContentLoaded", init)
+  : init();
