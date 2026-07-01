@@ -64,6 +64,23 @@ function beep() {
   } catch (_) {}
 }
 
+async function getVideoInputDevices() {
+  if (state.reader?.listVideoInputDevices) {
+    try {
+      return await state.reader.listVideoInputDevices();
+    } catch (err) {
+      console.warn("Device list fallback failed", err);
+    }
+  }
+
+  if (navigator.mediaDevices?.enumerateDevices) {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter(d => d.kind === "videoinput");
+  }
+
+  return [];
+}
+
 async function init() {
   if (typeof ZXing === "undefined") {
     setStatus("ZXing missing", "error");
@@ -91,6 +108,8 @@ async function init() {
 
   if (el.video) {
     Object.assign(el.video, { autoplay: true, playsinline: true, muted: true });
+    el.video.setAttribute("playsinline", "");
+    el.video.setAttribute("webkit-playsinline", "");
   }
 
   bindEvents();
@@ -103,34 +122,58 @@ async function start() {
   setStatus("Starting…", "neutral");
   state.reader.reset();
 
-  const devices = await state.reader.listVideoInputDevices();
+  const devices = await getVideoInputDevices();
   state.devices = devices;
 
   if (!devices.length) return setStatus("No camera", "error");
 
   if (!state.deviceId) {
     const rear = devices.find(d => /back|rear|environment/i.test(d.label));
-    state.deviceId = rear ? rear.deviceId : devices[0].deviceId;
+    state.deviceId = rear ? rear.deviceId : devices[0]?.deviceId;
   }
 
   const constraints = {
     video: {
-      deviceId: { exact: state.deviceId },
-      facingMode: "environment",
-      width: { ideal: 1280, max: 1920 },
-      height: { ideal: 720, max: 1080 },
-      frameRate: { ideal: 30 }
+      width: { ideal: 640, max: 1280 },
+      height: { ideal: 480, max: 720 },
+      frameRate: { ideal: 24, max: 30 },
+      facingMode: { ideal: "environment" }
     }
   };
 
-  state.reader.decodeFromConstraints(constraints, el.video, (result, err) => {
+  if (state.deviceId) {
+    constraints.video.deviceId = { exact: state.deviceId };
+  }
+
+  const decodeCallback = (result, err) => {
     if (result) handleScan(result.getText());
     if (err && !(err instanceof ZXing.NotFoundException)) {
       console.debug(err);
     }
-  });
+  };
 
-  setStatus("Scanning…", "neutral");
+  try {
+    if (state.reader.decodeFromConstraints) {
+      await state.reader.decodeFromConstraints(constraints, el.video, decodeCallback);
+    } else if (state.reader.decodeFromVideoDevice) {
+      await state.reader.decodeFromVideoDevice(state.deviceId || null, el.video, decodeCallback);
+    } else {
+      throw new Error("No compatible decoder available");
+    }
+    setStatus("Scanning…", "neutral");
+  } catch (err) {
+    console.warn("Scanner start failed", err);
+    if (state.reader.decodeFromVideoDevice) {
+      try {
+        await state.reader.decodeFromVideoDevice(state.deviceId || null, el.video, decodeCallback);
+        setStatus("Scanning…", "neutral");
+        return;
+      } catch (fallbackErr) {
+        console.warn("Fallback video device decode failed", fallbackErr);
+      }
+    }
+    setStatus("Camera access failed", "error");
+  }
 }
 
 function flip() {
