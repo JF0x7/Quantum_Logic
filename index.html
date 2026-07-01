@@ -65,8 +65,10 @@
       <button id="sendBtn" type="button" class="secondary">Send Signal</button>
       <button id="photoBtn" type="button">📸 Take Photo</button>
       <button id="resetLedgerBtn" type="button" class="secondary">Reset Ledger</button>
-      <input type="file" id="fileInput" accept="image/*" hidden>
+      <input type="file" id="fileInput" accept="image/*" capture="environment" hidden>
     </div>
+
+    <div id="mobileHint">On iPhone, use Upload Image to open the native camera and scan a captured photo.</div>
 
     <!-- Photo Preview -->
     <img id="photoPreview" alt="Captured Photo Preview">

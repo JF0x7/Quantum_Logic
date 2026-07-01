@@ -21,6 +21,7 @@ class QtumScanner {
 
     this.scanTimer = null;
     this.scanActive = false;
+    this.captureFallbackActive = false;
 
     this.el = {
       video: document.getElementById("video"),
@@ -102,6 +103,11 @@ class QtumScanner {
       this.el.video.muted = true;
       this.el.video.setAttribute("playsinline", "");
       this.el.video.setAttribute("webkit-playsinline", "");
+    }
+
+    if (this.el.fileInput) {
+      this.el.fileInput.setAttribute("capture", "environment");
+      this.el.fileInput.setAttribute("accept", "image/*");
     }
 
     this.bindEvents();
@@ -254,15 +260,24 @@ class QtumScanner {
       this.setStatus("Scanning…", "neutral");
     } catch (err) {
       console.warn("Scanner start failed", err);
-      if (err && err.name === "NotAllowedError") {
-        this.setStatus("Camera permission blocked. Please allow camera access and refresh.", "error");
-      } else if (err.message && /HTTPS/i.test(err.message)) {
-        this.setStatus("Open this page via HTTPS or localhost for camera scanning on iPhone.", "error");
-      } else if (err.message && /not available/i.test(err.message)) {
-        this.setStatus(err.message, "error");
-      } else {
-        this.setStatus("Camera access failed. Please allow camera access and try again.", "error");
-      }
+      this.useCaptureFallback(err);
+    }
+  }
+
+  useCaptureFallback(err) {
+    if (this.captureFallbackActive) return;
+    this.captureFallbackActive = true;
+
+    if (err && err.name === "NotAllowedError") {
+      this.setStatus("Camera permission blocked. Using camera capture instead.", "error");
+    } else if (err && err.message && /HTTPS/i.test(err.message)) {
+      this.setStatus("Using camera capture fallback for iPhone.", "error");
+    } else {
+      this.setStatus("Using camera capture fallback.", "error");
+    }
+
+    if (this.el.fileInput) {
+      window.setTimeout(() => this.el.fileInput.click(), 250);
     }
   }
 
@@ -328,7 +343,10 @@ class QtumScanner {
     if (this.el.flip) this.el.flip.onclick = () => this.flip();
 
     if (this.el.upload && this.el.fileInput) {
-      this.el.upload.onclick = () => this.el.fileInput.click();
+      this.el.upload.onclick = () => {
+        this.captureFallbackActive = false;
+        this.el.fileInput.click();
+      };
       this.el.fileInput.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
