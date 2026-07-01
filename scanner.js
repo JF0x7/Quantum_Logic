@@ -77,9 +77,7 @@ class QtumScanner {
     if (this.state.reader?.listVideoInputDevices) {
       try {
         return await this.state.reader.listVideoInputDevices();
-      } catch (err) {
-        console.warn("Device list fallback failed", err);
-      }
+      } catch (_) {}
     }
 
     if (navigator.mediaDevices?.enumerateDevices) {
@@ -156,14 +154,6 @@ class QtumScanner {
       throw new Error("Camera API not supported");
     }
 
-    if (!window.isSecureContext && !/^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname)) {
-      throw new Error("Camera requires HTTPS on iPhone Safari");
-    }
-
-    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
-      throw new Error("Camera access is not available in this browser");
-    }
-
     const candidates = this.buildConstraintCandidates(deviceId);
     let lastError = null;
 
@@ -176,7 +166,6 @@ class QtumScanner {
         return stream;
       } catch (err) {
         lastError = err;
-        console.warn("Camera constraint failed", err);
       }
     }
 
@@ -223,6 +212,7 @@ class QtumScanner {
   decodeImage(url) {
     return new Promise((resolve, reject) => {
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.onload = () => {
         const canvas = this.el.canvas;
         const ctx = canvas.getContext("2d");
@@ -270,9 +260,9 @@ class QtumScanner {
     this.captureFallbackActive = true;
 
     if (err && err.name === "NotAllowedError") {
-      this.setStatus("Camera permission blocked. Please allow access and try again.", "error");
+      this.setStatus("Camera permission blocked", "error");
     } else {
-      this.setStatus("Camera access unavailable. Please try again.", "error");
+      this.setStatus("Camera unavailable", "error");
     }
 
     if (this.el.fileInput) {
@@ -323,8 +313,7 @@ class QtumScanner {
         pattern: analysis.pattern,
         explanation: analysis.explanation
       });
-    } catch (e) {
-      console.warn("QAI error", e);
+    } catch (_) {
       this.ledger.addEntry(data, "SCAN");
     }
 
@@ -338,14 +327,16 @@ class QtumScanner {
   }
 
   bindEvents() {
-    if (this.el.start) this.el.start.onclick = () => this.start();
-    if (this.el.flip) this.el.flip.onclick = () => this.flip();
+    const attach = (el, fn) => { if (el) el.onclick = fn; };
+
+    attach(this.el.start, () => this.start());
+    attach(this.el.flip, () => this.flip());
 
     if (this.el.upload && this.el.fileInput) {
-      this.el.upload.onclick = () => {
+      attach(this.el.upload, () => {
         this.captureFallbackActive = false;
         this.el.fileInput.click();
-      };
+      });
       this.el.fileInput.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -357,8 +348,7 @@ class QtumScanner {
           } else {
             this.setStatus("No QR code found", "error");
           }
-        } catch (err) {
-          console.warn(err);
+        } catch (_) {
           this.setStatus("Upload decode failed", "error");
         } finally {
           URL.revokeObjectURL(url);
@@ -367,60 +357,51 @@ class QtumScanner {
     }
 
     if (this.el.photo && this.el.canvas && this.el.video && this.el.photoPreview) {
-      this.el.photo.onclick = () => {
+      attach(this.el.photo, () => {
         const ctx = this.el.canvas.getContext("2d");
         this.el.canvas.width = this.el.video.videoWidth || 640;
         this.el.canvas.height = this.el.video.videoHeight || 480;
         ctx.drawImage(this.el.video, 0, 0, this.el.canvas.width, this.el.canvas.height);
         this.el.photoPreview.src = this.el.canvas.toDataURL("image/png");
         this.el.photoPreview.style.display = "block";
-      };
+      });
     }
 
-    if (this.el.test) {
-      this.el.test.onclick = async () => {
-        this.setStatus("Trying sample decode…", "neutral");
-        try {
-          const sampleUrl = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=QTUM%20SCAN%20TEST";
-          const result = await this.decodeImage(sampleUrl);
-          if (result) {
-            this.handleScan(result.data);
-          } else {
-            this.setStatus("No QR code found in sample image", "error");
-          }
-        } catch (err) {
-          console.warn(err);
-          this.setStatus("Sample decode failed", "error");
+    attach(this.el.test, async () => {
+      this.setStatus("Trying sample…", "neutral");
+      try {
+        const result = await this.decodeImage("https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=QTUM%20SCAN%20TEST");
+        if (result) {
+          this.handleScan(result.data);
+        } else {
+          this.setStatus("No QR code found", "error");
         }
-      };
-    }
+      } catch (_) {
+        this.setStatus("Sample decode failed", "error");
+      }
+    });
 
-    if (this.el.send) {
-      this.el.send.onclick = async () => {
-        const data = this.el.payload.textContent || "";
-        if (!data) {
-          this.setStatus("No payload to send", "error");
-          return;
-        }
-        this.setStatus("Analyzing payload…", "neutral");
-        try {
-          const analysis = await this.brain.process(data);
-          this.ledger.addEntry(data, "MANUAL", {
-            type: analysis.format ? `${analysis.format.name} (${analysis.format.type})` : analysis.type,
-            pattern: analysis.pattern,
-            explanation: analysis.explanation
-          });
-          this.setStatus("Signal logged", "success");
-        } catch (e) {
-          console.warn(e);
-          this.setStatus("QAI analysis failed", "error");
-        }
-      };
-    }
+    attach(this.el.send, async () => {
+      const data = this.el.payload.textContent || "";
+      if (!data) {
+        this.setStatus("No payload", "error");
+        return;
+      }
+      this.setStatus("Analyzing…", "neutral");
+      try {
+        const analysis = await this.brain.process(data);
+        this.ledger.addEntry(data, "MANUAL", {
+          type: analysis.format ? `${analysis.format.name} (${analysis.format.type})` : analysis.type,
+          pattern: analysis.pattern,
+          explanation: analysis.explanation
+        });
+        this.setStatus("Signal logged", "success");
+      } catch (_) {
+        this.setStatus("QAI analysis failed", "error");
+      }
+    });
 
-    if (this.el.resetLedger) {
-      this.el.resetLedger.onclick = () => this.ledger.clear();
-    }
+    attach(this.el.resetLedger, () => this.ledger.clear());
   }
 }
 
