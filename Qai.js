@@ -300,34 +300,68 @@ class Qai {
   }
 
   // -----------------------------
-  // Offline explanation
+  // Procedurally‑Generated Explanation (QAI v5.0 style)
   // -----------------------------
-
   explainOffline(core, item) {
     const parts = [];
 
-    parts.push(`Signal type: ${core.type || "unknown"}`);
-    parts.push(`Pattern: ${core.pattern || "none"}`);
-    parts.push(`Length: ${core.length}, entropy: ${core.entropy}`);
-    parts.push(`Likely classification: ${item.label} (category=${item.category}, confidence=${item.confidence})`);
+    const entropyTone =
+      core.entropy < 2.5 ? "low‑complexity" :
+      core.entropy < 3.5 ? "moderate structure" :
+      core.entropy < 4.2 ? "high entropy signature" :
+      "chaotic‑grade entropy";
 
-    if (core.checksum) {
+    parts.push(
+      `[QAI-${this.version}] Initial sweep complete. Payload exhibits ${entropyTone}.`
+    );
+
+    if (core.type) {
       parts.push(
-        `Checksum: calculated=${core.checksum.calculated}, provided=${core.checksum.provided}, valid=${core.checksum.valid}`
+        `Detected type → ${core.type} (${core.format?.name || "unknown format"})`
+      );
+    } else {
+      parts.push(
+        `No strict type match. Fallback classification engaged → ${core.pattern || "unresolved"}`
       );
     }
 
-    if (core.hints.length) {
-      parts.push(`Hints: ${core.hints.join("; ")}`);
+    if (core.length < 12) {
+      parts.push(`Short-form signal. Likely human-generated or low-entropy token.`);
+    } else if (core.length < 32) {
+      parts.push(`Mid-range payload. Could be structured or protocol-adjacent.`);
+    } else {
+      parts.push(`Long-form payload detected. Potential cryptographic or QR-derived content.`);
     }
 
     if (item.category === "crypto") {
-      parts.push("Treat as a public address only; never encode private keys in barcodes/QR.");
-    } else if (item.category === "secret-ish") {
-      parts.push("String looks token/hash-like; avoid exposing it publicly if tied to auth or tracking.");
+      parts.push(
+        `Crypto-class signature. Treat as public-facing only. Never embed private keys in QR/Barcodes.`
+      );
     }
 
-    return parts.join(". ");
+    if (item.category === "secret-ish") {
+      parts.push(
+        `Entropy + length suggests token/hash-like material. Avoid public exposure if tied to auth.`
+      );
+    }
+
+    if (core.entropy > 3.8 && core.length > 20) {
+      parts.push(`Entropy spike → JEEEZ reaction triggered.`);
+    }
+
+    if (core.raw.includes("AZTEC") || core.raw.includes("AZTEC_ENC")) {
+      parts.push(`Aztec flag detected → SHeesh protocol engaged.`);
+    }
+
+    if (core.hints.length) {
+      parts.push(`Auxiliary hints: ${core.hints.join("; ")}`);
+    }
+
+    parts.push(
+      `Final classification → ${item.label} (category=${item.category}, confidence=${item.confidence}).`
+    );
+
+    return parts.join(" ");
   }
 
   // -----------------------------
@@ -353,9 +387,6 @@ class Qai {
 
   decodeAztec(data) {
     try {
-      // plug your ZXing Aztec decoder here, e.g.:
-      // const decoded = someAztecDecoder(data);
-      // return decoded;
       console.warn("Aztec decode not wired yet.");
       return null;
     } catch (e) {
@@ -371,7 +402,6 @@ class Qai {
   decodeBashLike(text) {
     const clean = text.trim();
 
-    // Try base64
     try {
       if (/^[A-Za-z0-9+/=]+$/.test(clean)) {
         const decoded = atob(clean);
@@ -379,7 +409,6 @@ class Qai {
       }
     } catch (_) {}
 
-    // Try hex
     if (/^[0-9a-fA-F]+$/.test(clean) && clean.length % 2 === 0) {
       const bytes = clean.match(/.{2}/g).map(h => parseInt(h, 16));
       const value = String.fromCharCode(...bytes);
@@ -387,6 +416,30 @@ class Qai {
     }
 
     return { type: "unknown", value: null };
+  }
+
+  // -----------------------------
+  // Checksum for EAN/UPC
+  // -----------------------------
+  calcChecksum(code) {
+    if (!/^[0-9]+$/.test(code)) return null;
+
+    const digits = code.split("").map(d => parseInt(d, 10));
+    const len = digits.length;
+
+    let sum = 0;
+    for (let i = 0; i < len - 1; i++) {
+      const weight = (len - i) % 2 === 0 ? 3 : 1;
+      sum += digits[i] * weight;
+    }
+
+    const calculated = (10 - (sum % 10)) % 10;
+    const provided = digits[len - 1];
+    return {
+      calculated,
+      provided,
+      valid: calculated === provided
+    };
   }
 }
 
