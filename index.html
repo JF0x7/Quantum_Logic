@@ -57,7 +57,7 @@
     <!-- Hidden Canvas for Captures -->
     <canvas id="canvas"></canvas>
 
-    <!-- Controls -->
+    <!-- Primary Controls -->
     <div id="controls" role="group" aria-label="Scanner Controls">
       <button id="startBtn" type="button">Enable Camera</button>
       <button id="flipBtn" type="button" class="secondary">Flip Camera</button>
@@ -66,6 +66,14 @@
       <button id="photoBtn" type="button">📸 Take Photo</button>
       <button id="resetLedgerBtn" type="button" class="secondary">Reset Ledger</button>
       <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+
+    <!-- Advanced Scanning Controls (Collapsible) -->
+    <div id="advancedControls" role="group" aria-label="Advanced Scanning Controls">
+      <button id="zoomInBtn" type="button" class="secondary" title="Zoom in for small barcodes">🔍+ Zoom In</button>
+      <button id="zoomOutBtn" type="button" class="secondary" title="Zoom out">🔍- Zoom Out</button>
+      <button id="curvedBtn" type="button" class="secondary" title="Enable curved surface mode">↔ Curved Mode</button>
+      <button id="enhancedScanBtn" type="button" class="secondary" title="Try multiple scan techniques">⚡ Enhanced Scan</button>
     </div>
 
     <!-- Photo Preview -->
