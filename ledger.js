@@ -3,7 +3,6 @@
 // ============================================================================
 let AztecDB;
 
-
 // ============================================================================
 //  QUANTUM LEDGER (TOP)
 // ============================================================================
@@ -32,12 +31,14 @@ class QuantumLedger {
             /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(trimmed) &&
             trimmed.length >= 4 &&
             (/[+/=]/.test(trimmed) || entropy > 4.5);
+        const isMorse = /^[.\-/\s]+$/.test(trimmed) && /[.\-]/.test(trimmed);
 
         let classification = "UNKNOWN SIGNAL";
         if (isURL) classification = "URL";
         else if (isJSON) classification = "JSON OBJECT";
         else if (isHex) classification = "HEX STRING";
         else if (isBase64) classification = "BASE64 ENCODED";
+        else if (isMorse) classification = "MORSE CODE";
         else if (length < 8) classification = "SHORT CODE";
         else if (length > 80) classification = "LONG FORM DATA";
 
@@ -48,12 +49,14 @@ class QuantumLedger {
         const hashFingerprint = this.sha256Fingerprint(trimmed);
 
         const rot13 = this.rot13(trimmed);
-        const aztec = this.aztecDecode(trimmed); // async
+        const aztec = this.aztecDecode(trimmed);
         const altbash = this.altBashDecode(trimmed);
         const shaFullPromise = this.sha256Full(trimmed);
         const signalTypes = this.detectSignalTypes(trimmed);
         const signalLocation = this.detectSignalLocation(trimmed);
         const clamShell = this.clamShellDecrypt(trimmed);
+        const ddnDecrypt = this.ddnDecrypt(trimmed);
+        const morseDecode = this.morseDecode(trimmed);
         const qNotes = this.generateQNotes(trimmed, classification, entropy);
 
         return {
@@ -67,10 +70,12 @@ class QuantumLedger {
             hashFingerprint,
 
             rot13,
-            aztec,              // Promise
+            aztec,
             altbash,
-            shaFullPromise,     // Promise
+            shaFullPromise,
             clamShell,
+            ddnDecrypt,
+            morseDecode,
             signalTypes,
             signalLocation,
             qNotes
@@ -117,6 +122,9 @@ class QuantumLedger {
             }
             if (/^[A-Za-z0-9+/=]+$/.test(str)) {
                 return atob(str).slice(0, 60);
+            }
+            if (/^[.\-/\s]+$/.test(str)) {
+                return this.morseDecode(str).slice(0, 60);
             }
         } catch {}
         return "n/a";
@@ -207,6 +215,119 @@ class QuantumLedger {
     }
 
     // -------------------------------------------------------------
+    // DDN (DYNAMIC DATA NETWORK) DECRYPTION
+    // Advanced version of Clam Shell with multi-layer transformation
+    // -------------------------------------------------------------
+    ddnDecrypt(str) {
+        try {
+            let result = str;
+            
+            // Layer 1: XOR with 0x5A (dynamic key)
+            result = result
+                .split("")
+                .map(c => String.fromCharCode(c.charCodeAt(0) ^ 0x5A))
+                .join("");
+            
+            // Layer 2: Reverse string
+            result = result.split("").reverse().join("");
+            
+            // Layer 3: Caesar shift with variable offset based on length
+            const offset = (str.length % 5) + 1;
+            result = result
+                .split("")
+                .map(c => {
+                    const code = c.charCodeAt(0);
+                    if (code >= 65 && code <= 90) {
+                        return String.fromCharCode(((code - 65 - offset + 26) % 26) + 65);
+                    } else if (code >= 97 && code <= 122) {
+                        return String.fromCharCode(((code - 97 - offset + 26) % 26) + 97);
+                    }
+                    return c;
+                })
+                .join("");
+            
+            // Layer 4: Base64-like decode if applicable
+            if (/^[A-Za-z0-9+/=]+$/.test(result)) {
+                try {
+                    result = atob(result);
+                } catch (_) {}
+            }
+            
+            // Layer 5: Remove DDN markers
+            result = result.replace(/DDN_ENC::/g, "");
+            result = result.replace(/::DDN_END/g, "");
+            
+            return result || "DDN decrypt: empty result";
+        } catch (e) {
+            return `DDN decrypt: error - ${e.message}`;
+        }
+    }
+
+    // -------------------------------------------------------------
+    // MORSE CODE DECODER
+    // Supports International Morse Code with . - / and space separators
+    // -------------------------------------------------------------
+    morseDecode(str) {
+        try {
+            const morseMap = {
+                '.-': 'A', '-...': 'B', '-.-.': 'C', '-..': 'D', '.': 'E',
+                '..-.': 'F', '--.': 'G', '....': 'H', '..': 'I', '.---': 'J',
+                '-.-': 'K', '.-..': 'L', '--': 'M', '-.': 'N', '---': 'O',
+                '.--.': 'P', '--.-': 'Q', '.-.': 'R', '...': 'S', '-': 'T',
+                '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y',
+                '--..': 'Z',
+                '-----': '0', '.----': '1', '..---': '2', '...--': '3',
+                '....-': '4', '.....': '5', '-....': '6', '--...': '7',
+                '---..': '8', '----.': '9',
+                '.-.-.-': '.', '--..--': ',', '..--..': '?', '.----.': "'",
+                '-.-.--': '!', '-..-.': '/', '-.--.': '(', '-.--.-': ')',
+                '.-...': '&', '---...': ':', '-.-.-.': ';', '-...-': '=',
+                '.-.-.': '+', '-....-': '-', '..--.-': '_', '.-..-.': '"',
+                '...-..-': '$', '.--.-.': '@'
+            };
+
+            // Normalize separators
+            let normalized = str.replace(/\\/g, '/');
+            normalized = normalized.replace(/\[space\]/g, ' ');
+            normalized = normalized.replace(/\[slash\]/g, '/');
+            
+            // Split by spaces or slashes
+            const words = normalized.split('/');
+            let result = [];
+
+            for (const word of words) {
+                const letters = word.trim().split(' ');
+                let decodedWord = '';
+                for (const letter of letters) {
+                    if (letter === '') continue;
+                    // Handle special codes
+                    if (letter === '...---...') {
+                        decodedWord += 'SOS';
+                    } else if (morseMap[letter]) {
+                        decodedWord += morseMap[letter];
+                    } else {
+                        // Try to decode as binary-like pattern
+                        const binary = letter.replace(/\./g, '0').replace(/\-/g, '1');
+                        if (/^[01]+$/.test(binary) && binary.length === 8) {
+                            const charCode = parseInt(binary, 2);
+                            if (charCode >= 32 && charCode <= 126) {
+                                decodedWord += String.fromCharCode(charCode);
+                            }
+                        } else {
+                            decodedWord += '?';
+                        }
+                    }
+                }
+                result.push(decodedWord);
+            }
+
+            return result.join(' ') || 'Morse decode: no valid pattern';
+        } catch (e) {
+            return `Morse decode error: ${e.message}`;
+        }
+    }
+
+    // -------------------------------------------------------------
     // SIGNAL TYPES
     // -------------------------------------------------------------
     detectSignalTypes(str) {
@@ -218,6 +339,8 @@ class QuantumLedger {
         if (this.tryParseJSON(str)) types.push("JSON");
         if (/^[0-9a-fA-F]+$/.test(str)) types.push("HEX");
         if (/^[A-Za-z0-9+/=]+$/.test(str)) types.push("BASE64");
+        if (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str)) types.push("MORSE");
+        if (/DDN_ENC::/.test(str)) types.push("DDN_ENCRYPTED");
         return types.length ? types.join(", ") : "None detected";
     }
 
@@ -231,11 +354,12 @@ class QuantumLedger {
         if (/^0x/.test(str)) return "Ethereum network";
         if (/^[13]/.test(str)) return "Bitcoin network";
         if (this.tryParseJSON(str)) return "JSON API payload";
+        if (/DDN_ENC::/.test(str)) return "DDN encrypted network";
         return "Unknown / local-only";
     }
 
     // -------------------------------------------------------------
-    // Q-NOTES (greeting + JEEEZ + SHeesh)
+    // Q-NOTES (greeting + JEEEZ + SHeesh + DDN + Morse)
     // -------------------------------------------------------------
     generateQNotes(str, classification, entropy) {
         const notes = [];
@@ -250,6 +374,20 @@ class QuantumLedger {
         if (/^[13]/.test(str)) notes.push("Bitcoin-style address.");
         if (this.tryParseJSON(str)) notes.push("JSON payload indicates structured data.");
         if (/https?:\/\//.test(str)) notes.push("Likely web resource or API endpoint.");
+        if (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str)) {
+            notes.push("Morse code detected - decoding in progress.");
+            const decoded = this.morseDecode(str);
+            if (decoded && !decoded.includes("error")) {
+                notes.push(`Morse decoded: "${decoded.substring(0, 30)}${decoded.length > 30 ? '...' : ''}"`);
+            }
+        }
+        if (/DDN_ENC::/.test(str)) {
+            notes.push("DDN encrypted payload detected - multi-layer decryption applied.");
+            const decrypted = this.ddnDecrypt(str);
+            if (decrypted && !decrypted.includes("error")) {
+                notes.push(`DDN decrypted: "${decrypted.substring(0, 30)}${decrypted.length > 30 ? '...' : ''}"`);
+            }
+        }
 
         // Greeting detection
         const greetingOptions = [
@@ -275,6 +413,16 @@ class QuantumLedger {
         // SHeesh reaction
         if (str.includes("AZTEC") || str.includes("AZTEC_ENC")) {
             notes.push("Aztec reaction → SHeesh!");
+        }
+
+        // DDN reaction
+        if (/DDN_ENC::/.test(str)) {
+            notes.push("DDN encryption detected → DDN - Dynamic Data Network!");
+        }
+
+        // Morse reaction
+        if (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str)) {
+            notes.push("Morse code detected → Morse transmission received!");
         }
 
         return notes.join(" ");
@@ -354,6 +502,8 @@ class QuantumLedger {
             <span><strong>AltBash:</strong> ${meta.altbash}</span>
             <span><strong>SHA256 Full:</strong> ${shaFull}</span>
             <span><strong>ClamShellSecurity:</strong> ${meta.clamShell}</span>
+            <span><strong>DDN Decrypt:</strong> ${meta.ddnDecrypt}</span>
+            <span><strong>Morse Decode:</strong> ${meta.morseDecode}</span>
             <span><strong>Signal Types:</strong> ${meta.signalTypes}</span>
             <span><strong>Location:</strong> ${meta.signalLocation}</span>
 
@@ -391,8 +541,6 @@ class QuantumLedger {
     }
 }
 
-
-
 // ============================================================================
 //  AZTEC ENCRYPTION DATABASE (BOTTOM)
 // ============================================================================
@@ -402,9 +550,9 @@ AztecDB = {
     meta: {
         version: "1.0",
         updated: "2026-06-30",
-        engine: "QAI-AZTEC",
+        engine: "QAI-AZTEC-DDN",
         checksum: "QLOGIC_44",
-        notes: "Modular Aztec encryption registry for QAI/QuantumLedger systems."
+        notes: "Modular Aztec encryption registry for QAI/QuantumLedger systems with DDN and Morse support."
     },
 
     registry: [
@@ -418,14 +566,18 @@ AztecDB = {
             payload: {
                 enc: "ENC::QAI-5521::A9F2",
                 crypt: "QAI_CRYPT::L7::9912A",
-                qntm: "QNTM_ENC{SEQ:77,CHK:OK}"
+                qntm: "QNTM_ENC{SEQ:77,CHK:OK}",
+                ddn: "DDN_ENC::A9F2::XOR5A_REV_CAESAR",
+                morse: "- .... .- -. -.- ... / -.-. --- -- .. -. --."
             },
 
             decode: {
                 aztec: "Aztec decode (DB): SHeesh!",
                 rot13: null,
                 sha256: null,
-                altbash: null
+                altbash: null,
+                ddn: "DDN decrypt (DB): Dynamic Data Network - Advanced ClamShell",
+                morse: "THANKS COMING"
             }
         }
     ],
@@ -454,10 +606,77 @@ AztecDB = {
         altbash: (str) =>
             str.split("")
                .map(c => String.fromCharCode(c.charCodeAt(0) ^ 0x2A))
-               .join("")
+               .join(""),
+
+        ddn: (str) => {
+            try {
+                let result = str;
+                result = result.split("").map(c => String.fromCharCode(c.charCodeAt(0) ^ 0x5A)).join("");
+                result = result.split("").reverse().join("");
+                const offset = (str.length % 5) + 1;
+                result = result.split("").map(c => {
+                    const code = c.charCodeAt(0);
+                    if (code >= 65 && code <= 90) {
+                        return String.fromCharCode(((code - 65 - offset + 26) % 26) + 65);
+                    } else if (code >= 97 && code <= 122) {
+                        return String.fromCharCode(((code - 97 - offset + 26) % 26) + 97);
+                    }
+                    return c;
+                }).join("");
+                result = result.replace(/DDN_ENC::/g, "").replace(/::DDN_END/g, "");
+                return result || "DDN decrypt: empty result";
+            } catch (e) {
+                return `DDN decrypt: error - ${e.message}`;
+            }
+        },
+
+        morse: (str) => {
+            const morseMap = {
+                '.-': 'A', '-...': 'B', '-.-.': 'C', '-..': 'D', '.': 'E',
+                '..-.': 'F', '--.': 'G', '....': 'H', '..': 'I', '.---': 'J',
+                '-.-': 'K', '.-..': 'L', '--': 'M', '-.': 'N', '---': 'O',
+                '.--.': 'P', '--.-': 'Q', '.-.': 'R', '...': 'S', '-': 'T',
+                '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y',
+                '--..': 'Z',
+                '-----': '0', '.----': '1', '..---': '2', '...--': '3',
+                '....-': '4', '.....': '5', '-....': '6', '--...': '7',
+                '---..': '8', '----.': '9',
+                '.-.-.-': '.', '--..--': ',', '..--..': '?', '.----.': "'",
+                '-.-.--': '!', '-..-.': '/', '-.--.': '(', '-.--.-': ')',
+                '.-...': '&', '---...': ':', '-.-.-.': ';', '-...-': '=',
+                '.-.-.': '+', '-....-': '-', '..--.-': '_', '.-..-.': '"',
+                '...-..-': '$', '.--.-.': '@'
+            };
+            
+            try {
+                const words = str.split('/');
+                let result = [];
+                for (const word of words) {
+                    const letters = word.trim().split(' ');
+                    let decodedWord = '';
+                    for (const letter of letters) {
+                        if (letter === '') continue;
+                        if (letter === '...---...') {
+                            decodedWord += 'SOS';
+                        } else if (morseMap[letter]) {
+                            decodedWord += morseMap[letter];
+                        } else {
+                            decodedWord += '?';
+                        }
+                    }
+                    result.push(decodedWord);
+                }
+                return result.join(' ') || 'Morse decode: no valid pattern';
+            } catch (e) {
+                return `Morse decode error: ${e.message}`;
+            }
+        }
     },
 
     decryptSignal: async function (entry) {
+        const ddnDecoded = this.decoders.ddn(entry.payload.ddn || entry.payload.enc);
+        const morseDecoded = this.decoders.morse(entry.payload.morse || entry.payload.enc);
+        
         return {
             id: entry.id,
             frame: entry.frame,
@@ -465,7 +684,9 @@ AztecDB = {
                 aztec: this.decoders.aztec(entry.payload.enc),
                 rot13: this.decoders.rot13(entry.payload.enc),
                 sha256: await this.decoders.sha256(entry.payload.enc),
-                altbash: this.decoders.altbash(entry.payload.enc)
+                altbash: this.decoders.altbash(entry.payload.enc),
+                ddn: ddnDecoded,
+                morse: morseDecoded
             }
         };
     }
