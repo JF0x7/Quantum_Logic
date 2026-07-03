@@ -1,13 +1,12 @@
 /**
- * Quantum Scanner Engine — ZXing + QAI + Ledger (iPhone 6 Compatible)
- * Rebuilt full file with:
- * - iPhone 6 Safari fixes
- * - ZXing fallback decode loop
- * - Safe constraints for old WebKit
- * - AudioContext patch
- * - Canvas size patch
- * - QAI + Ledger integration
- * - Performance mode for Raspberry Pi
+ * Quantum Scanner Engine — ZXing + QAI + Ledger
+ * iOS 12 Safari Compatible Version (Option A)
+ * - ZXing kept fully intact
+ * - iPhone 6 camera permission prompt fixed
+ * - iOS 12 video playback fixed
+ * - iOS 12 canvas sizing fixed
+ * - iOS 12 fallback decode fixed
+ * - Auto-redirect opens in NEW TAB safely
  */
 
 const CONFIG = {
@@ -17,7 +16,7 @@ const CONFIG = {
   beep: { freq: 950, volume: 0.05, duration: 0.08 },
   maxRetries: 2,
   frameRate: { ideal: 15, max: 20 },
-  resolution: { width: 640, height: 480 },
+  resolution: { width: 480, height: 360 }, // iPhone 6 safe
   debug: false
 };
 
@@ -57,16 +56,13 @@ const brain = new Qai();
    DEVICE DETECTION
 ------------------------------------------------------------- */
 function detectDevice() {
-  const ua = navigator.userAgent || navigator.vendor || window.opera;
+  const ua = navigator.userAgent;
 
   if (/iPhone|iPad|iPod/.test(ua)) {
     state.isMobile = true;
-
-    if (window.screen.width <= 750 && window.screen.height <= 1334) {
-      CONFIG.resolution = { width: 480, height: 360 };
-      CONFIG.frameRate = { ideal: 10, max: 15 };
-      state.performanceMode = true;
-    }
+    state.performanceMode = true;
+    CONFIG.resolution = { width: 480, height: 360 };
+    CONFIG.frameRate = { ideal: 10, max: 15 };
   }
 
   if (/Raspberry|Pi|armv7l|armv6l/.test(ua) || navigator.hardwareConcurrency <= 4) {
@@ -90,58 +86,23 @@ function setStatus(msg, type = "neutral") {
 }
 
 /* -------------------------------------------------------------
-   BEEP (iPhone 6 safe)
+   BEEP (iPhone-safe)
 ------------------------------------------------------------- */
 function beep() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     if (ctx.state === "suspended") ctx.resume().catch(() => {});
-
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-
     osc.frequency.value = CONFIG.beep.freq;
     gain.gain.value = CONFIG.beep.volume;
-
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     osc.start();
     osc.stop(ctx.currentTime + CONFIG.beep.duration);
-
-    setTimeout(() => {
-      try { ctx.close(); } catch (_) {}
-    }, 500);
+    setTimeout(() => { try { ctx.close(); } catch (_) {} }, 500);
   } catch (_) {}
 }
-
-/* -------------------------------------------------------------
-   PERFORMANCE OPTIMIZATION
-------------------------------------------------------------- */
-function optimizeForDevice() {
-  let updateTimeout = null;
-
-  const throttledSetStatus = (msg, type) => {
-    if (updateTimeout) return;
-    updateTimeout = setTimeout(() => {
-      setStatus(msg, type);
-      updateTimeout = null;
-    }, state.performanceMode ? 200 : 50);
-  };
-
-  if (state.performanceMode) {
-    setInterval(() => {
-      if (el.canvas) {
-        const ctx = el.canvas.getContext("2d");
-        ctx.clearRect(0, 0, el.canvas.width, el.canvas.height);
-      }
-    }, 30000);
-  }
-
-  return throttledSetStatus;
-}
-
-const throttledSetStatus = optimizeForDevice();
 
 /* -------------------------------------------------------------
    INIT
@@ -149,8 +110,10 @@ const throttledSetStatus = optimizeForDevice();
 async function init() {
   detectDevice();
 
-  if (state.performanceMode) {
-    setStatus(`⚡ Performance mode (${state.isRaspberryPi ? "RPi" : "iPhone 6"})`);
+  if (el.video) {
+    el.video.setAttribute("playsinline", "true");
+    el.video.setAttribute("autoplay", "true");
+    el.video.setAttribute("muted", "true");
   }
 
   if (typeof ZXing === "undefined") {
@@ -182,16 +145,8 @@ async function init() {
     return;
   }
 
-  if (el.video) {
-    Object.assign(el.video, {
-      autoplay: true,
-      playsinline: true,
-      muted: true
-    });
-  }
-
   bindEvents();
-  setStatus("Ready");
+  setStatus("✅ Ready", "neutral");
 
   if (state.isMobile) {
     setTimeout(start, 500);
@@ -199,42 +154,12 @@ async function init() {
 }
 
 /* -------------------------------------------------------------
-   SAFE CONSTRAINTS (iPhone 6 compatible)
-------------------------------------------------------------- */
-function getVideoConstraints() {
-  const isOldIOS =
-    /iPhone|iPad|iPod/.test(navigator.userAgent) &&
-    !navigator.mediaDevices;
-
-  if (isOldIOS) {
-    return {
-      video: {
-        facingMode: "environment",
-        width: 480,
-        height: 360
-      }
-    };
-  }
-
-  return {
-    video: {
-      deviceId: state.deviceId ? { exact: state.deviceId } : undefined,
-      facingMode: state.deviceId ? undefined : "environment",
-      width: { ideal: CONFIG.resolution.width, max: CONFIG.resolution.width * 1.2 },
-      height: { ideal: CONFIG.resolution.height, max: CONFIG.resolution.height * 1.2 },
-      frameRate: CONFIG.frameRate
-    }
-  };
-}
-
-/* -------------------------------------------------------------
-   START CAMERA
+   START CAMERA (iOS 12 safe)
 ------------------------------------------------------------- */
 async function start() {
   if (!state.ready) return setStatus("Not ready", "error");
 
-  setStatus("Starting…");
-  if (state.reader) state.reader.reset();
+  setStatus("Requesting camera…", "neutral");
 
   try {
     const devices = await state.reader.listVideoInputDevices();
@@ -248,31 +173,44 @@ async function start() {
       state.deviceId = rear ? rear.deviceId : (front ? front.deviceId : devices[0].deviceId);
     }
 
-    const constraints = getVideoConstraints();
+    const constraints = {
+      video: {
+        deviceId: { exact: state.deviceId },
+        facingMode: "environment",
+        width: CONFIG.resolution.width,
+        height: CONFIG.resolution.height,
+        frameRate: CONFIG.frameRate
+      },
+      audio: false
+    };
+
     await startReader(constraints);
 
   } catch (e) {
-    await fallbackStart();
+    console.warn("Camera start failed:", e);
+    fallbackStart();
   }
 }
 
 /* -------------------------------------------------------------
-   START READER (iPhone 6 fallback)
+   ZXing decodeFromConstraints (iOS 12 safe)
 ------------------------------------------------------------- */
 async function startReader(constraints) {
-  const isOldIOS =
-    /iPhone|iPad|iPod/.test(navigator.userAgent) &&
-    !navigator.mediaDevices;
-
-  if (isOldIOS) return fallbackStart();
-
   return new Promise((resolve, reject) => {
     try {
       state.reader.decodeFromConstraints(constraints, el.video, (result, err) => {
         if (result) handleScan(result.getText());
+        if (err && !(err instanceof ZXing.NotFoundException)) {
+          if (CONFIG.debug) console.debug(err);
+        }
       });
 
-      setStatus("Scanning…");
+      const forcePlay = () => {
+        el.video.play().catch(() => setTimeout(forcePlay, 200));
+      };
+      el.video.onloadedmetadata = forcePlay;
+
+      setStatus("🔍 Scanning…", "neutral");
       resolve();
     } catch (e) {
       reject(e);
@@ -281,38 +219,43 @@ async function startReader(constraints) {
 }
 
 /* -------------------------------------------------------------
-   FALLBACK CAMERA (iPhone 6 safe)
+   FALLBACK CAMERA (iOS 12 safe)
 ------------------------------------------------------------- */
 async function fallbackStart() {
-  setStatus("Fallback camera…");
+  setStatus("Using fallback camera…", "neutral");
 
   try {
-    const constraints = {
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: "environment",
         width: CONFIG.resolution.width,
         height: CONFIG.resolution.height
-      }
-    };
-
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      },
+      audio: false
+    });
 
     el.video.srcObject = stream;
 
-    el.video.onloadedmetadata = () => {
-      try { el.video.play(); } catch (_) {}
+    const forcePlay = () => {
+      el.video.play().catch(() => setTimeout(forcePlay, 200));
     };
-
-    setStatus("Fallback camera active");
-    fallbackDecodeLoop();
+    el.video.onloadedmetadata = () => {
+      forcePlay();
+      fallbackDecodeLoop();
+      setStatus("📷 Fallback camera active", "success");
+    };
 
   } catch (e) {
     setStatus(`Camera error: ${e.message}`, "error");
+    if (state.retryCount < CONFIG.maxRetries) {
+      state.retryCount++;
+      setTimeout(start, 2000);
+    }
   }
 }
 
 /* -------------------------------------------------------------
-   FALLBACK DECODE LOOP (iPhone 6 safe)
+   FALLBACK DECODE LOOP (ZXing decodeFromCanvas)
 ------------------------------------------------------------- */
 let fallbackLoopRunning = false;
 
@@ -338,15 +281,50 @@ function fallbackDecodeLoop() {
 
       ctx.drawImage(el.video, 0, 0, canvas.width, canvas.height);
 
-      state.reader.decodeFromCanvas(canvas).then(result => {
-        if (result) handleScan(result.getText());
-      }).catch(() => {});
+      if (state.reader) {
+        state.reader.decodeFromCanvas(canvas).then(result => {
+          if (result) handleScan(result.getText());
+        }).catch(() => {});
+      }
     } catch (_) {}
 
     setTimeout(captureFrame, state.performanceMode ? 1000 : 500);
   }
 
   setTimeout(captureFrame, 500);
+}
+
+/* -------------------------------------------------------------
+   FLIP / STOP
+------------------------------------------------------------- */
+function flip() {
+  if (state.devices.length < 2) {
+    return cycleFacingMode();
+  }
+
+  const idx = state.devices.findIndex(d => d.deviceId === state.deviceId);
+  state.deviceId = state.devices[(idx + 1) % state.devices.length].deviceId;
+  setStatus("🔄 Swapping…", "neutral");
+  start();
+}
+
+function cycleFacingMode() {
+  const modes = ["environment", "user"];
+  const current = state.facingModeIndex || 0;
+  state.facingModeIndex = (current + 1) % modes.length;
+  state.deviceId = null;
+  setStatus(`🔄 Switching to ${modes[state.facingModeIndex]}`, "neutral");
+  start();
+}
+
+function stop() {
+  if (state.reader) state.reader.reset();
+  if (el.video && el.video.srcObject) {
+    el.video.srcObject.getTracks().forEach(t => t.stop());
+    el.video.srcObject = null;
+  }
+  fallbackLoopRunning = false;
+  setStatus("⏸️ Stopped", "neutral");
 }
 
 /* -------------------------------------------------------------
@@ -358,19 +336,23 @@ async function handleScan(data) {
   state.lastScan = data;
   state.cooldown = true;
 
-  el.payload.textContent = data;
-  setStatus("Decoded!", "success");
+  if (el.payload) el.payload.textContent = data;
+  setStatus("✅ Decoded!", "success");
 
   if (CONFIG.vibrate && navigator.vibrate) {
     try { navigator.vibrate(80); } catch (_) {}
   }
 
-  beep();
+  try { beep(); } catch (_) {}
 
   try {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("QAI timeout")), 3000)
+    );
+
     const analysis = await Promise.race([
       brain.process(data),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("QAI timeout")), 3000))
+      timeoutPromise
     ]);
 
     ledger.addEntry(data, "SCAN", {
@@ -379,17 +361,28 @@ async function handleScan(data) {
       explanation: analysis.explanation,
       entropy: analysis.entropy
     });
-
   } catch (e) {
-    ledger.addEntry(data, "SCAN", { error: e.message });
-    setStatus("Logged (QAI skipped)");
+    console.warn("QAI error:", e);
+    ledger.addEntry(data, "SCAN", {
+      error: e.message || "QAI timeout",
+      timestamp: new Date().toISOString()
+    });
+    setStatus("Signal logged (QAI skipped)", "neutral");
   }
 
   if (CONFIG.autoRedirect) {
     try {
       const isUrl = /^https?:\/\/[^\s]+/i.test(data);
       const url = isUrl ? data : `https://www.google.com/search?q=${encodeURIComponent(data)}`;
-      location.href = url;
+
+      // iOS 12 Safari-safe new tab opener
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     } catch (_) {}
   }
 
@@ -397,21 +390,33 @@ async function handleScan(data) {
 }
 
 /* -------------------------------------------------------------
-   EVENTS
+   EVENTS (touch-optimized)
 ------------------------------------------------------------- */
 function bindEvents() {
-  const events = ["click", "touchstart"];
+  const touchEvents = ["click", "touchstart"];
 
-  events.forEach(ev => {
-    el.start?.addEventListener(ev, start);
-    el.flip?.addEventListener(ev, flip);
-    el.photo?.addEventListener(ev, capturePhoto);
-    el.send?.addEventListener(ev, handleSend);
-    el.resetLedger?.addEventListener(ev, () => ledger.clear());
+  touchEvents.forEach(eventType => {
+    if (el.start) el.start.addEventListener(eventType, start, { passive: true });
+    if (el.flip) el.flip.addEventListener(eventType, flip, { passive: true });
+    if (el.photo) el.photo.addEventListener(eventType, capturePhoto, { passive: true });
+    if (el.send) el.send.addEventListener(eventType, handleSend, { passive: true });
+    if (el.resetLedger) el.resetLedger.addEventListener(eventType, () => ledger.clear(), { passive: true });
   });
 
-  el.upload?.addEventListener("click", () => el.fileInput.click());
-  el.fileInput?.addEventListener("change", handleFileUpload);
+  if (el.upload && el.fileInput) {
+    el.upload.addEventListener("click", () => el.fileInput.click(), { passive: true });
+    el.fileInput.addEventListener("change", handleFileUpload, { passive: true });
+  }
+
+  if (!state.isMobile) {
+    document.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) handleSend();
+      if (e.key === " " && e.target === document.body) {
+        e.preventDefault();
+        capturePhoto();
+      }
+    });
+  }
 }
 
 /* -------------------------------------------------------------
@@ -420,20 +425,27 @@ function bindEvents() {
 function capturePhoto() {
   if (!el.video || !el.canvas) return;
 
-  const ctx = el.canvas.getContext("2d");
-  const w = Math.min(el.video.videoWidth || CONFIG.resolution.width, 640);
-  const h = Math.min(el.video.videoHeight || CONFIG.resolution.height, 480);
+  try {
+    const ctx = el.canvas.getContext("2d");
+    const width = Math.min(el.video.videoWidth || CONFIG.resolution.width, 640);
+    const height = Math.min(el.video.videoHeight || CONFIG.resolution.height, 480);
 
-  el.canvas.width = w;
-  el.canvas.height = h;
+    el.canvas.width = width;
+    el.canvas.height = height;
+    ctx.drawImage(el.video, 0, 0, width, height);
 
-  ctx.drawImage(el.video, 0, 0, w, h);
+    if (el.photoPreview) {
+      el.photoPreview.src = el.canvas.toDataURL("image/png");
+      el.photoPreview.style.display = "block";
 
-  el.photoPreview.src = el.canvas.toDataURL("image/png");
-  el.photoPreview.style.display = "block";
-
-  if (state.isMobile) {
-    setTimeout(() => el.photoPreview.style.display = "none", 5000);
+      if (state.isMobile) {
+        setTimeout(() => {
+          el.photoPreview.style.display = "none";
+        }, 5000);
+      }
+    }
+  } catch (e) {
+    console.warn("Photo capture failed:", e);
   }
 }
 
@@ -444,30 +456,32 @@ async function handleFileUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
 
-  setStatus("Processing image…");
-
+  setStatus("Processing image…", "neutral");
   const url = URL.createObjectURL(file);
 
   try {
     const result = await state.reader.decodeFromImageUrl(url);
     await handleScan(result.getText());
-  } catch (_) {
+  } catch (err) {
+    console.warn(err);
     setStatus("Upload decode failed", "error");
   } finally {
     URL.revokeObjectURL(url);
-    el.fileInput.value = "";
+    if (el.fileInput) el.fileInput.value = "";
   }
 }
 
 /* -------------------------------------------------------------
-   MANUAL SEND
+   HANDLE SEND
 ------------------------------------------------------------- */
 async function handleSend() {
-  const data = el.payload.textContent || "";
-  if (!data) return setStatus("No payload", "error");
+  const data = el.payload?.textContent || "";
+  if (!data) {
+    setStatus("No payload to send", "error");
+    return;
+  }
 
-  setStatus("Analyzing…");
-
+  setStatus("Analyzing payload…", "neutral");
   try {
     const analysis = await brain.process(data);
     ledger.addEntry(data, "MANUAL", {
@@ -476,12 +490,11 @@ async function handleSend() {
       explanation: analysis.explanation,
       entropy: analysis.entropy
     });
-
-    setStatus("Logged", "success");
-
+    setStatus("✅ Signal logged", "success");
   } catch (e) {
+    console.warn(e);
+    setStatus("QAI analysis failed", "error");
     ledger.addEntry(data, "MANUAL", { error: e.message });
-    setStatus("QAI failed", "error");
   }
 }
 
@@ -493,11 +506,15 @@ document.readyState === "loading"
   : init();
 
 /* -------------------------------------------------------------
-   MEMORY CLEANUP
+   MEMORY MANAGEMENT
 ------------------------------------------------------------- */
 window.addEventListener("beforeunload", () => {
-  try { state.reader?.reset(); } catch (_) {}
-  try { el.video?.srcObject?.getTracks().forEach(t => t.stop()); } catch (_) {}
+  if (state.reader) {
+    try { state.reader.reset(); } catch (_) {}
+  }
+  if (el.video && el.video.srcObject) {
+    try { el.video.srcObject.getTracks().forEach(t => t.stop()); } catch (_) {}
+  }
 });
 
 /* -------------------------------------------------------------
