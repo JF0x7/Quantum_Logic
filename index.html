@@ -1,101 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>QTUM(LOG)</title>
   <link rel="icon" href="Q.jpg">
-  <title>QTUM(LOG) Scanner</title>
-
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- ZXing Barcode Scanner -->
+  <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/@zxing/library@latest"></script>
-
-  <!-- App Scripts -->
   <script defer src="Qai.js"></script>
   <script defer src="ledger.js"></script>
   <script defer src="scanner.js"></script>
 </head>
-
 <body>
-
-  <!-- QTUM Logo -->
-  <div id="logoWrapper">
-    <a href="https://qtum-hub-4048d1.gitlab.io/" target="_blank" id="qtumLink">
-      <svg
-        id="quantumLogo"
-        viewBox="0 0 100 100"
-        aria-label="Quantum Crest"
-        role="img"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <image
-          href="Q.jpg"
-          x="0"
-          y="0"
-          width="100"
-          height="100"
-          preserveAspectRatio="xMidYMid slice"
-        />
-      </svg>
-    </a>
-  </div>
-
-  <h1>QTUM(LOG)</h1>
-  <h2>Native Tools of Julius Hirsch • Verified by Beler Industries</h2>
-
-  <!-- Scanner Shell -->
-  <div id="scannerShell">
-
-    <!-- Live Camera Feed -->
-    <div id="videoWrapper">
-      <video id="video" autoplay playsinline></video>
+  <div class="app">
+    <!-- Header -->
+    <div class="header">
+      <a href="https://qtum-hub-4048d1.gitlab.io/" target="_blank">
+        <svg width="40" height="40" viewBox="0 0 100 100"><image href="Q.jpg" width="100" height="100"/></svg>
+      </a>
+      <h1>⚛ QTUM(LOG)</h1>
+      <h2>Beler Industries</h2>
     </div>
 
-    <!-- Hidden Canvas for Captures -->
-    <canvas id="canvas"></canvas>
+    <!-- Scanner -->
+    <div class="scanner">
+      <div class="video-wrap">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="indicator">
+          <div class="dot" id="scanDot"></div>
+          <span id="scanStatus">Ready</span>
+        </div>
+      </div>
+      <canvas id="canvas" style="display:none;"></canvas>
+      
+      <!-- Controls -->
+      <div class="controls">
+        <button id="startBtn" data-tip="Start camera">📷</button>
+        <button id="flipBtn" data-tip="Flip camera">🔄</button>
+        <button id="uploadBtn" data-tip="Upload image">📁</button>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+        <button id="openLinkBtn" data-tip="Open URL">🌐</button>
+        <button id="copyBtn" data-tip="Copy payload">📋</button>
+        <button id="sendBtn" data-tip="Send signal">📤</button>
+        <button id="clearBtn" data-tip="Clear all">🧹</button>
+        <button id="resetLedgerBtn" data-tip="Reset ledger">🗑️</button>
+      </div>
 
-    <!-- Controls -->
-    <div id="controls" role="group" aria-label="Scanner Controls">
-      <button id="startBtn" type="button">Enable Camera</button>
-      <button id="flipBtn" type="button" class="secondary">Flip Camera</button>
-      <button id="uploadBtn" type="button" class="secondary">Upload Image</button>
-      <button id="sendBtn" type="button" class="secondary">Send Signal</button>
-      <button id="photoBtn" type="button">📸 Take Photo</button>
-      <button id="resetLedgerBtn" type="button" class="secondary">Reset Ledger</button>
-      <input type="file" id="fileInput" accept="image/*" hidden>
-    </div>
-
-    <!-- Photo Preview -->
-    <img id="photoPreview" alt="Captured Photo Preview">
-
-    <!-- Scan Indicator -->
-    <div id="scanIndicator" aria-label="Scan Status Indicator"></div>
-
-    <!-- Output -->
-    <div id="output">
-      <div id="status" class="neutral">Waiting for scan…</div>
+      <!-- Output -->
+      <div id="status">🟢 Ready</div>
       <div id="payload"></div>
+      
+      <!-- Quick Stats -->
+      <div class="stats">
+        <div><span>Entropy</span><span id="statEntropy">—</span></div>
+        <div><span>Type</span><span id="statType">—</span></div>
+        <div><span>Risk</span><span id="statRisk">—</span></div>
+      </div>
+
+       <!-- Ledger -->
+    <div class="ledger">
+      <div class="ledger-header">
+        <span>📚 Ledger</span>
+        <span id="ledgerCount">0</span>
+        <button id="ledgerExport" data-tip="Export all">📤</button>
+        <button id="ledgerClear" data-tip="Clear ledger">🗑️</button>
+      </div>
+      <div id="ledger"></div>
+    </div>
+    
+      <!-- QAI Results -->
+      <div id="qaiResults" style="display:none;">
+        <div id="qaiBody"></div>
+      </div>
     </div>
 
+    <!-- Footer -->
+    <div class="footer">
+      <span>QAI v6.0</span>
+      <span id="footerTime"></span>
+    </div>
   </div>
 
-  <!-- Ledger -->
-  <div id="ledgerShell">
-    <div id="ledgerTitle">Scan Ledger</div>
-    <div id="ledger"></div>
-  </div>
+  <!-- Toast -->
+  <div id="toast"></div>
 
-  <!-- ⭐ FIXED: Initialization -->
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const qai = new Qai();                     // QAI brain
-      const ledger = new QuantumLedger("ledger"); // FIXED: pass container ID
-      const scanner = new QtumScanner(ledger, qai); // scanner engine
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        const qai = new Qai({ enableAztec: true, enableDDN: true, enableMorse: true, enableDeepAnalysis: true });
+        const ledger = new QuantumLedger("ledger");
+        const scanner = new QtumScanner(ledger, qai);
+        window.__qai = qai; window.__ledger = ledger; window.__scanner = scanner;
+        
+        // Toast system
+        window.showToast = (msg, type = 'info') => {
+          const t = document.getElementById('toast');
+          if(!t) return;
+          t.textContent = msg;
+          t.className = `toast ${type}`;
+          t.style.display = 'block';
+          clearTimeout(t._hide);
+          t._hide = setTimeout(() => { t.style.display = 'none'; }, 2500);
+        };
+        
+        // Tooltips
+        document.querySelectorAll('[data-tip]').forEach(el => {
+          el.addEventListener('mouseenter', (e) => {
+            const tip = el.getAttribute('data-tip');
+            showToast(`💡 ${tip}`, 'info');
+          });
+        });
+        
+        // Clock
+        setInterval(() => {
+          const el = document.getElementById('footerTime');
+          if(el) el.textContent = new Date().toLocaleTimeString();
+        }, 1000);
+        
+        // Dot status
+        const dot = document.getElementById('scanDot');
+        const status = document.getElementById('scanStatus');
+        if(dot && status) {
+          document.addEventListener('scanStart', () => {
+            dot.className = 'dot active';
+            status.textContent = 'Scanning';
+          });
+          document.addEventListener('scanStop', () => {
+            dot.className = 'dot';
+            status.textContent = 'Ready';
+          });
+        }
+        
+        setTimeout(() => showToast('🧠 QAI v6.0 Online', 'success'), 500);
+        console.log('✅ QTUM(LOG) Ready');
+      } catch(e) {
+        console.error('Init failed:', e);
+        document.getElementById('status').textContent = `❌ ${e.message}`;
+      }
     });
   </script>
-
 </body>
 </html>
