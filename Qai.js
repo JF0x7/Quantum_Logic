@@ -1,11 +1,11 @@
 /**
- * QAI v5.0 · Full Local Brain
- * Barcode / QR / crypto intelligence + offline helpers (SHA-256, Aztec hook, alt-bash decode)
+ * QAI v5.1 · Full Local Brain
+ * Barcode / QR / crypto intelligence + offline helpers (SHA-256, Aztec hook, alt-bash decode, Morse)
  */
 
 class Qai {
   constructor() {
-    this.version = "5.0-local";
+    this.version = "5.1-local";
     this._ready = false;
     this.eventBus = new EventTarget();
     this.cache = new Map();
@@ -17,7 +17,7 @@ class Qai {
     setTimeout(() => {
       this._ready = true;
       this.emit("ready", { version: this.version });
-      console.log("🧠 QAI v5.0-local ready");
+      console.log("🧠 QAI v5.1-local ready (Morse enabled)");
     }, 100);
   }
 
@@ -59,6 +59,16 @@ class Qai {
       const aztecDecoded = this.decodeAztec(core.raw);
       if (aztecDecoded) {
         core.hints.push(`Aztec decoded: ${aztecDecoded.slice(0, 120)}`);
+      }
+    }
+
+    // Morse decode
+    if (core.type === "morse") {
+      const decoded = this.morseDecode(core.raw);
+      if (decoded && decoded !== "Morse decode: no valid pattern") {
+        core.hints.push(`Morse decoded: ${decoded.slice(0, 120)}`);
+      } else {
+        core.hints.push("Morse detected but could not decode cleanly");
       }
     }
 
@@ -108,6 +118,15 @@ class Qai {
       }
     }
 
+    // Extra Morse detection safety (in case patterns loop didn't hit)
+    if (!result.valid && /^[.\-/\s]+$/.test(clean) && /[.\-]/.test(clean)) {
+      result.type = "morse";
+      result.format = this.formats.morse || { name: "Morse", type: "signal" };
+      result.valid = true;
+      result.confidence = 0.85;
+      result.hints.push("Morse code detected");
+    }
+
     if (!result.valid) {
       const fuzzy = this.fuzzyMatch(clean);
       if (fuzzy) {
@@ -142,7 +161,9 @@ class Qai {
     url: /^(https?:\/\/)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
     phone: /^\+?[0-9]{10,15}$/,
     // if you detect Aztec via ZXing, you can set type="aztec" upstream
-    aztec: /^AZTEC_[\s\S]+$/ // placeholder, adjust to your pipeline
+    aztec: /^AZTEC_[\s\S]+$/, // placeholder, adjust to your pipeline
+    // Morse: dots, dashes, slashes, spaces
+    morse: /^[.\-/\s]+$/
   };
 
   formats = {
@@ -158,7 +179,8 @@ class Qai {
     email: { name: "Email", type: "pattern" },
     url: { name: "URL", type: "pattern" },
     phone: { name: "Phone", type: "pattern" },
-    aztec: { name: "Aztec", type: "2d" }
+    aztec: { name: "Aztec", type: "2d" },
+    morse: { name: "Morse", type: "signal" }
   };
 
   fuzzyMatch(text) {
@@ -183,7 +205,8 @@ class Qai {
       hex: /^[0-9a-fA-F]{32,64}$/,
       base64: /^[A-Za-z0-9+/=]{20,}$/,
       json: /^\s*\{[\s\S]*\}\s*$/,
-      query: /^[A-Za-z0-9_\-]+=[^&]+(&[A-Za-z0-9_\-]+=[^&]+)*$/
+      query: /^[A-Za-z0-9_\-]+=[^&]+(&[A-Za-z0-9_\-]+=[^&]+)*$/,
+      morse: /^[.\-/\s]+$/
     };
 
     for (const [type, pattern] of Object.entries(patterns)) {
@@ -296,6 +319,13 @@ class Qai {
       return item;
     }
 
+    if (type === "morse") {
+      item.category = "signal";
+      item.label = "Morse transmission";
+      item.confidence = 0.85;
+      return item;
+    }
+
     return item;
   }
 
@@ -325,6 +355,8 @@ class Qai {
       parts.push("Treat as a public address only; never encode private keys in barcodes/QR.");
     } else if (item.category === "secret-ish") {
       parts.push("String looks token/hash-like; avoid exposing it publicly if tied to auth or tracking.");
+    } else if (item.category === "signal" && core.type === "morse") {
+      parts.push("Morse transmission detected; treat as a human-readable signal layer.");
     }
 
     return parts.join(". ");
@@ -361,6 +393,37 @@ class Qai {
     } catch (e) {
       console.warn("Aztec decode failed", e);
       return null;
+    }
+  }
+
+  // -----------------------------
+  // Morse decoder (QAI side)
+  // -----------------------------
+
+  morseDecode(str) {
+    try {
+      const morseMap = {
+        '.-': 'A', '-...': 'B', '-.-.': 'C', '-..': 'D', '.': 'E',
+        '..-.': 'F', '--.': 'G', '....': 'H', '..': 'I', '.---': 'J',
+        '-.-': 'K', '.-..': 'L', '--': 'M', '-.': 'N', '---': 'O',
+        '.--.': 'P', '--.-': 'Q', '.-.': 'R', '...': 'S', '-': 'T',
+        '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y',
+        '--..': 'Z',
+        '-----': '0', '.----': '1', '..---': '2', '...--': '3',
+        '....-': '4', '.....': '5', '-....': '6', '--...': '7',
+        '---..': '8', '----.': '9'
+      };
+
+      const words = str.split('/');
+      const result = words.map(word =>
+        word.trim().split(' ').map(letter =>
+          morseMap[letter] || '?'
+        ).join('')
+      ).join(' ');
+
+      return result || 'Morse decode: no valid pattern';
+    } catch (e) {
+      return `Morse decode error: ${e.message}`;
     }
   }
 

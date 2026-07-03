@@ -194,7 +194,7 @@ class QuantumLedger {
     // -------------------------------------------------------------
     async aztecDecode(str) {
         try {
-            return "Aztec decode: (offline fallback) SHeesh!";
+            return " (offline fallback) SHeesh!";
         } catch {
             return "Aztec decode: (error)";
         }
@@ -254,8 +254,7 @@ class QuantumLedger {
             }
             
             // Layer 5: Remove DDN markers
-            result = result.replace(/DDN_ENC::/g, "");
-            result = result.replace(/::DDN_END/g, "");
+            result = result.replace(/DDN_ENC::/g, "").replace(/::DDN_END/g, "");
             
             return result || "DDN decrypt: empty result";
         } catch (e) {
@@ -264,8 +263,7 @@ class QuantumLedger {
     }
 
     // -------------------------------------------------------------
-    // MORSE CODE DECODER
-    // Supports International Morse Code with . - / and space separators
+    // UPGRADED MORSE CODE DECODER (Handles variable token spaces)
     // -------------------------------------------------------------
     morseDecode(str) {
         try {
@@ -283,42 +281,31 @@ class QuantumLedger {
                 '-.-.--': '!', '-..-.': '/', '-.--.': '(', '-.--.-': ')',
                 '.-...': '&', '---...': ':', '-.-.-.': ';', '-...-': '=',
                 '.-.-.': '+', '-....-': '-', '..--.-': '_', '.-..-.': '"',
-                '...-..-': '$', '.--.-.': '@'
+                '...-..-': '$', '.--.-.': '@',
+                // Prosigns / Procedural Extensions
+                '.-.-': 'Ä', '---.': 'Ö', '..--': 'Ü', '----': 'CH',
+                '.-..-': 'È', '..-..': 'É',
+                '...---...': 'SOS', '-.-.-': 'START', '-...-.-': 'END'
             };
 
-            // Normalize separators
-            let normalized = str.replace(/\\/g, '/');
-            normalized = normalized.replace(/\[space\]/g, ' ');
-            normalized = normalized.replace(/\[slash\]/g, '/');
-            
-            // Split by spaces or slashes
-            const words = normalized.split('/');
+            const words = str.trim().split('/');
             let result = [];
 
             for (const word of words) {
-                const letters = word.trim().split(' ');
+                // Regex matches single or sequential spaces to avoid split artifacts
+                const letters = word.trim().split(/\s+/);
                 let decodedWord = '';
                 for (const letter of letters) {
                     if (letter === '') continue;
-                    // Handle special codes
-                    if (letter === '...---...') {
-                        decodedWord += 'SOS';
-                    } else if (morseMap[letter]) {
+                    if (morseMap[letter]) {
                         decodedWord += morseMap[letter];
                     } else {
-                        // Try to decode as binary-like pattern
-                        const binary = letter.replace(/\./g, '0').replace(/\-/g, '1');
-                        if (/^[01]+$/.test(binary) && binary.length === 8) {
-                            const charCode = parseInt(binary, 2);
-                            if (charCode >= 32 && charCode <= 126) {
-                                decodedWord += String.fromCharCode(charCode);
-                            }
-                        } else {
-                            decodedWord += '?';
-                        }
+                        decodedWord += '?';
                     }
                 }
-                result.push(decodedWord);
+                if (decodedWord.length > 0) {
+                    result.push(decodedWord);
+                }
             }
 
             return result.join(' ') || 'Morse decode: no valid pattern';
@@ -355,6 +342,7 @@ class QuantumLedger {
         if (/^[13]/.test(str)) return "Bitcoin network";
         if (this.tryParseJSON(str)) return "JSON API payload";
         if (/DDN_ENC::/.test(str)) return "DDN encrypted network";
+        if (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str)) return "Morse signal space";
         return "Unknown / local-only";
     }
 
@@ -374,7 +362,7 @@ class QuantumLedger {
         if (/^[13]/.test(str)) notes.push("Bitcoin-style address.");
         if (this.tryParseJSON(str)) notes.push("JSON payload indicates structured data.");
         if (/https?:\/\//.test(str)) notes.push("Likely web resource or API endpoint.");
-        if (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str)) {
+        if (/^[45.\-/\s]+$/.test(str) || (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str))) {
             notes.push("Morse code detected - decoding in progress.");
             const decoded = this.morseDecode(str);
             if (decoded && !decoded.includes("error")) {
@@ -391,13 +379,7 @@ class QuantumLedger {
 
         // Greeting detection
         const greetingOptions = [
-            "Yo!",
-            "What's up",
-            "Howdy",
-            "What's Gucii",
-            "Hello",
-            "Hi",
-            "What's Gravy"
+            "Yo!", "What's up", "Howdy", "What's Gucii", "Hello", "Hi", "What's Gravy"
         ];
 
         if (/^[A-Za-z\s!?.]+$/.test(str) && str.length <= 20 && entropy < 3.5) {
@@ -548,11 +530,11 @@ class QuantumLedger {
 AztecDB = {
 
     meta: {
-        version: "1.0",
-        updated: "2026-06-30",
+        version: "1.1",
+        updated: "2026-07-02",
         engine: "QAI-AZTEC-DDN",
         checksum: "QLOGIC_44",
-        notes: "Modular Aztec encryption registry for QAI/QuantumLedger systems with DDN and Morse support."
+        notes: "Modular Aztec encryption registry for QAI/QuantumLedger systems with upgraded regex Morse parsing."
     },
 
     registry: [
@@ -572,7 +554,7 @@ AztecDB = {
             },
 
             decode: {
-                aztec: "Aztec decode (DB): SHeesh!",
+                aztec: " (DB): SHeesh!",
                 rot13: null,
                 sha256: null,
                 altbash: null,
@@ -645,26 +627,26 @@ AztecDB = {
                 '-.-.--': '!', '-..-.': '/', '-.--.': '(', '-.--.-': ')',
                 '.-...': '&', '---...': ':', '-.-.-.': ';', '-...-': '=',
                 '.-.-.': '+', '-....-': '-', '..--.-': '_', '.-..-.': '"',
-                '...-..-': '$', '.--.-.': '@'
+                '...-..-': '$', '.--.-.': '@',
+                '.-.-': 'Ä', '---.': 'Ö', '..--': 'Ü', '----': 'CH',
+                '...---...': 'SOS'
             };
             
             try {
-                const words = str.split('/');
+                const words = str.trim().split('/');
                 let result = [];
                 for (const word of words) {
-                    const letters = word.trim().split(' ');
+                    const letters = word.trim().split(/\s+/);
                     let decodedWord = '';
                     for (const letter of letters) {
                         if (letter === '') continue;
-                        if (letter === '...---...') {
-                            decodedWord += 'SOS';
-                        } else if (morseMap[letter]) {
+                        if (morseMap[letter]) {
                             decodedWord += morseMap[letter];
                         } else {
                             decodedWord += '?';
                         }
                     }
-                    result.push(decodedWord);
+                    if (decodedWord.length > 0) result.push(decodedWord);
                 }
                 return result.join(' ') || 'Morse decode: no valid pattern';
             } catch (e) {
