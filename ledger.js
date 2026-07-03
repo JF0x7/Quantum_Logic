@@ -1,63 +1,172 @@
 // ============================================================================
-//  PREDECLARE AZTECDB (fixes QAI analysis failed)
+//  SAFARI / iPHONE 6 COMPATIBILITY HELPERS
 // ============================================================================
-let AztecDB;
+
+// Safe TextEncoder fallback
+function safeEncode(str) {
+    try {
+        if (window.TextEncoder) return new TextEncoder().encode(str);
+        // Fallback: manual UTF‑8 encoding
+        const utf8 = [];
+        for (let i = 0; i < str.length; i++) {
+            let c = str.charCodeAt(i);
+            if (c < 128) utf8.push(c);
+            else if (c < 2048) {
+                utf8.push((c >> 6) | 192);
+                utf8.push((c & 63) | 128);
+            } else {
+                utf8.push((c >> 12) | 224);
+                utf8.push(((c >> 6) & 63) | 128);
+                utf8.push((c & 63) | 128);
+            }
+        }
+        return new Uint8Array(utf8);
+    } catch (_) {
+        return new Uint8Array([]);
+    }
+}
+
+// Safe SHA‑256 fallback for iOS 12
+async function safeSHA256(str) {
+    try {
+        const data = safeEncode(str);
+        if (crypto.subtle && crypto.subtle.digest) {
+            const hash = await crypto.subtle.digest("SHA-256", data);
+            return [...new Uint8Array(hash)]
+                .map(b => b.toString(16).padStart(2, "0"))
+                .join("");
+        }
+    } catch (_) {}
+
+    // Fallback: lightweight JS SHA‑256 (iPhone 6 safe)
+    return sha256Fallback(str);
+}
+
+// Minimal SHA‑256 fallback (iPhone 6 safe)
+function sha256Fallback(ascii) {
+    // Tiny SHA‑256 implementation (safe for old Safari)
+    function rightRotate(value, amount) {
+        return (value >>> amount) | (value << (32 - amount));
+    }
+
+    const mathPow = Math.pow;
+    const maxWord = mathPow(2, 32);
+    let result = "";
+
+    const words = [];
+    const asciiBitLength = ascii.length * 8;
+
+    const hash = sha256Fallback.h = sha256Fallback.h || [];
+    const k = sha256Fallback.k = sha256Fallback.k || [];
+    let primeCounter = k.length;
+
+    const isPrime = n => {
+        const sqrtN = Math.sqrt(n);
+        for (let i = 2; i <= sqrtN; i++) if (n % i === 0) return false;
+        return true;
+    };
+
+    while (primeCounter < 64) {
+        let candidate = primeCounter + 2;
+        while (!isPrime(candidate)) candidate++;
+        hash[primeCounter] = (candidate ** 0.5 * maxWord) | 0;
+        k[primeCounter] = (candidate ** (1 / 3) * maxWord) | 0;
+        primeCounter++;
+    }
+
+    ascii += "\x80";
+    while ((ascii.length % 64) !== 56) ascii += "\x00";
+
+    for (let i = 0; i < ascii.length; i++) {
+        words[i >> 2] |= ascii.charCodeAt(i) << ((3 - (i % 4)) * 8);
+    }
+
+    words.push((asciiBitLength / maxWord) | 0);
+    words.push(asciiBitLength | 0);
+
+    for (let j = 0; j < words.length; ) {
+        const w = words.slice(j, j += 16);
+        const oldHash = hash.slice(0);
+
+        for (let i = 16; i < 64; i++) {
+            const a = w[i - 15];
+            const b = w[i - 2];
+            w[i] = (((rightRotate(a, 7) ^ rightRotate(a, 18) ^ (a >>> 3)) +
+                w[i - 7] +
+                (rightRotate(b, 17) ^ rightRotate(b, 19) ^ (b >>> 10))) |
+                0);
+        }
+
+        let [a, b, c, d, e, f, g, h] = oldHash;
+
+        for (let i = 0; i < 64; i++) {
+            const t1 =
+                h +
+                (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) +
+                ((e & f) ^ (~e & g)) +
+                k[i] +
+                w[i];
+
+            const t2 =
+                (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) +
+                ((a & b) ^ (a & c) ^ (b & c));
+
+            h = g;
+            g = f;
+            f = e;
+            e = (d + t1) | 0;
+            d = c;
+            c = b;
+            b = a;
+            a = (t1 + t2) | 0;
+        }
+
+        hash[0] = (hash[0] + a) | 0;
+        hash[1] = (hash[1] + b) | 0;
+        hash[2] = (hash[2] + c) | 0;
+        hash[3] = (hash[3] + d) | 0;
+        hash[4] = (hash[4] + e) | 0;
+        hash[5] = (hash[5] + f) | 0;
+        hash[6] = (hash[6] + g) | 0;
+        hash[7] = (hash[7] + h) | 0;
+    }
+
+    for (let i = 0; i < hash.length; i++) {
+        result += (hash[i] >>> 0).toString(16).padStart(8, "0");
+    }
+
+    return result;
+}
 
 // ============================================================================
-//  QUANTUM LEDGER (TOP)
+//  QUANTUM LEDGER (iPhone 6 optimized)
 // ============================================================================
 
 class QuantumLedger {
 
     constructor(containerId) {
         this.container = document.getElementById(containerId);
-        if (!this.container) {
-            console.warn(`Ledger container #${containerId} not found.`);
-        }
     }
 
-    // -------------------------------------------------------------
-    // MAIN ANALYSIS
-    // -------------------------------------------------------------
     analyzePayload(payload) {
         const trimmed = payload.trim();
         const length = trimmed.length;
         const entropy = this.calculateEntropy(trimmed);
 
-        const isURL = /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(trimmed);
+        const isURL = /^https?:\/\/[^\s]+$/i.test(trimmed);
         const isJSON = this.tryParseJSON(trimmed);
         const isHex = /^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0;
-        const isBase64 =
-            /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(trimmed) &&
-            trimmed.length >= 4 &&
-            (/[+/=]/.test(trimmed) || entropy > 4.5);
-        const isMorse = /^[.\-/\s]+$/.test(trimmed) && /[.\-]/.test(trimmed);
 
         let classification = "UNKNOWN SIGNAL";
         if (isURL) classification = "URL";
         else if (isJSON) classification = "JSON OBJECT";
         else if (isHex) classification = "HEX STRING";
-        else if (isBase64) classification = "BASE64 ENCODED";
-        else if (isMorse) classification = "MORSE CODE";
-        else if (length < 8) classification = "SHORT CODE";
-        else if (length > 80) classification = "LONG FORM DATA";
 
         const charset = this.detectCharset(trimmed);
         const entropyClass = this.entropyClass(entropy);
         const signalStrength = this.signalStrength(length, entropy);
-        const decodedPreview = this.tryDecode(trimmed);
-        const hashFingerprint = this.sha256Fingerprint(trimmed);
 
-        const rot13 = this.rot13(trimmed);
-        const aztec = this.aztecDecode(trimmed);
-        const altbash = this.altBashDecode(trimmed);
-        const shaFullPromise = this.sha256Full(trimmed);
-        const signalTypes = this.detectSignalTypes(trimmed);
-        const signalLocation = this.detectSignalLocation(trimmed);
-        const clamShell = this.clamShellDecrypt(trimmed);
-        const ddnDecrypt = this.ddnDecrypt(trimmed);
-        const morseDecode = this.morseDecode(trimmed);
-        const qNotes = this.generateQNotes(trimmed, classification, entropy);
+        const decodedPreview = this.tryDecode(trimmed);
 
         return {
             length,
@@ -66,54 +175,29 @@ class QuantumLedger {
             charset,
             entropyClass,
             signalStrength,
-            decodedPreview,
-            hashFingerprint,
-
-            rot13,
-            aztec,
-            altbash,
-            shaFullPromise,
-            clamShell,
-            ddnDecrypt,
-            morseDecode,
-            signalTypes,
-            signalLocation,
-            qNotes
+            decodedPreview
         };
     }
 
-    // -------------------------------------------------------------
-    // CHARACTER SET
-    // -------------------------------------------------------------
     detectCharset(str) {
         if (/^[\x00-\x7F]+$/.test(str)) return "ASCII";
-        if (/^[\x00-\xFF]+$/.test(str)) return "Extended ASCII";
-        return "Unicode / Binary-like";
+        return "Unicode / Extended";
     }
 
-    // -------------------------------------------------------------
-    // ENTROPY CLASS
-    // -------------------------------------------------------------
-    entropyClass(entropy) {
-        const e = parseFloat(entropy);
+    entropyClass(e) {
+        e = parseFloat(e);
         if (e < 3) return "Low";
         if (e < 4) return "Medium";
         return "High";
     }
 
-    // -------------------------------------------------------------
-    // SIGNAL STRENGTH
-    // -------------------------------------------------------------
     signalStrength(length, entropy) {
-        const score = length * 0.2 + parseFloat(entropy) * 4;
+        const score = length * 0.2 + entropy * 4;
         if (score < 20) return "Weak";
         if (score < 40) return "Moderate";
         return "Strong";
     }
 
-    // -------------------------------------------------------------
-    // BASIC DECODERS
-    // -------------------------------------------------------------
     tryDecode(str) {
         try {
             if (/^[0-9a-fA-F]+$/.test(str) && str.length % 2 === 0) {
@@ -123,296 +207,10 @@ class QuantumLedger {
             if (/^[A-Za-z0-9+/=]+$/.test(str)) {
                 return atob(str).slice(0, 60);
             }
-            if (/^[.\-/\s]+$/.test(str)) {
-                return this.morseDecode(str).slice(0, 60);
-            }
-        } catch {}
+        } catch (_) {}
         return "n/a";
     }
 
-    // -------------------------------------------------------------
-    // SHA256 SHORT
-    // -------------------------------------------------------------
-    sha256Fingerprint(str) {
-        try {
-            const buffer = new TextEncoder().encode(str);
-            return crypto.subtle.digest("SHA-256", buffer).then(hash => {
-                const hex = Array.from(new Uint8Array(hash))
-                    .map(b => b.toString(16).padStart(2, "0"))
-                    .join("");
-                return hex.slice(0, 16);
-            });
-        } catch {
-            return Promise.resolve("n/a");
-        }
-    }
-
-    // -------------------------------------------------------------
-    // SHA256 FULL
-    // -------------------------------------------------------------
-    async sha256Full(str) {
-        try {
-            const buffer = new TextEncoder().encode(str);
-            const hash = await crypto.subtle.digest("SHA-256", buffer);
-            return Array.from(new Uint8Array(hash))
-                .map(b => b.toString(16).padStart(2, "0"))
-                .join("");
-        } catch {
-            return "n/a";
-        }
-    }
-
-    // -------------------------------------------------------------
-    // ROT13
-    // -------------------------------------------------------------
-    rot13(str) {
-        return str.replace(/[A-Za-z]/g, c =>
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".charAt(
-                "NOPQRSTUVWXYZABCDEFGHIJKLMnopqrstuvwxyzabcdefghijklm".indexOf(c)
-            )
-        );
-    }
-
-    // -------------------------------------------------------------
-    // ALT-BASH
-    // -------------------------------------------------------------
-    altBashDecode(str) {
-        try {
-            if (/^[A-Za-z0-9+/=]+$/.test(str)) return atob(str);
-            if (/^[0-9a-fA-F]+$/.test(str) && str.length % 2 === 0) {
-                const bytes = str.match(/.{2}/g).map(h => parseInt(h, 16));
-                return String.fromCharCode(...bytes);
-            }
-            return decodeURIComponent(str);
-        } catch {
-            return "n/a";
-        }
-    }
-
-    // -------------------------------------------------------------
-    // REAL AZTEC DECODE (ZXing fallback)
-    // -------------------------------------------------------------
-    async aztecDecode(str) {
-        try {
-            return " (offline fallback) SHeesh!";
-        } catch {
-            return "Aztec decode: (error)";
-        }
-    }
-
-    // -------------------------------------------------------------
-    // CLAMSHELL SECURITY DECRYPTION (simple reversible)
-    // -------------------------------------------------------------
-    clamShellDecrypt(str) {
-        try {
-            return str
-                .split("")
-                .map(c => String.fromCharCode(c.charCodeAt(0) - 1))
-                .join("");
-        } catch {
-            return "ClamShellSecurity: error";
-        }
-    }
-
-    // -------------------------------------------------------------
-    // DDN (DYNAMIC DATA NETWORK) DECRYPTION
-    // Advanced version of Clam Shell with multi-layer transformation
-    // -------------------------------------------------------------
-    ddnDecrypt(str) {
-        try {
-            let result = str;
-            
-            // Layer 1: XOR with 0x5A (dynamic key)
-            result = result
-                .split("")
-                .map(c => String.fromCharCode(c.charCodeAt(0) ^ 0x5A))
-                .join("");
-            
-            // Layer 2: Reverse string
-            result = result.split("").reverse().join("");
-            
-            // Layer 3: Caesar shift with variable offset based on length
-            const offset = (str.length % 5) + 1;
-            result = result
-                .split("")
-                .map(c => {
-                    const code = c.charCodeAt(0);
-                    if (code >= 65 && code <= 90) {
-                        return String.fromCharCode(((code - 65 - offset + 26) % 26) + 65);
-                    } else if (code >= 97 && code <= 122) {
-                        return String.fromCharCode(((code - 97 - offset + 26) % 26) + 97);
-                    }
-                    return c;
-                })
-                .join("");
-            
-            // Layer 4: Base64-like decode if applicable
-            if (/^[A-Za-z0-9+/=]+$/.test(result)) {
-                try {
-                    result = atob(result);
-                } catch (_) {}
-            }
-            
-            // Layer 5: Remove DDN markers
-            result = result.replace(/DDN_ENC::/g, "").replace(/::DDN_END/g, "");
-            
-            return result || "DDN decrypt: empty result";
-        } catch (e) {
-            return `DDN decrypt: error - ${e.message}`;
-        }
-    }
-
-    // -------------------------------------------------------------
-    // UPGRADED MORSE CODE DECODER (Handles variable token spaces)
-    // -------------------------------------------------------------
-    morseDecode(str) {
-        try {
-            const morseMap = {
-                '.-': 'A', '-...': 'B', '-.-.': 'C', '-..': 'D', '.': 'E',
-                '..-.': 'F', '--.': 'G', '....': 'H', '..': 'I', '.---': 'J',
-                '-.-': 'K', '.-..': 'L', '--': 'M', '-.': 'N', '---': 'O',
-                '.--.': 'P', '--.-': 'Q', '.-.': 'R', '...': 'S', '-': 'T',
-                '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y',
-                '--..': 'Z',
-                '-----': '0', '.----': '1', '..---': '2', '...--': '3',
-                '....-': '4', '.....': '5', '-....': '6', '--...': '7',
-                '---..': '8', '----.': '9',
-                '.-.-.-': '.', '--..--': ',', '..--..': '?', '.----.': "'",
-                '-.-.--': '!', '-..-.': '/', '-.--.': '(', '-.--.-': ')',
-                '.-...': '&', '---...': ':', '-.-.-.': ';', '-...-': '=',
-                '.-.-.': '+', '-....-': '-', '..--.-': '_', '.-..-.': '"',
-                '...-..-': '$', '.--.-.': '@',
-                // Prosigns / Procedural Extensions
-                '.-.-': 'Ä', '---.': 'Ö', '..--': 'Ü', '----': 'CH',
-                '.-..-': 'È', '..-..': 'É',
-                '...---...': 'SOS', '-.-.-': 'START', '-...-.-': 'END'
-            };
-
-            const words = str.trim().split('/');
-            let result = [];
-
-            for (const word of words) {
-                // Regex matches single or sequential spaces to avoid split artifacts
-                const letters = word.trim().split(/\s+/);
-                let decodedWord = '';
-                for (const letter of letters) {
-                    if (letter === '') continue;
-                    if (morseMap[letter]) {
-                        decodedWord += morseMap[letter];
-                    } else {
-                        decodedWord += '?';
-                    }
-                }
-                if (decodedWord.length > 0) {
-                    result.push(decodedWord);
-                }
-            }
-
-            return result.join(' ') || 'Morse decode: no valid pattern';
-        } catch (e) {
-            return `Morse decode error: ${e.message}`;
-        }
-    }
-
-    // -------------------------------------------------------------
-    // SIGNAL TYPES
-    // -------------------------------------------------------------
-    detectSignalTypes(str) {
-        const types = [];
-        if (/^QTUM_/.test(str)) types.push("QTUM");
-        if (/^0x[a-fA-F0-9]{40}$/.test(str)) types.push("Ethereum");
-        if (/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(str)) types.push("Bitcoin");
-        if (/^https?:\/\//.test(str)) types.push("URL");
-        if (this.tryParseJSON(str)) types.push("JSON");
-        if (/^[0-9a-fA-F]+$/.test(str)) types.push("HEX");
-        if (/^[A-Za-z0-9+/=]+$/.test(str)) types.push("BASE64");
-        if (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str)) types.push("MORSE");
-        if (/DDN_ENC::/.test(str)) types.push("DDN_ENCRYPTED");
-        return types.length ? types.join(", ") : "None detected";
-    }
-
-    // -------------------------------------------------------------
-    // LOCATION GUESS
-    // -------------------------------------------------------------
-    detectSignalLocation(str) {
-        const m = str.match(/https?:\/\/([^\/]+)/);
-        if (m) return `Web domain: ${m[1]}`;
-        if (/QTUM_/.test(str)) return "QTUM protocol space";
-        if (/^0x/.test(str)) return "Ethereum network";
-        if (/^[13]/.test(str)) return "Bitcoin network";
-        if (this.tryParseJSON(str)) return "JSON API payload";
-        if (/DDN_ENC::/.test(str)) return "DDN encrypted network";
-        if (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str)) return "Morse signal space";
-        return "Unknown / local-only";
-    }
-
-    // -------------------------------------------------------------
-    // Q-NOTES (greeting + JEEEZ + SHeesh + DDN + Morse)
-    // -------------------------------------------------------------
-    generateQNotes(str, classification, entropy) {
-        const notes = [];
-
-        notes.push(`Signal classified as ${classification}.`);
-        notes.push(
-            `Entropy suggests ${entropy < 3 ? "simple" : entropy < 4 ? "moderate" : "complex"} structure.`
-        );
-
-        if (/QTUM_/.test(str)) notes.push("QTUM signature detected.");
-        if (/^0x/.test(str)) notes.push("Ethereum-style address.");
-        if (/^[13]/.test(str)) notes.push("Bitcoin-style address.");
-        if (this.tryParseJSON(str)) notes.push("JSON payload indicates structured data.");
-        if (/https?:\/\//.test(str)) notes.push("Likely web resource or API endpoint.");
-        if (/^[45.\-/\s]+$/.test(str) || (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str))) {
-            notes.push("Morse code detected - decoding in progress.");
-            const decoded = this.morseDecode(str);
-            if (decoded && !decoded.includes("error")) {
-                notes.push(`Morse decoded: "${decoded.substring(0, 30)}${decoded.length > 30 ? '...' : ''}"`);
-            }
-        }
-        if (/DDN_ENC::/.test(str)) {
-            notes.push("DDN encrypted payload detected - multi-layer decryption applied.");
-            const decrypted = this.ddnDecrypt(str);
-            if (decrypted && !decrypted.includes("error")) {
-                notes.push(`DDN decrypted: "${decrypted.substring(0, 30)}${decrypted.length > 30 ? '...' : ''}"`);
-            }
-        }
-
-        // Greeting detection
-        const greetingOptions = [
-            "Yo!", "What's up", "Howdy", "What's Gucii", "Hello", "Hi", "What's Gravy"
-        ];
-
-        if (/^[A-Za-z\s!?.]+$/.test(str) && str.length <= 20 && entropy < 3.5) {
-            const pick = greetingOptions[Math.floor(Math.random() * greetingOptions.length)];
-            notes.push(`AI interprets this as a greeting → ${pick}`);
-        }
-
-        // JEEEZ reaction
-        if (str.length > 20 && entropy > 3.8) {
-            notes.push("Encryption reaction → JEEEZ!");
-        }
-
-        // SHeesh reaction
-        if (str.includes("AZTEC") || str.includes("AZTEC_ENC")) {
-            notes.push("Aztec reaction → SHeesh!");
-        }
-
-        // DDN reaction
-        if (/DDN_ENC::/.test(str)) {
-            notes.push("DDN encryption detected → DDN - Dynamic Data Network!");
-        }
-
-        // Morse reaction
-        if (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str)) {
-            notes.push("Morse code detected → Morse transmission received!");
-        }
-
-        return notes.join(" ");
-    }
-
-    // -------------------------------------------------------------
-    // ENTROPY
-    // -------------------------------------------------------------
     calculateEntropy(str) {
         if (!str) return "0.00";
         const map = {};
@@ -427,9 +225,6 @@ class QuantumLedger {
         return entropy.toFixed(2);
     }
 
-    // -------------------------------------------------------------
-    // JSON CHECK
-    // -------------------------------------------------------------
     tryParseJSON(str) {
         if (!str.startsWith("{") && !str.startsWith("[")) return false;
         try {
@@ -440,23 +235,13 @@ class QuantumLedger {
         }
     }
 
-    // -------------------------------------------------------------
-    // LEDGER ENTRY (Promise fix)
-    // -------------------------------------------------------------
-    async addEntry(payload, tag = "SCAN", extraMeta = {}) {
-
+    async addEntry(payload, tag = "SCAN") {
         if (!this.container) return;
 
         const meta = this.analyzePayload(payload);
 
-        // Await ALL async values
-        const hash = await meta.hashFingerprint;
-        const shaFull = await meta.shaFullPromise;
-        const aztec = await meta.aztec;
-
-        const greetingDecoded = meta.qNotes.includes("AI interprets this as a greeting")
-            ? meta.qNotes.split("→")[1].trim()
-            : "None";
+        const hash = await safeSHA256(payload);
+        const shaFull = await safeSHA256(payload);
 
         const time = new Date().toLocaleTimeString();
 
@@ -477,21 +262,8 @@ class QuantumLedger {
             <span><strong>Entropy Class:</strong> ${meta.entropyClass}</span>
             <span><strong>Strength:</strong> ${meta.signalStrength}</span>
             <span><strong>Decoded:</strong> ${meta.decodedPreview}</span>
-            <span><strong>Fingerprint:</strong> ${hash}</span>
-
-            <span><strong>ROT13:</strong> ${meta.rot13}</span>
-            <span><strong>Aztec:</strong> ${aztec}</span>
-            <span><strong>AltBash:</strong> ${meta.altbash}</span>
+            <span><strong>Fingerprint:</strong> ${hash.slice(0, 16)}</span>
             <span><strong>SHA256 Full:</strong> ${shaFull}</span>
-            <span><strong>ClamShellSecurity:</strong> ${meta.clamShell}</span>
-            <span><strong>DDN Decrypt:</strong> ${meta.ddnDecrypt}</span>
-            <span><strong>Morse Decode:</strong> ${meta.morseDecode}</span>
-            <span><strong>Signal Types:</strong> ${meta.signalTypes}</span>
-            <span><strong>Location:</strong> ${meta.signalLocation}</span>
-
-            <span style="flex:1 1 100%"><strong>Q‑Notes:</strong> ${meta.qNotes}</span>
-
-            <span><strong>Greeting Decode:</strong> ${greetingDecoded}</span>
         `;
 
         const footerEl = document.createElement("div");
@@ -524,17 +296,15 @@ class QuantumLedger {
 }
 
 // ============================================================================
-//  AZTEC ENCRYPTION DATABASE (BOTTOM)
+//  AZTEC DB (iPhone 6 safe)
 // ============================================================================
 
-AztecDB = {
-
+const AztecDB = {
     meta: {
         version: "1.1",
         updated: "2026-07-02",
         engine: "QAI-AZTEC-DDN",
-        checksum: "QLOGIC_44",
-        notes: "Modular Aztec encryption registry for QAI/QuantumLedger systems with upgraded regex Morse parsing."
+        checksum: "QLOGIC_44"
     },
 
     registry: [
@@ -544,132 +314,46 @@ AztecDB = {
             seq: 77,
             chk: "OK",
             frame: "QLOGIC_44",
-
             payload: {
                 enc: "ENC::QAI-5521::A9F2",
-                crypt: "QAI_CRYPT::L7::9912A",
-                qntm: "QNTM_ENC{SEQ:77,CHK:OK}",
                 ddn: "DDN_ENC::A9F2::XOR5A_REV_CAESAR",
                 morse: "- .... .- -. -.- ... / -.-. --- -- .. -. --."
-            },
-
-            decode: {
-                aztec: " (DB): SHeesh!",
-                rot13: null,
-                sha256: null,
-                altbash: null,
-                ddn: "DDN decrypt (DB): Dynamic Data Network - Advanced ClamShell",
-                morse: "THANKS COMING"
             }
         }
     ],
 
     decoders: {
+        aztec: data => `Aztec decode (DB): ${data} • SHeesh!`,
 
-        aztec: (data) => `Aztec decode (DB): ${data} • SHeesh!`,
-
-        rot13: (str) =>
-            str.replace(/[A-Za-z]/g, c =>
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-                .charAt(
-                    "NOPQRSTUVWXYZABCDEFGHIJKLMnopqrstuvwxyzabcdefghijklm"
-                    .indexOf(c)
-                )
-            ),
-
-        sha256: async (msg) => {
-            const data = new TextEncoder().encode(msg);
-            const hash = await crypto.subtle.digest("SHA-256", data);
-            return [...new Uint8Array(hash)]
-                .map(b => b.toString(16).padStart(2, "0"))
-                .join("");
-        },
-
-        altbash: (str) =>
-            str.split("")
-               .map(c => String.fromCharCode(c.charCodeAt(0) ^ 0x2A))
-               .join(""),
-
-        ddn: (str) => {
+        ddn: str => {
             try {
-                let result = str;
-                result = result.split("").map(c => String.fromCharCode(c.charCodeAt(0) ^ 0x5A)).join("");
-                result = result.split("").reverse().join("");
-                const offset = (str.length % 5) + 1;
-                result = result.split("").map(c => {
-                    const code = c.charCodeAt(0);
-                    if (code >= 65 && code <= 90) {
-                        return String.fromCharCode(((code - 65 - offset + 26) % 26) + 65);
-                    } else if (code >= 97 && code <= 122) {
-                        return String.fromCharCode(((code - 97 - offset + 26) % 26) + 97);
-                    }
-                    return c;
-                }).join("");
-                result = result.replace(/DDN_ENC::/g, "").replace(/::DDN_END/g, "");
-                return result || "DDN decrypt: empty result";
-            } catch (e) {
-                return `DDN decrypt: error - ${e.message}`;
+                let r = str.split("").map(c => String.fromCharCode(c.charCodeAt(0) ^ 0x5A)).join("");
+                r = r.split("").reverse().join("");
+                return r.replace(/DDN_ENC::/g, "").replace(/::DDN_END/g, "");
+            } catch (_) {
+                return "DDN decrypt error";
             }
         },
 
-        morse: (str) => {
-            const morseMap = {
-                '.-': 'A', '-...': 'B', '-.-.': 'C', '-..': 'D', '.': 'E',
-                '..-.': 'F', '--.': 'G', '....': 'H', '..': 'I', '.---': 'J',
-                '-.-': 'K', '.-..': 'L', '--': 'M', '-.': 'N', '---': 'O',
-                '.--.': 'P', '--.-': 'Q', '.-.': 'R', '...': 'S', '-': 'T',
-                '..-': 'U', '...-': 'V', '.--': 'W', '-..-': 'X', '-.--': 'Y',
-                '--..': 'Z',
-                '-----': '0', '.----': '1', '..---': '2', '...--': '3',
-                '....-': '4', '.....': '5', '-....': '6', '--...': '7',
-                '---..': '8', '----.': '9',
-                '.-.-.-': '.', '--..--': ',', '..--..': '?', '.----.': "'",
-                '-.-.--': '!', '-..-.': '/', '-.--.': '(', '-.--.-': ')',
-                '.-...': '&', '---...': ':', '-.-.-.': ';', '-...-': '=',
-                '.-.-.': '+', '-....-': '-', '..--.-': '_', '.-..-.': '"',
-                '...-..-': '$', '.--.-.': '@',
-                '.-.-': 'Ä', '---.': 'Ö', '..--': 'Ü', '----': 'CH',
-                '...---...': 'SOS'
+        morse: str => {
+            const map = {
+                ".-": "A", "-...": "B", "-.-.": "C", "-..": "D", ".": "E",
+                "..-.": "F", "--.": "G", "....": "H", "..": "I", ".---": "J",
+                "-.-": "K", ".-..": "L", "--": "M", "-.": "N", "---": "O",
+                ".--.": "P", "--.-": "Q", ".-.": "R", "...": "S", "-": "T",
+                "..-": "U", "...-": "V", ".--": "W", "-..-": "X", "-.--": "Y",
+                "--..": "Z"
             };
-            
+
             try {
-                const words = str.trim().split('/');
-                let result = [];
-                for (const word of words) {
-                    const letters = word.trim().split(/\s+/);
-                    let decodedWord = '';
-                    for (const letter of letters) {
-                        if (letter === '') continue;
-                        if (morseMap[letter]) {
-                            decodedWord += morseMap[letter];
-                        } else {
-                            decodedWord += '?';
-                        }
-                    }
-                    if (decodedWord.length > 0) result.push(decodedWord);
-                }
-                return result.join(' ') || 'Morse decode: no valid pattern';
-            } catch (e) {
-                return `Morse decode error: ${e.message}`;
+                return str
+                    .trim()
+                    .split("/")
+                    .map(w => w.trim().split(/\s+/).map(l => map[l] || "?").join(""))
+                    .join(" ");
+            } catch (_) {
+                return "Morse decode error";
             }
         }
-    },
-
-    decryptSignal: async function (entry) {
-        const ddnDecoded = this.decoders.ddn(entry.payload.ddn || entry.payload.enc);
-        const morseDecoded = this.decoders.morse(entry.payload.morse || entry.payload.enc);
-        
-        return {
-            id: entry.id,
-            frame: entry.frame,
-            results: {
-                aztec: this.decoders.aztec(entry.payload.enc),
-                rot13: this.decoders.rot13(entry.payload.enc),
-                sha256: await this.decoders.sha256(entry.payload.enc),
-                altbash: this.decoders.altbash(entry.payload.enc),
-                ddn: ddnDecoded,
-                morse: morseDecoded
-            }
-        };
     }
 };
