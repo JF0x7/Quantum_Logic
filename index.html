@@ -7,9 +7,6 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- iPhone 6 Safari camera permission fix -->
-  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' blob: data:; media-src * blob: data:; img-src * blob: data:; connect-src *; frame-src *; child-src *; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval';">
-
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
 
@@ -54,7 +51,7 @@
 
     <!-- Live Camera Feed -->
     <div id="videoWrapper">
-      <video id="video" autoplay playsinline webkit-playsinline muted allow="camera"></video>
+      <video id="video" autoplay playsinline></video>
     </div>
 
     <!-- Hidden Canvas for Captures -->
@@ -94,9 +91,9 @@
   <!-- ⭐ FIXED: Initialization -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const qai = new Qai();
-      const ledger = new QuantumLedger("ledger");
-      const scanner = new QtumScanner(ledger, qai);
+      const qai = new Qai();                     // QAI brain
+      const ledger = new QuantumLedger("ledger"); // FIXED: pass container ID
+      const scanner = new QtumScanner(ledger, qai); // scanner engine
     });
   </script>
 

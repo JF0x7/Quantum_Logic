@@ -1,25 +1,29 @@
 /**
  * Quantum Scanner Engine — ZXing + QAI + Ledger
- * iOS 12 Safari Compatible Version (Option A)
- * - ZXing kept fully intact
- * - iPhone 6 camera permission prompt fixed
- * - iOS 12 video playback fixed
- * - iOS 12 canvas sizing fixed
- * - iOS 12 fallback decode fixed
- * - Auto-redirect opens in NEW TAB safely
+ * Optimized for iPhone 6 & Raspberry Pi
+ * - Low memory footprint
+ - Fallback cameras
+ - Touch-optimized UI
+ - Performance throttling
  */
 
+// ============================================================================
+//  CONFIGURATION
+// ============================================================================
 const CONFIG = {
-  cooldown: 2500,
+  cooldown: 2500, // Increased for slower devices
   vibrate: true,
   autoRedirect: true,
-  beep: { freq: 950, volume: 0.05, duration: 0.08 },
+  beep: { freq: 950, volume: 0.05, duration: 0.08 }, // Reduced volume for performance
   maxRetries: 2,
-  frameRate: { ideal: 15, max: 20 },
-  resolution: { width: 480, height: 360 }, // iPhone 6 safe
+  frameRate: { ideal: 15, max: 20 }, // Lower for Raspberry Pi
+  resolution: { width: 640, height: 480 }, // iPhone 6 friendly
   debug: false
 };
 
+// ============================================================================
+//  STATE
+// ============================================================================
 const state = {
   deviceId: null,
   devices: [],
@@ -30,10 +34,12 @@ const state = {
   isMobile: false,
   isRaspberryPi: false,
   retryCount: 0,
-  performanceMode: false,
-  facingModeIndex: 0
+  performanceMode: false
 };
 
+// ============================================================================
+//  DOM REFERENCES
+// ============================================================================
 const el = {
   video: document.getElementById("video"),
   payload: document.getElementById("payload"),
@@ -49,49 +55,65 @@ const el = {
   photoPreview: document.getElementById("photoPreview")
 };
 
+// ============================================================================
+//  LEDGER & QAI
+// ============================================================================
 const ledger = new QuantumLedger("ledger");
 const brain = new Qai();
 
-/* -------------------------------------------------------------
-   DEVICE DETECTION
-------------------------------------------------------------- */
+// ============================================================================
+//  DEVICE DETECTION
+// ============================================================================
 function detectDevice() {
-  const ua = navigator.userAgent;
-
+  const ua = navigator.userAgent || navigator.vendor || window.opera;
+  
+  // iPhone 6 detection
   if (/iPhone|iPad|iPod/.test(ua)) {
     state.isMobile = true;
-    state.performanceMode = true;
-    CONFIG.resolution = { width: 480, height: 360 };
-    CONFIG.frameRate = { ideal: 10, max: 15 };
+    // iPhone 6 specific: 1334x750 resolution
+    if (window.screen.width <= 750 && window.screen.height <= 1334) {
+      CONFIG.resolution = { width: 480, height: 360 };
+      CONFIG.frameRate = { ideal: 10, max: 15 };
+      state.performanceMode = true;
+    }
   }
-
-  if (/Raspberry|Pi|armv7l|armv6l/.test(ua) || navigator.hardwareConcurrency <= 4) {
+  
+  // Raspberry Pi detection
+  if (/Raspberry|Pi|armv7l|armv6l/.test(ua) || 
+      navigator.hardwareConcurrency <= 4) {
     state.isRaspberryPi = true;
     CONFIG.resolution = { width: 320, height: 240 };
     CONFIG.frameRate = { ideal: 8, max: 12 };
     CONFIG.cooldown = 3000;
-    CONFIG.vibrate = false;
     state.performanceMode = true;
+    // Disable vibrate on Pi
+    CONFIG.vibrate = false;
   }
+  
+  return { isMobile: state.isMobile, isRaspberryPi: state.isRaspberryPi };
 }
 
-/* -------------------------------------------------------------
-   STATUS
-------------------------------------------------------------- */
+// ============================================================================
+//  STATUS
+// ============================================================================
 function setStatus(msg, type = "neutral") {
   if (el.status) {
     el.status.textContent = `Status: ${msg}`;
     el.status.className = `status ${type}`;
   }
+  if (CONFIG.debug) console.log(`[Scanner] ${msg}`);
 }
 
-/* -------------------------------------------------------------
-   BEEP (iPhone-safe)
-------------------------------------------------------------- */
+// ============================================================================
+//  BEEP (with fallback)
+// ============================================================================
 function beep() {
   try {
+    // Check if AudioContext is available
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.frequency.value = CONFIG.beep.freq;
@@ -100,29 +122,60 @@ function beep() {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + CONFIG.beep.duration);
-    setTimeout(() => { try { ctx.close(); } catch (_) {} }, 500);
-  } catch (_) {}
+    setTimeout(() => ctx.close(), 300);
+  } catch (_) {
+    // Silent fallback
+  }
 }
 
-/* -------------------------------------------------------------
-   INIT
-------------------------------------------------------------- */
-async function init() {
-  detectDevice();
-
-  if (el.video) {
-    el.video.setAttribute("playsinline", "true");
-    el.video.setAttribute("autoplay", "true");
-    el.video.setAttribute("muted", "true");
+// ============================================================================
+//  PERFORMANCE OPTIMIZATIONS
+// ============================================================================
+function optimizeForDevice() {
+  // Throttle DOM updates
+  let updateTimeout = null;
+  const throttledSetStatus = (msg, type) => {
+    if (updateTimeout) return;
+    updateTimeout = setTimeout(() => {
+      setStatus(msg, type);
+      updateTimeout = null;
+    }, state.performanceMode ? 200 : 50);
+  };
+  
+  // Memory management
+  if (state.performanceMode) {
+    // Clear canvas periodically
+    setInterval(() => {
+      if (el.canvas) {
+        const ctx = el.canvas.getContext('2d');
+        ctx.clearRect(0, 0, el.canvas.width, el.canvas.height);
+      }
+    }, 30000);
   }
+  
+  return throttledSetStatus;
+}
 
+const throttledSetStatus = optimizeForDevice();
+
+// ============================================================================
+//  INIT
+// ============================================================================
+async function init() {
+  // Detect device
+  detectDevice();
+  
+  if (state.performanceMode) {
+    setStatus(`⚡ Performance mode (${state.isRaspberryPi ? 'RPi' : 'iPhone 6'})`, "neutral");
+  }
+  
   if (typeof ZXing === "undefined") {
     setStatus("ZXing missing", "error");
     return;
   }
 
   const hints = new Map();
-  hints.set(ZXing.DecodeHintType.TRY_HARDER, !state.performanceMode);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, state.performanceMode ? false : true);
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
     ZXing.BarcodeFormat.QR_CODE,
     ZXing.BarcodeFormat.DATA_MATRIX,
@@ -145,56 +198,81 @@ async function init() {
     return;
   }
 
+  if (el.video) {
+    Object.assign(el.video, { 
+      autoplay: true, 
+      playsinline: true, 
+      muted: true 
+    });
+  }
+
   bindEvents();
   setStatus("✅ Ready", "neutral");
-
+  
+  // Auto-start on mobile
   if (state.isMobile) {
     setTimeout(start, 500);
   }
 }
 
-/* -------------------------------------------------------------
-   START CAMERA (iOS 12 safe)
-------------------------------------------------------------- */
+// ============================================================================
+//  START CAMERA (with fallbacks)
+// ============================================================================
 async function start() {
   if (!state.ready) return setStatus("Not ready", "error");
 
-  setStatus("Requesting camera…", "neutral");
+  setStatus("Starting…", "neutral");
+  if (state.reader) state.reader.reset();
 
   try {
     const devices = await state.reader.listVideoInputDevices();
     state.devices = devices;
 
-    if (!devices.length) return fallbackStart();
+    if (!devices.length) {
+      // Try getUserMedia directly as fallback
+      return fallbackStart();
+    }
 
+    // Select best camera
     if (!state.deviceId) {
       const rear = devices.find(d => /back|rear|environment/i.test(d.label));
       const front = devices.find(d => /front|user/i.test(d.label));
       state.deviceId = rear ? rear.deviceId : (front ? front.deviceId : devices[0].deviceId);
     }
 
-    const constraints = {
-      video: {
-        deviceId: { exact: state.deviceId },
-        facingMode: "environment",
-        width: CONFIG.resolution.width,
-        height: CONFIG.resolution.height,
-        frameRate: CONFIG.frameRate
-      },
-      audio: false
-    };
+    // Validate deviceId still exists
+    const validDevice = devices.find(d => d.deviceId === state.deviceId);
+    if (!validDevice && devices.length > 0) {
+      state.deviceId = devices[0].deviceId;
+    }
 
+    const constraints = getVideoConstraints();
     await startReader(constraints);
 
   } catch (e) {
     console.warn("Camera start failed:", e);
-    fallbackStart();
+    // Fallback to simpler constraints
+    await fallbackStart();
   }
 }
 
-/* -------------------------------------------------------------
-   ZXing decodeFromConstraints (iOS 12 safe)
-------------------------------------------------------------- */
+function getVideoConstraints() {
+  const baseConstraints = {
+    video: {
+      deviceId: state.deviceId ? { exact: state.deviceId } : undefined,
+      facingMode: state.deviceId ? undefined : "environment",
+      width: { ideal: CONFIG.resolution.width, max: CONFIG.resolution.width * 1.2 },
+      height: { ideal: CONFIG.resolution.height, max: CONFIG.resolution.height * 1.2 },
+      frameRate: CONFIG.frameRate
+    }
+  };
+  
+  // Remove undefined properties
+  if (!baseConstraints.video.deviceId) delete baseConstraints.video.deviceId;
+  
+  return baseConstraints;
+}
+
 async function startReader(constraints) {
   return new Promise((resolve, reject) => {
     try {
@@ -204,12 +282,6 @@ async function startReader(constraints) {
           if (CONFIG.debug) console.debug(err);
         }
       });
-
-      const forcePlay = () => {
-        el.video.play().catch(() => setTimeout(forcePlay, 200));
-      };
-      el.video.onloadedmetadata = forcePlay;
-
       setStatus("🔍 Scanning…", "neutral");
       resolve();
     } catch (e) {
@@ -218,33 +290,27 @@ async function startReader(constraints) {
   });
 }
 
-/* -------------------------------------------------------------
-   FALLBACK CAMERA (iOS 12 safe)
-------------------------------------------------------------- */
 async function fallbackStart() {
   setStatus("Using fallback camera…", "neutral");
-
+  
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
+    const constraints = {
       video: {
         facingMode: "environment",
-        width: CONFIG.resolution.width,
-        height: CONFIG.resolution.height
-      },
-      audio: false
-    });
-
-    el.video.srcObject = stream;
-
-    const forcePlay = () => {
-      el.video.play().catch(() => setTimeout(forcePlay, 200));
+        width: { ideal: CONFIG.resolution.width },
+        height: { ideal: CONFIG.resolution.height }
+      }
     };
-    el.video.onloadedmetadata = () => {
-      forcePlay();
-      fallbackDecodeLoop();
+    
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    if (el.video) {
+      el.video.srcObject = stream;
+      await el.video.play();
       setStatus("📷 Fallback camera active", "success");
-    };
-
+      
+      // Manual decode loop for fallback
+      fallbackDecodeLoop();
+    }
   } catch (e) {
     setStatus(`Camera error: ${e.message}`, "error");
     if (state.retryCount < CONFIG.maxRetries) {
@@ -254,51 +320,53 @@ async function fallbackStart() {
   }
 }
 
-/* -------------------------------------------------------------
-   FALLBACK DECODE LOOP (ZXing decodeFromCanvas)
-------------------------------------------------------------- */
+// ============================================================================
+//  FALLBACK DECODE LOOP (for Pi / older devices)
+// ============================================================================
 let fallbackLoopRunning = false;
 
 function fallbackDecodeLoop() {
   if (fallbackLoopRunning) return;
   fallbackLoopRunning = true;
-
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-
+  
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  
   function captureFrame() {
     if (!el.video || el.video.paused || el.video.ended) {
       fallbackLoopRunning = false;
       return;
     }
-
+    
     try {
-      const w = el.video.videoWidth || CONFIG.resolution.width;
-      const h = el.video.videoHeight || CONFIG.resolution.height;
-
-      canvas.width = Math.min(w, 640);
-      canvas.height = Math.min(h, 480);
-
+      canvas.width = el.video.videoWidth || CONFIG.resolution.width;
+      canvas.height = el.video.videoHeight || CONFIG.resolution.height;
       ctx.drawImage(el.video, 0, 0, canvas.width, canvas.height);
-
+      
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // ZXing decode from image data
       if (state.reader) {
         state.reader.decodeFromCanvas(canvas).then(result => {
           if (result) handleScan(result.getText());
         }).catch(() => {});
       }
-    } catch (_) {}
-
+    } catch (e) {
+      // Silent fail
+    }
+    
+    // Throttle for performance
     setTimeout(captureFrame, state.performanceMode ? 1000 : 500);
   }
-
+  
   setTimeout(captureFrame, 500);
 }
 
-/* -------------------------------------------------------------
-   FLIP / STOP
-------------------------------------------------------------- */
+// ============================================================================
+//  FLIP / STOP
+// ============================================================================
 function flip() {
   if (state.devices.length < 2) {
+    // Try cycling through facingMode instead
     return cycleFacingMode();
   }
 
@@ -312,7 +380,7 @@ function cycleFacingMode() {
   const modes = ["environment", "user"];
   const current = state.facingModeIndex || 0;
   state.facingModeIndex = (current + 1) % modes.length;
-  state.deviceId = null;
+  state.deviceId = null; // Force facingMode selection
   setStatus(`🔄 Switching to ${modes[state.facingModeIndex]}`, "neutral");
   start();
 }
@@ -327,9 +395,9 @@ function stop() {
   setStatus("⏸️ Stopped", "neutral");
 }
 
-/* -------------------------------------------------------------
-   HANDLE SCAN
-------------------------------------------------------------- */
+// ============================================================================
+//  HANDLE SCAN (with memory optimization)
+// ============================================================================
 async function handleScan(data) {
   if (state.cooldown && data === state.lastScan) return;
 
@@ -339,22 +407,27 @@ async function handleScan(data) {
   if (el.payload) el.payload.textContent = data;
   setStatus("✅ Decoded!", "success");
 
+  // Vibrate (with fallback)
   if (CONFIG.vibrate && navigator.vibrate) {
-    try { navigator.vibrate(80); } catch (_) {}
+    try {
+      navigator.vibrate(80);
+    } catch (_) {}
   }
-
+  
+  // Beep (with fallback)
   try { beep(); } catch (_) {}
 
+  // Process with QAI (with timeout)
   try {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("QAI timeout")), 3000)
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('QAI timeout')), 3000)
     );
-
+    
     const analysis = await Promise.race([
       brain.process(data),
       timeoutPromise
     ]);
-
+    
     ledger.addEntry(data, "SCAN", {
       type: analysis.format ? `${analysis.format.name} (${analysis.format.type})` : analysis.type,
       pattern: analysis.pattern,
@@ -363,38 +436,33 @@ async function handleScan(data) {
     });
   } catch (e) {
     console.warn("QAI error:", e);
-    ledger.addEntry(data, "SCAN", {
-      error: e.message || "QAI timeout",
+    // Still log the scan
+    ledger.addEntry(data, "SCAN", { 
+      error: e.message || 'QAI timeout',
       timestamp: new Date().toISOString()
     });
     setStatus("Signal logged (QAI skipped)", "neutral");
   }
 
+  // Auto-redirect with memory cleanup
   if (CONFIG.autoRedirect) {
     try {
       const isUrl = /^https?:\/\/[^\s]+/i.test(data);
       const url = isUrl ? data : `https://www.google.com/search?q=${encodeURIComponent(data)}`;
-
-      // iOS 12 Safari-safe new tab opener
-      const a = document.createElement("a");
-      a.href = url;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      window.open(url, "_blank");
     } catch (_) {}
   }
 
   setTimeout(() => { state.cooldown = false; }, CONFIG.cooldown);
 }
 
-/* -------------------------------------------------------------
-   EVENTS (touch-optimized)
-------------------------------------------------------------- */
+// ============================================================================
+//  EVENTS (touch-optimized)
+// ============================================================================
 function bindEvents() {
-  const touchEvents = ["click", "touchstart"];
-
+  // Touch-friendly event listeners
+  const touchEvents = ['click', 'touchstart'];
+  
   touchEvents.forEach(eventType => {
     if (el.start) el.start.addEventListener(eventType, start, { passive: true });
     if (el.flip) el.flip.addEventListener(eventType, flip, { passive: true });
@@ -403,15 +471,17 @@ function bindEvents() {
     if (el.resetLedger) el.resetLedger.addEventListener(eventType, () => ledger.clear(), { passive: true });
   });
 
+  // Upload handling
   if (el.upload && el.fileInput) {
-    el.upload.addEventListener("click", () => el.fileInput.click(), { passive: true });
-    el.fileInput.addEventListener("change", handleFileUpload, { passive: true });
+    el.upload.addEventListener('click', () => el.fileInput.click(), { passive: true });
+    el.fileInput.addEventListener('change', handleFileUpload, { passive: true });
   }
 
+  // Keyboard shortcuts (skip on mobile)
   if (!state.isMobile) {
-    document.addEventListener("keydown", e => {
-      if (e.key === "Enter" && !e.shiftKey) handleSend();
-      if (e.key === " " && e.target === document.body) {
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) handleSend();
+      if (e.key === ' ' && e.target === document.body) {
         e.preventDefault();
         capturePhoto();
       }
@@ -419,96 +489,98 @@ function bindEvents() {
   }
 }
 
-/* -------------------------------------------------------------
-   PHOTO CAPTURE
-------------------------------------------------------------- */
+// ============================================================================
+//  PHOTO CAPTURE
+// ============================================================================
 function capturePhoto() {
   if (!el.video || !el.canvas) return;
-
+  
   try {
-    const ctx = el.canvas.getContext("2d");
+    const ctx = el.canvas.getContext('2d');
     const width = Math.min(el.video.videoWidth || CONFIG.resolution.width, 640);
     const height = Math.min(el.video.videoHeight || CONFIG.resolution.height, 480);
-
+    
     el.canvas.width = width;
     el.canvas.height = height;
     ctx.drawImage(el.video, 0, 0, width, height);
-
+    
     if (el.photoPreview) {
-      el.photoPreview.src = el.canvas.toDataURL("image/png");
-      el.photoPreview.style.display = "block";
-
+      el.photoPreview.src = el.canvas.toDataURL('image/png');
+      el.photoPreview.style.display = 'block';
+      
+      // Auto-hide preview on mobile after 5s
       if (state.isMobile) {
         setTimeout(() => {
-          el.photoPreview.style.display = "none";
+          el.photoPreview.style.display = 'none';
         }, 5000);
       }
     }
   } catch (e) {
-    console.warn("Photo capture failed:", e);
+    console.warn('Photo capture failed:', e);
   }
 }
 
-/* -------------------------------------------------------------
-   FILE UPLOAD
-------------------------------------------------------------- */
+// ============================================================================
+//  FILE UPLOAD
+// ============================================================================
 async function handleFileUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
-
-  setStatus("Processing image…", "neutral");
+  
+  setStatus('Processing image…', 'neutral');
   const url = URL.createObjectURL(file);
-
+  
   try {
     const result = await state.reader.decodeFromImageUrl(url);
     await handleScan(result.getText());
   } catch (err) {
     console.warn(err);
-    setStatus("Upload decode failed", "error");
+    setStatus('Upload decode failed', 'error');
   } finally {
     URL.revokeObjectURL(url);
-    if (el.fileInput) el.fileInput.value = "";
+    if (el.fileInput) el.fileInput.value = ''; // Reset input
   }
 }
 
-/* -------------------------------------------------------------
-   HANDLE SEND
-------------------------------------------------------------- */
+// ============================================================================
+//  HANDLE SEND
+// ============================================================================
 async function handleSend() {
-  const data = el.payload?.textContent || "";
+  const data = el.payload?.textContent || '';
   if (!data) {
-    setStatus("No payload to send", "error");
+    setStatus('No payload to send', 'error');
     return;
   }
-
-  setStatus("Analyzing payload…", "neutral");
+  
+  setStatus('Analyzing payload…', 'neutral');
   try {
     const analysis = await brain.process(data);
-    ledger.addEntry(data, "MANUAL", {
+    ledger.addEntry(data, 'MANUAL', {
       type: analysis.format ? `${analysis.format.name} (${analysis.format.type})` : analysis.type,
       pattern: analysis.pattern,
       explanation: analysis.explanation,
       entropy: analysis.entropy
     });
-    setStatus("✅ Signal logged", "success");
+    setStatus('✅ Signal logged', 'success');
   } catch (e) {
     console.warn(e);
-    setStatus("QAI analysis failed", "error");
-    ledger.addEntry(data, "MANUAL", { error: e.message });
+    setStatus('QAI analysis failed', 'error');
+    // Log anyway
+    ledger.addEntry(data, 'MANUAL', { error: e.message });
   }
 }
 
-/* -------------------------------------------------------------
-   BOOTSTRAP
-------------------------------------------------------------- */
-document.readyState === "loading"
-  ? document.addEventListener("DOMContentLoaded", init)
+// ============================================================================
+//  BOOTSTRAP
+// ============================================================================
+document.readyState === 'loading'
+  ? document.addEventListener('DOMContentLoaded', init)
   : init();
 
-/* -------------------------------------------------------------
-   MEMORY MANAGEMENT
-------------------------------------------------------------- */
-window.addEventListener("beforeunload", () => {
+// ============================================================================
+//  MEMORY MANAGEMENT (for long-running sessions)
+// ============================================================================
+window.addEventListener('beforeunload', () => {
   if (state.reader) {
     try { state.reader.reset(); } catch (_) {}
   }
@@ -517,9 +589,9 @@ window.addEventListener("beforeunload", () => {
   }
 });
 
-/* -------------------------------------------------------------
-   DEBUG API
-------------------------------------------------------------- */
+// ============================================================================
+//  EXTERNAL API for debugging
+// ============================================================================
 window.__scanner = {
   state,
   CONFIG,
