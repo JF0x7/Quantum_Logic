@@ -5,15 +5,14 @@
   <link rel="icon" href="Q.jpg">
   <title>QTUM(LOG) Scanner</title>
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
 
-  <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
 
-  <!-- ZXing Barcode Scanner -->
+  <script src="https://unpkg.com/webrtc-adapter@8.2.3/release/adapter.js"></script>
+
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
-  <!-- App Scripts -->
   <script defer src="Qai.js"></script>
   <script defer src="ledger.js"></script>
   <script defer src="scanner.js"></script>
@@ -21,7 +20,6 @@
 
 <body>
 
-  <!-- QTUM Logo -->
   <div id="logoWrapper">
     <a href="https://qtum-hub-4048d1.gitlab.io/" target="_blank" id="qtumLink">
       <svg
@@ -46,18 +44,14 @@
   <h1>QTUM(LOG)</h1>
   <h2>Native Tools of Julius Hirsch • Verified by Beler Industries</h2>
 
-  <!-- Scanner Shell -->
   <div id="scannerShell">
 
-    <!-- Live Camera Feed -->
     <div id="videoWrapper">
-      <video id="video" autoplay playsinline></video>
+      <video id="video" autoplay playsinline webkit-playsinline muted></video>
     </div>
 
-    <!-- Hidden Canvas for Captures -->
     <canvas id="canvas"></canvas>
 
-    <!-- Controls -->
     <div id="controls" role="group" aria-label="Scanner Controls">
       <button id="startBtn" type="button">Enable Camera</button>
       <button id="flipBtn" type="button" class="secondary">Flip Camera</button>
@@ -68,13 +62,10 @@
       <input type="file" id="fileInput" accept="image/*" hidden>
     </div>
 
-    <!-- Photo Preview -->
     <img id="photoPreview" alt="Captured Photo Preview">
 
-    <!-- Scan Indicator -->
     <div id="scanIndicator" aria-label="Scan Status Indicator"></div>
 
-    <!-- Output -->
     <div id="output">
       <div id="status" class="neutral">Waiting for scan…</div>
       <div id="payload"></div>
@@ -82,18 +73,21 @@
 
   </div>
 
-  <!-- Ledger -->
   <div id="ledgerShell">
     <div id="ledgerTitle">Scan Ledger</div>
     <div id="ledger"></div>
   </div>
 
-  <!-- ⭐ FIXED: Initialization -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const qai = new Qai();                     // QAI brain
-      const ledger = new QuantumLedger("ledger"); // FIXED: pass container ID
-      const scanner = new QtumScanner(ledger, qai); // scanner engine
+      // Safety checks to prevent older JS runtimes from hard-crashing if classes are absent
+      try {
+        const qai = typeof Qai !== 'undefined' ? new Qai() : null;
+        const ledger = typeof QuantumLedger !== 'undefined' ? new QuantumLedger("ledger") : null;
+        const scanner = typeof QtumScanner !== 'undefined' ? new QtumScanner(ledger, qai) : null;
+      } catch (e) {
+        console.error("Initialization failed: Older device runtime error.", e);
+      }
     });
   </script>
 
