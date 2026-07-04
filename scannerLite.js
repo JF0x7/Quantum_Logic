@@ -19,6 +19,12 @@
     this.cooldown = false;
     this.lastPayload = null;
     this.isRunning = false;
+
+    // iOS video attributes
+    if (this.video) {
+      this.video.setAttribute('playsinline', '');
+      this.video.setAttribute('webkit-playsinline', '');
+    }
   }
 
   // ---------- UI helpers ----------
@@ -99,16 +105,30 @@
   QtumScannerLite.prototype._onStream = function(stream) {
     var self = this;
     this.stream = stream;
-    this.video.srcObject = stream;
 
-    // Handle autoplay rejection on iOS
-    this.video.play().catch(function(err) {
-      console.warn('[Lite] Autoplay blocked, waiting for user interaction');
-      // On iOS, if autoplay fails, we can force a play on the next user tap
-      // But we'll just set status and try again later if needed
-      self._setStatus('Lite: tap to play');
-      // Actually, we'll just try again – but we'll keep scanning loop anyway
-    });
+    // iOS 12 / legacy Safari fallback for srcObject
+    if (this.video) {
+      try {
+        this.video.srcObject = stream;
+      } catch (_) {
+        this.video.src = window.URL.createObjectURL(stream);
+      }
+
+      this.video.setAttribute('playsinline', '');
+      this.video.setAttribute('webkit-playsinline', '');
+
+      this.video.play().catch(function(err) {
+        console.warn('[Lite] Autoplay blocked, waiting for user interaction', err);
+        self._setStatus('Lite: tap video to start');
+      });
+
+      // Tap‑to‑play for iOS 12
+      this.video.addEventListener('click', function() {
+        self.video.play().catch(function(e) {
+          console.warn('[Lite] Manual play failed:', e);
+        });
+      });
+    }
 
     this.isRunning = true;
     this._setStatus('Lite: scanning…');
@@ -116,7 +136,7 @@
 
     if (this.intervalId) clearInterval(this.intervalId);
     this.intervalId = setInterval(function() {
-      if (!self.isRunning || !self.stream || self.video.paused || self.video.ended) {
+      if (!self.isRunning || !self.stream || !self.video || self.video.paused || self.video.ended) {
         clearInterval(self.intervalId);
         self.intervalId = null;
         self._setStatus('Lite: stopped');
@@ -146,7 +166,7 @@
   };
 
   QtumScannerLite.prototype.clear = function() {
-    this.payloadEl.textContent = '';
+    if (this.payloadEl) this.payloadEl.textContent = '';
     this.lastPayload = null;
     this._setStatus('Lite: cleared');
   };
@@ -175,8 +195,16 @@
 
   // ---------- Internal ----------
   QtumScannerLite.prototype._captureFrame = function() {
+    if (!this.video) return;
+
     var w = this.video.videoWidth || LITE_CONFIG.resolution.width;
     var h = this.video.videoHeight || LITE_CONFIG.resolution.height;
+
+    // iOS 12: videoWidth/videoHeight may be 0 for a while
+    if (!this.video.videoWidth || !this.video.videoHeight) {
+      return;
+    }
+
     this.canvas.width = w;
     this.canvas.height = h;
     this.ctx.drawImage(this.video, 0, 0, w, h);
