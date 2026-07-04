@@ -19,12 +19,7 @@
     this.cooldown = false;
     this.lastPayload = null;
     this.isRunning = false;
-
-    // iOS video attributes
-    if (this.video) {
-      this.video.setAttribute('playsinline', '');
-      this.video.setAttribute('webkit-playsinline', '');
-    }
+    this.ready = false;
   }
 
   // ---------- UI helpers ----------
@@ -105,42 +100,60 @@
   QtumScannerLite.prototype._onStream = function(stream) {
     var self = this;
     this.stream = stream;
+    this.video.srcObject = stream;
+    this.ready = false;
 
-    // iOS 12 / legacy Safari fallback for srcObject
-    if (this.video) {
-      try {
-        this.video.srcObject = stream;
-      } catch (_) {
-        this.video.src = window.URL.createObjectURL(stream);
+    // Wait for video to be ready
+    var onReady = function() {
+      if (self.video.videoWidth > 0 && self.video.videoHeight > 0) {
+        self.ready = true;
+        self.video.removeEventListener('loadedmetadata', onReady);
+        self.video.removeEventListener('canplay', onReady);
+        self._startCapture();
       }
+    };
 
-      this.video.setAttribute('playsinline', '');
-      this.video.setAttribute('webkit-playsinline', '');
+    this.video.addEventListener('loadedmetadata', onReady);
+    this.video.addEventListener('canplay', onReady);
 
-      this.video.play().catch(function(err) {
-        console.warn('[Lite] Autoplay blocked, waiting for user interaction', err);
-        self._setStatus('Lite: tap video to start');
-      });
+    // Fallback: try to start after a delay if events don't fire
+    setTimeout(function() {
+      if (!self.ready) {
+        self.ready = true;
+        self._startCapture();
+      }
+    }, 2000);
 
-      // Tap‑to‑play for iOS 12
-      this.video.addEventListener('click', function() {
-        self.video.play().catch(function(e) {
-          console.warn('[Lite] Manual play failed:', e);
-        });
-      });
+    // Play the video
+    this.video.play().catch(function(err) {
+      console.warn('[Lite] Autoplay failed:', err);
+      // Try again with user interaction
+      self._setStatus('Lite: tap to start');
+      // We'll still try to start capture after a delay
+    });
+  };
+
+  QtumScannerLite.prototype._startCapture = function() {
+    var self = this;
+    if (!this.isRunning) {
+      this.isRunning = true;
+      this._setStatus('Lite: scanning…');
+      this._emitScanStart();
     }
-
-    this.isRunning = true;
-    this._setStatus('Lite: scanning…');
-    this._emitScanStart();
 
     if (this.intervalId) clearInterval(this.intervalId);
     this.intervalId = setInterval(function() {
-      if (!self.isRunning || !self.stream || !self.video || self.video.paused || self.video.ended) {
+      if (!self.isRunning) {
         clearInterval(self.intervalId);
         self.intervalId = null;
-        self._setStatus('Lite: stopped');
-        self._emitScanStop();
+        return;
+      }
+      // Check if video is actually playing and has data
+      if (self.video.paused || self.video.ended || self.video.readyState < 2) {
+        // Try to play if paused
+        if (self.video.paused) {
+          self.video.play().catch(function(e) { /* ignore */ });
+        }
         return;
       }
       self._captureFrame();
@@ -157,16 +170,17 @@
       this.stream = null;
     }
     if (this.video) {
-      this.video.srcObject = null;
       this.video.pause();
+      this.video.srcObject = null;
     }
     this.isRunning = false;
+    this.ready = false;
     this._emitScanStop();
     this._setStatus('Lite: stopped');
   };
 
   QtumScannerLite.prototype.clear = function() {
-    if (this.payloadEl) this.payloadEl.textContent = '';
+    this.payloadEl.textContent = '';
     this.lastPayload = null;
     this._setStatus('Lite: cleared');
   };
@@ -195,16 +209,9 @@
 
   // ---------- Internal ----------
   QtumScannerLite.prototype._captureFrame = function() {
-    if (!this.video) return;
-
     var w = this.video.videoWidth || LITE_CONFIG.resolution.width;
     var h = this.video.videoHeight || LITE_CONFIG.resolution.height;
-
-    // iOS 12: videoWidth/videoHeight may be 0 for a while
-    if (!this.video.videoWidth || !this.video.videoHeight) {
-      return;
-    }
-
+    if (w === 0 || h === 0) return;
     this.canvas.width = w;
     this.canvas.height = h;
     this.ctx.drawImage(this.video, 0, 0, w, h);
