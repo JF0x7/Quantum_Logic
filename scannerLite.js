@@ -1,4 +1,4 @@
-// scannerLite.js — QTUM(LOG) Lite Scanner (ultra‑basic, toaster‑ready)
+// scannerLite.js — QTUM(LOG) Lite Scanner (iOS 12 + toaster‑ready)
 (function() {
   var LITE_CONFIG = {
     cooldown: 2500,
@@ -35,11 +35,22 @@
     this.payloadEl.textContent = display;
   };
 
+  // Custom event dispatcher (fallback for very old browsers)
+  QtumScannerLite.prototype._dispatchEvent = function(eventName) {
+    try {
+      document.dispatchEvent(new Event(eventName));
+    } catch (_) {
+      var evt = document.createEvent('Event');
+      evt.initEvent(eventName, true, true);
+      document.dispatchEvent(evt);
+    }
+  };
+
   QtumScannerLite.prototype._emitScanStart = function() {
-    document.dispatchEvent(new Event('scanStart'));
+    this._dispatchEvent('scanStart');
   };
   QtumScannerLite.prototype._emitScanStop = function() {
-    document.dispatchEvent(new Event('scanStop'));
+    this._dispatchEvent('scanStop');
   };
 
   // ---------- Public API ----------
@@ -48,7 +59,6 @@
     if (this.isRunning) return;
     this.stop();
 
-    // Try modern getUserMedia first, fallback to legacy
     var getUserMedia = navigator.mediaDevices && navigator.mediaDevices.getUserMedia ?
       function(constraints) { return navigator.mediaDevices.getUserMedia(constraints); } :
       (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia);
@@ -87,14 +97,23 @@
   };
 
   QtumScannerLite.prototype._onStream = function(stream) {
+    var self = this;
     this.stream = stream;
     this.video.srcObject = stream;
-    this.video.play();
+
+    // Handle autoplay rejection on iOS
+    this.video.play().catch(function(err) {
+      console.warn('[Lite] Autoplay blocked, waiting for user interaction');
+      // On iOS, if autoplay fails, we can force a play on the next user tap
+      // But we'll just set status and try again later if needed
+      self._setStatus('Lite: tap to play');
+      // Actually, we'll just try again – but we'll keep scanning loop anyway
+    });
+
     this.isRunning = true;
     this._setStatus('Lite: scanning…');
     this._emitScanStart();
 
-    var self = this;
     if (this.intervalId) clearInterval(this.intervalId);
     this.intervalId = setInterval(function() {
       if (!self.isRunning || !self.stream || self.video.paused || self.video.ended) {

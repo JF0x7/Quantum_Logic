@@ -8,14 +8,17 @@
   <link rel="icon" href="Q.jpg">
   <link rel="stylesheet" href="style.css">
 
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <!-- Load heavy libraries with defer – they may fail on old browsers, but we catch errors -->
+  <script src="https://unpkg.com/@zxing/library@latest" defer></script>
   <script defer src="Qai.js"></script>
   <script defer src="ledger.js"></script>
   <script defer src="scanner.js"></script>
+
+  <!-- Lite scanner – always safe -->
   <script defer src="scannerLite.js"></script>
 
   <style>
-    /* Lite Mode Green Theme */
+    /* Lite Mode Green Theme (inline fallback, style.css will override) */
     body.lite-mode {
       background: #0f260f !important;
       color: #b6ffb6 !important;
@@ -73,7 +76,7 @@
         </svg>
       </a>
       <h1>QTUM(LOG)</h1>
-      <h2>Julius Hirsch & Beler Industries</h2>
+      <h2>Julius Hirsch &amp; Beler Industries</h2>
     </div>
 
     <div class="scanner">
@@ -102,18 +105,10 @@
       <div id="status">🟢 Ready</div>
       <div id="payload"></div>
 
-      <div class="stats">
-        <div><span>Entropy</span><span id="statEntropy">—</span></div>
-        <div><span>Type</span><span id="statType">—</span></div>
-        <div><span>Risk</span><span id="statRisk">—</span></div>
-      </div>
-
       <div class="ledger">
         <div class="ledger-header">
           <span>📚 Ledger</span>
-          <span id="ledgerCount">0</span>
-          <button id="ledgerExport">📤</button>
-          <button id="ledgerClear">🗑️</button>
+          <span id="ledgerCount">777</span>
         </div>
         <div id="ledger"></div>
       </div>
@@ -132,10 +127,14 @@
   <div id="toast"></div>
 
   <script>
+    // ============================================================
+    //  TOASTER‑READY SCRIPT – no const/let/arrow functions
+    //  Works on iOS 12, old Android, and actual toasters.
+    // ============================================================
     document.addEventListener("DOMContentLoaded", function() {
       console.log('[Main] DOM ready');
 
-      // Toast
+      // ---- Toast system ----
       window.showToast = function(msg, type) {
         var t = document.getElementById('toast');
         if (!t) return;
@@ -146,18 +145,17 @@
         t._hide = setTimeout(function() { t.style.display = 'none'; }, 2500);
       };
 
-      // Global references
+      // ---- Global references ----
       var scanner = null;
       var liteScanner = null;
       var isLite = false;
 
-      // Try to instantiate scanners
+      // ---- Try to instantiate full scanner (may fail on toaster) ----
       try {
-        // Check dependencies
+        // Check if dependencies exist
         if (typeof Qai === 'undefined') throw new Error('Qai not loaded');
         if (typeof QuantumLedger === 'undefined') throw new Error('QuantumLedger not loaded');
         if (typeof QtumScanner === 'undefined') throw new Error('QtumScanner not loaded');
-        if (typeof QtumScannerLite === 'undefined') throw new Error('QtumScannerLite not loaded');
 
         var qai = new Qai({
           enableAztec: true,
@@ -175,11 +173,20 @@
         window.__scanner = scanner;
         window.__lite = liteScanner;
 
-        console.log('[Main] Scanners instantiated');
+        console.log('[Main] Full scanner instantiated');
       } catch (e) {
-        console.error('[Main] Scanner init error:', e);
-        showToast('⚠️ Scanner init error: ' + e.message, 'error');
-        // Continue without scanners – the toggle will still work (but do nothing)
+        console.warn('[Main] Full scanner failed, falling back to Lite only:', e.message);
+        // Try to instantiate only lite scanner – we need a ledger
+        try {
+          var ledgerOnly = new QuantumLedger("ledger");
+          liteScanner = new QtumScannerLite(ledgerOnly);
+          window.__ledger = ledgerOnly;
+          window.__lite = liteScanner;
+          console.log('[Main] Lite scanner instantiated (standalone)');
+        } catch (e2) {
+          console.error('[Main] Even lite scanner failed:', e2);
+          showToast('❌ Scanner init failed', 'error');
+        }
       }
 
       // ---- Legacy detection ----
@@ -202,27 +209,27 @@
 
         // Stop both (if they exist)
         if (scanner && typeof scanner.stop === 'function') {
-          try { scanner.stop(); } catch (e) { console.warn('Full scanner stop error:', e); }
+          try { scanner.stop(); } catch (e) { /* ignore */ }
         }
         if (liteScanner && typeof liteScanner.stop === 'function') {
-          try { liteScanner.stop(); } catch (e) { console.warn('Lite scanner stop error:', e); }
+          try { liteScanner.stop(); } catch (e) { /* ignore */ }
         }
 
         // Start active
         if (lite) {
           if (liteScanner && typeof liteScanner.start === 'function') {
-            try { liteScanner.start(); } catch (e) { console.warn('Lite scanner start error:', e); showToast('Lite camera error', 'error'); }
+            try { liteScanner.start(); } catch (e) { console.warn('Lite start error:', e); showToast('Lite camera error', 'error'); }
           }
           showToast('⚡ Lite Mode (legacy fallback) – reduced features', 'success');
         } else {
           if (scanner && typeof scanner.start === 'function') {
-            try { scanner.start(); } catch (e) { console.warn('Full scanner start error:', e); showToast('Full camera error', 'error'); }
+            try { scanner.start(); } catch (e) { console.warn('Full start error:', e); showToast('Full camera error', 'error'); }
           }
           showToast('🚀 Full Mode – ZXing + QAI', 'info');
         }
       }
 
-      // ---- Button handlers (no replacement needed) ----
+      // ---- Button handlers (no replacement, direct) ----
       var startBtn = document.getElementById('startBtn');
       var clearBtn = document.getElementById('clearBtn');
       var uploadBtn = document.getElementById('uploadBtn');
@@ -275,7 +282,7 @@
         });
       }
 
-      // Lite toggle (the button we care about)
+      // Lite toggle
       if (liteToggleBtn) {
         liteToggleBtn.addEventListener('click', function(e) {
           e.stopPropagation();
