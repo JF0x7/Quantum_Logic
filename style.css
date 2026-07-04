@@ -38,7 +38,7 @@ body { background: #05060a; color: #f9fafb; font-family: system-ui, sans-serif; 
 
 /* QAI Results */
 #qaiResults { margin: 4px 0; padding: 4px 6px; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid #111827; }
-#qaiBody { font-size: 8px; color: #aaa; max-height: 12px; overflow-y: auto; }
+#qaiBody { font-size: 8px; color: #aaa; max-height: 22px; overflow-y: auto; }
 #qaiBody strong { color: #8af; }
 
 /* Ledger */
@@ -46,7 +46,7 @@ body { background: #05060a; color: #f9fafb; font-family: system-ui, sans-serif; 
 .ledger-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 10px; color: #888; }
 .ledger-header button { background: none; border: 1px solid #111827; border-radius: 3px; color: #666; cursor: pointer; font-size: 8px; padding: 2px 6px; }
 .ledger-header button:hover { background: rgba(255,255,255,0.05); }
-#ledger { max-height: 777px; overflow-y: auto; font-size: 12px; color: #666; }
+#ledger { max-height: 300px; overflow-y: auto; font-size: 12px; color: #666; }
 #ledger div { padding: 3px 4px; border-bottom: 1px solid #0a0a1a; }
 #ledger div:last-child { border-bottom: none; }
 
