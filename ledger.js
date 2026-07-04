@@ -14,7 +14,49 @@ class QuantumLedger {
         if (!this.container) {
             console.warn(`Ledger container #${containerId} not found.`);
         }
-        this.entries = []; // Store entries for export
+        this.entries = [];
+        this.networkInfo = null;  // cache
+    }
+
+    // -------------------------------------------------------------
+    // NETWORK INFO (with caching)
+    // -------------------------------------------------------------
+    async _getNetworkInfo() {
+        if (this.networkInfo) return this.networkInfo;
+
+        const info = {
+            publicIP: 'unknown',
+            localIP: 'unknown',
+            subnet: 'unknown'
+        };
+
+        // 1. Public IP via ipify
+        try {
+            const res = await fetch('https://api.ipify.org?format=json');
+            const data = await res.json();
+            info.publicIP = data.ip || 'unknown';
+        } catch (_) {}
+
+        // 2. Local IP via WebRTC
+        try {
+            const pc = new RTCPeerConnection({ iceServers: [] });
+            pc.createDataChannel('ping');
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            const candidate = pc.localDescription.sdp;
+            const ipMatch = candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+            if (ipMatch) {
+                info.localIP = ipMatch[1];
+                const parts = info.localIP.split('.');
+                if (parts.length === 4) {
+                    info.subnet = parts.slice(0, 3).join('.') + '.0/24';
+                }
+            }
+            pc.close();
+        } catch (_) {}
+
+        this.networkInfo = info;
+        return info;
     }
 
     // -------------------------------------------------------------
@@ -460,7 +502,7 @@ class QuantumLedger {
     }
 
     // -------------------------------------------------------------
-    // LEDGER ENTRY (Promise fix)
+    // LEDGER ENTRY (with network info)
     // -------------------------------------------------------------
     async addEntry(payload, tag = "SCAN", extraMeta = {}) {
 
@@ -480,7 +522,10 @@ class QuantumLedger {
         const time = new Date().toLocaleTimeString();
         const timestamp = new Date().toISOString();
 
-        // Store entry for export
+        // --- GET NETWORK INFO (cached) ---
+        const network = await this._getNetworkInfo();
+
+        // Store entry
         const entryData = {
             timestamp,
             time,
@@ -491,6 +536,7 @@ class QuantumLedger {
             shaFull,
             aztec,
             greetingDecoded,
+            network,   // added
             ...extraMeta
         };
         this.entries.push(entryData);
@@ -528,6 +574,11 @@ class QuantumLedger {
             <span style="flex:1 1 100%"><strong>Q‑Notes:</strong> ${meta.qNotes}</span>
 
             <span><strong>Greeting Decode:</strong> ${greetingDecoded}</span>
+
+            <!-- NETWORK INFO -->
+            <span><strong>Public IP:</strong> ${network.publicIP}</span>
+            <span><strong>Local IP:</strong> ${network.localIP}</span>
+            <span><strong>Subnet:</strong> ${network.subnet}</span>
         `;
 
         const footerEl = document.createElement("div");
@@ -641,6 +692,9 @@ class QuantumLedger {
 💪 Strength: ${entry.signalStrength}
 🔍 Signal Types: ${entry.signalTypes}
 📍 Location: ${entry.signalLocation}
+🌐 Public IP: ${entry.network.publicIP}
+🏠 Local IP: ${entry.network.localIP}
+📡 Subnet: ${entry.network.subnet}
 📝 Q-Notes: ${entry.qNotes}
 
 --- Decoded Data ---
@@ -752,6 +806,7 @@ SHA256: ${entry.hash}
             textSummary += `📝 Payload: ${entry.payload.substring(0, 100)}${entry.payload.length > 100 ? '...' : ''}\n`;
             textSummary += `📊 Type: ${entry.classification}\n`;
             textSummary += `🌀 Entropy: ${entry.entropy}\n`;
+            textSummary += `🌐 Public IP: ${entry.network.publicIP}\n`;
             textSummary += `📝 Q-Notes: ${entry.qNotes.substring(0, 100)}${entry.qNotes.length > 100 ? '...' : ''}\n`;
             textSummary += `${'─'.repeat(40)}\n\n`;
         });

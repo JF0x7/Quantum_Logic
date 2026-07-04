@@ -1,9 +1,20 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* ============================================================
+   QTUM(LOG) – COMPLETE STYLES
+   Includes: rainbow ledger cards + static pyramid effect
+   ============================================================ */
 
+/* ---------- RESET ---------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ---------- BODY ---------- */
 body {
   background: #05060a;
   color: #f9fafb;
-  font-family: system-ui, sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   display: flex;
   justify-content: center;
   min-height: 100vh;
@@ -18,8 +29,11 @@ body {
   gap: 6px;
 }
 
-/* Header */
-.header { text-align: center; padding: 4px 0; }
+/* ---------- HEADER ---------- */
+.header {
+  text-align: center;
+  padding: 4px 0;
+}
 .header svg {
   width: 40px;
   height: 40px;
@@ -27,7 +41,6 @@ body {
   border: 2px solid #06b6d4;
 }
 .header h1 {
-  .header h1 {
   font-size: 16px;
   margin: 2px 0;
   background: linear-gradient(135deg, #4f46e5, #06b6d4);
@@ -36,14 +49,13 @@ body {
   -webkit-text-fill-color: transparent;
   color: transparent;
 }
-}
 .header h2 {
   font-size: 8px;
   color: #444;
   font-weight: 400;
 }
 
-/* Scanner */
+/* ---------- SCANNER ---------- */
 .scanner {
   background: #020617;
   border: 1px solid #111827;
@@ -66,7 +78,7 @@ body {
   object-fit: cover;
 }
 
-/* Indicator */
+/* ---------- INDICATOR ---------- */
 .indicator {
   position: absolute;
   bottom: 8px;
@@ -87,14 +99,17 @@ body {
   background: #ff0;
   animation: pulse 1.5s infinite;
 }
-.dot.active { background: #0f0; }
+.dot.active {
+  background: #0f0;
+  box-shadow: 0 0 8px #0f0;
+}
 
 @keyframes pulse {
-  0%,100% { opacity: 1; }
+  0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
 
-/* Controls */
+/* ---------- CONTROLS ---------- */
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -117,9 +132,11 @@ body {
   background: rgba(255,255,255,0.08);
   transform: scale(1.05);
 }
-.controls button:active { transform: scale(0.95); }
+.controls button:active {
+  transform: scale(0.95);
+}
 
-/* Status & Payload */
+/* ---------- STATUS & PAYLOAD ---------- */
 #status {
   padding: 4px 8px;
   font-size: 9px;
@@ -148,17 +165,19 @@ body {
   margin: 2px 0;
 }
 
-/* Stats */
+/* ---------- STATS ---------- */
 .stats {
   display: grid;
-  grid-template-columns: repeat(3,1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 2px;
   padding: 4px;
   background: rgba(0,0,0,0.2);
   border-radius: 4px;
   margin: 4px 0;
 }
-.stats div { text-align: center; }
+.stats div {
+  text-align: center;
+}
 .stats span:first-child {
   display: block;
   font-size: 5px;
@@ -174,7 +193,7 @@ body {
   font-family: monospace;
 }
 
-/* QAI Results */
+/* ---------- QAI RESULTS ---------- */
 #qaiResults {
   margin: 4px 0;
   padding: 4px 6px;
@@ -188,9 +207,13 @@ body {
   max-height: 22px;
   overflow-y: auto;
 }
-#qaiBody strong { color: #8af; }
+#qaiBody strong {
+  color: #8af;
+}
 
-/* Ledger */
+/* ============================================================
+   LEDGER – RAINBOW CARDS + STATIC PYRAMID EFFECT
+   ============================================================ */
 .ledger {
   background: #020617;
   border: 1px solid #111827;
@@ -217,19 +240,178 @@ body {
 .ledger-header button:hover {
   background: rgba(255,255,255,0.05);
 }
-#ledger {
-  max-height: 300px;
-  overflow-y: auto;
-  font-size: 12px;
-  color: #666;
-}
-#ledger div {
-  padding: 3px 4px;
-  border-bottom: 1px solid #0a0a1a;
-}
-#ledger div:last-child { border-bottom: none; }
 
-/* Footer */
+#ledger {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* ----- BASE LEDGER ENTRY CARD ----- */
+.ledgerItem {
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+  position: relative;
+  overflow: hidden;
+  background: rgba(10, 20, 10, 0.6);
+  border-width: 1px;
+  border-style: solid;
+}
+
+/* ---- RAINBOW COLORS (nth-child cycle) ---- */
+.ledgerItem:nth-child(7n+1) {
+  border-color: #ff4444;
+  background: rgba(255, 68, 68, 0.08);
+}
+.ledgerItem:nth-child(7n+2) {
+  border-color: #ff8800;
+  background: rgba(255, 136, 0, 0.08);
+}
+.ledgerItem:nth-child(7n+3) {
+  border-color: #ffcc00;
+  background: rgba(255, 204, 0, 0.08);
+}
+.ledgerItem:nth-child(7n+4) {
+  border-color: #44cc44;
+  background: rgba(68, 204, 68, 0.08);
+}
+.ledgerItem:nth-child(7n+5) {
+  border-color: #4488ff;
+  background: rgba(68, 136, 255, 0.08);
+}
+.ledgerItem:nth-child(7n+6) {
+  border-color: #8844ff;
+  background: rgba(136, 68, 255, 0.08);
+}
+.ledgerItem:nth-child(7n+7) {
+  border-color: #ff44cc;
+  background: rgba(255, 68, 204, 0.08);
+}
+
+/* ---- STATIC PYRAMID EFFECT (two visible triangles) ---- */
+.ledgerItem::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.06);
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  pointer-events: none;
+  transform: rotate(10deg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ledgerItem::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: -10px;
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.05);
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  pointer-events: none;
+  transform: rotate(-15deg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ---- Hover effect (does NOT affect pyramids) ---- */
+.ledgerItem:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 6px 24px rgba(0, 255, 100, 0.15);
+  background: rgba(20, 40, 20, 0.7);
+}
+
+/* ---- Payload text inherits border color via currentColor trick? We'll set explicitly. ---- */
+.ledgerPayload {
+  font-size: 1em;
+  font-weight: bold;
+  color: #cfffcf;
+  word-break: break-all;
+  margin-bottom: 6px;
+  font-family: 'Courier New', monospace;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  border-left: 3px solid currentColor; /* will match border-color of parent */
+}
+
+.ledgerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 0.75em;
+  color: #b5d8b5;
+  padding: 8px 0;
+  border-top: 1px dashed rgba(255,255,255,0.1);
+  border-bottom: 1px dashed rgba(255,255,255,0.1);
+  margin: 6px 0;
+}
+.ledgerMeta span {
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.ledgerMeta span:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ledgerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.7em;
+  color: #8aaa8a;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ledgerTag {
+  padding: 2px 12px;
+  border-radius: 20px;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.8em;
+  letter-spacing: 0.5px;
+}
+.tag-scan { background: #2a6a2a; color: #8f8; }
+.tag-lite_scan { background: #2a4a2a; color: #afa; }
+.tag-url { background: #2a4a6a; color: #8af; }
+
+.ledgerTime {
+  color: #889;
+}
+
+.ledgerExport {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.export-btn {
+  padding: 3px 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.3);
+  color: #0ff;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+}
+.export-btn:hover {
+  background: #0ff;
+  color: #000;
+  transform: scale(1.05);
+}
+
+/* ---------- FOOTER ---------- */
 .footer {
   text-align: center;
   font-size: 7px;
@@ -237,7 +419,7 @@ body {
   padding: 2px 0;
 }
 
-/* Toast */
+/* ---------- TOAST ---------- */
 #toast {
   position: fixed;
   bottom: 10px;
@@ -259,7 +441,9 @@ body {
 #toast.info { border-color: #0ff; color: #0ff; }
 #toast.warning { border-color: #ff0; color: #ff0; }
 
-/* Lite Mode – Green UI */
+/* ============================================================
+   LITE MODE – GREEN UI OVERRIDES (simplified)
+   ============================================================ */
 body.lite-mode {
   background: #061806;
   color: #c8ffd0;
@@ -309,8 +493,29 @@ body.lite-mode #toast {
   color: #c8ffd0;
 }
 
-/* Responsive */
+/* ---- In Lite Mode, we override rainbow colors to a uniform green ---- */
+body.lite-mode .ledgerItem {
+  border-color: #2a7a2a !important;
+  background: rgba(0, 30, 0, 0.5) !important;
+}
+body.lite-mode .ledgerItem::before,
+body.lite-mode .ledgerItem::after {
+  background: rgba(0, 255, 100, 0.06) !important;
+  border-color: rgba(0, 255, 100, 0.08) !important;
+}
+body.lite-mode .ledgerPayload {
+  border-left-color: #2a7a2a !important;
+}
+
+/* ---------- RESPONSIVE ---------- */
 @media (max-width: 480px) {
-  .app { max-width: 100%; }
-  .video-wrap { max-width: 280px; }
+  .app {
+    max-width: 100%;
+  }
+  .video-wrap {
+    max-width: 280px;
+  }
+  .ledgerMeta span {
+    white-space: normal;
+  }
 }
