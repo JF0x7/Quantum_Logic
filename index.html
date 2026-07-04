@@ -4,25 +4,78 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>QTUM(LOG)</title>
+
   <link rel="icon" href="Q.jpg">
   <link rel="stylesheet" href="style.css">
+
   <script src="https://unpkg.com/@zxing/library@latest"></script>
   <script defer src="Qai.js"></script>
   <script defer src="ledger.js"></script>
   <script defer src="scanner.js"></script>
+  <script defer src="scannerLite.js"></script>
+
+  <style>
+    /* Lite Mode Green Theme */
+    body.lite-mode {
+      background: #0f260f !important;
+      color: #b6ffb6 !important;
+    }
+    body.lite-mode .header h1 {
+      color: #7cff7c !important;
+    }
+    body.lite-mode .controls button {
+      background: #113d11 !important;
+      border: 1px solid #33aa33 !important;
+      color: #b6ffb6 !important;
+    }
+    body.lite-mode #status {
+      color: #7cff7c !important;
+    }
+    body.lite-mode #payload {
+      background: #0f3d0f !important;
+      border: 1px solid #33aa33 !important;
+      color: #b6ffb6 !important;
+    }
+    body.lite-mode #qaiResults {
+      border: 1px solid #33aa33 !important;
+      background: #0f3d0f !important;
+    }
+    body.lite-mode .stats,
+    body.lite-mode #qaiResults,
+    body.lite-mode #flipBtn,
+    body.lite-mode #openLinkBtn,
+    body.lite-mode #copyBtn,
+    body.lite-mode #sendBtn {
+      display: none !important;
+    }
+    body.lite-mode .ledger .ledger-header button {
+      display: none !important;
+    }
+    #scanDot.active {
+      background: #7fdb7f;
+      box-shadow: 0 0 8px #7fdb7f;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.5; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.1); }
+      100% { opacity: 0.5; transform: scale(0.9); }
+    }
+  </style>
 </head>
+
 <body>
   <div class="app">
-    <!-- Header -->
     <div class="header">
       <a href="https://qtum-hub-4048d1.gitlab.io/" target="_blank">
-        <svg width="40" height="40" viewBox="0 0 100 100"><image href="Q.jpg" width="100" height="100"/></svg>
+        <svg width="40" height="40" viewBox="0 0 100 100">
+          <image href="Q.jpg" width="100" height="100"/>
+        </svg>
       </a>
-      <h1>⚛ QTUM(LOG)</h1>
-      <h2>Beler Industries</h2>
+      <h1>QTUM(LOG)</h1>
+      <h2>Julius Hirsch & Beler Industries</h2>
     </div>
 
-    <!-- Scanner -->
     <div class="scanner">
       <div class="video-wrap">
         <video id="video" autoplay playsinline muted></video>
@@ -32,111 +85,245 @@
         </div>
       </div>
       <canvas id="canvas" style="display:none;"></canvas>
-      
-      <!-- Controls -->
-      <div class="controls">
-        <button id="startBtn" data-tip="Start camera">📷</button>
-        <button id="flipBtn" data-tip="Flip camera">🔄</button>
-        <button id="uploadBtn" data-tip="Upload image">📁</button>
+
+      <div class="controls" id="controlsContainer">
+        <button id="startBtn">📷</button>
+        <button id="flipBtn">🔄</button>
+        <button id="uploadBtn">📁</button>
         <input type="file" id="fileInput" accept="image/*" hidden>
-        <button id="openLinkBtn" data-tip="Open URL">🌐</button>
-        <button id="copyBtn" data-tip="Copy payload">📋</button>
-        <button id="sendBtn" data-tip="Send signal">📤</button>
-        <button id="clearBtn" data-tip="Clear all">🧹</button>
-        <button id="resetLedgerBtn" data-tip="Reset ledger">🗑️</button>
+        <button id="openLinkBtn">🌐</button>
+        <button id="copyBtn">📋</button>
+        <button id="sendBtn">📤</button>
+        <button id="clearBtn">🧹</button>
+        <button id="resetLedgerBtn">🗑️</button>
+        <button id="liteModeBtn" style="border:2px solid #33aa33;">💡 Lite Mode</button>
       </div>
 
-      <!-- Output -->
       <div id="status">🟢 Ready</div>
       <div id="payload"></div>
-      
-      <!-- Quick Stats -->
+
       <div class="stats">
         <div><span>Entropy</span><span id="statEntropy">—</span></div>
         <div><span>Type</span><span id="statType">—</span></div>
         <div><span>Risk</span><span id="statRisk">—</span></div>
       </div>
 
-       <!-- Ledger -->
-    <div class="ledger">
-      <div class="ledger-header">
-        <span>📚 Ledger</span>
-        <span id="ledgerCount">0</span>
-        <button id="ledgerExport" data-tip="Export all">📤</button>
-        <button id="ledgerClear" data-tip="Clear ledger">🗑️</button>
+      <div class="ledger">
+        <div class="ledger-header">
+          <span>📚 Ledger</span>
+          <span id="ledgerCount">0</span>
+          <button id="ledgerExport">📤</button>
+          <button id="ledgerClear">🗑️</button>
+        </div>
+        <div id="ledger"></div>
       </div>
-      <div id="ledger"></div>
-    </div>
-    
-      <!-- QAI Results -->
+
       <div id="qaiResults" style="display:none;">
         <div id="qaiBody"></div>
       </div>
     </div>
 
-    <!-- Footer -->
     <div class="footer">
       <span>QAI v6.0</span>
       <span id="footerTime"></span>
     </div>
   </div>
 
-  <!-- Toast -->
   <div id="toast"></div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", async () => {
+    document.addEventListener("DOMContentLoaded", function() {
+      console.log('[Main] DOM ready');
+
+      // Toast
+      window.showToast = function(msg, type) {
+        var t = document.getElementById('toast');
+        if (!t) return;
+        t.textContent = msg;
+        t.className = 'toast ' + (type || 'info');
+        t.style.display = 'block';
+        clearTimeout(t._hide);
+        t._hide = setTimeout(function() { t.style.display = 'none'; }, 2500);
+      };
+
+      // Global references
+      var scanner = null;
+      var liteScanner = null;
+      var isLite = false;
+
+      // Try to instantiate scanners
       try {
-        const qai = new Qai({ enableAztec: true, enableDDN: true, enableMorse: true, enableDeepAnalysis: true });
-        const ledger = new QuantumLedger("ledger");
-        const scanner = new QtumScanner(ledger, qai);
-        window.__qai = qai; window.__ledger = ledger; window.__scanner = scanner;
-        
-        // Toast system
-        window.showToast = (msg, type = 'info') => {
-          const t = document.getElementById('toast');
-          if(!t) return;
-          t.textContent = msg;
-          t.className = `toast ${type}`;
-          t.style.display = 'block';
-          clearTimeout(t._hide);
-          t._hide = setTimeout(() => { t.style.display = 'none'; }, 2500);
-        };
-        
-        // Tooltips
-        document.querySelectorAll('[data-tip]').forEach(el => {
-          el.addEventListener('mouseenter', (e) => {
-            const tip = el.getAttribute('data-tip');
-            showToast(`💡 ${tip}`, 'info');
-          });
+        // Check dependencies
+        if (typeof Qai === 'undefined') throw new Error('Qai not loaded');
+        if (typeof QuantumLedger === 'undefined') throw new Error('QuantumLedger not loaded');
+        if (typeof QtumScanner === 'undefined') throw new Error('QtumScanner not loaded');
+        if (typeof QtumScannerLite === 'undefined') throw new Error('QtumScannerLite not loaded');
+
+        var qai = new Qai({
+          enableAztec: true,
+          enableDDN: true,
+          enableMorse: true,
+          enableDeepAnalysis: true
         });
-        
-        // Clock
-        setInterval(() => {
-          const el = document.getElementById('footerTime');
-          if(el) el.textContent = new Date().toLocaleTimeString();
-        }, 1000);
-        
-        // Dot status
-        const dot = document.getElementById('scanDot');
-        const status = document.getElementById('scanStatus');
-        if(dot && status) {
-          document.addEventListener('scanStart', () => {
-            dot.className = 'dot active';
-            status.textContent = 'Scanning';
-          });
-          document.addEventListener('scanStop', () => {
-            dot.className = 'dot';
-            status.textContent = 'Ready';
-          });
-        }
-        
-        setTimeout(() => showToast('🧠 QAI v6.0 Online', 'success'), 500);
-        console.log('✅ QTUM(LOG) Ready');
-      } catch(e) {
-        console.error('Init failed:', e);
-        document.getElementById('status').textContent = `❌ ${e.message}`;
+        var ledger = new QuantumLedger("ledger");
+
+        scanner = new QtumScanner(ledger, qai);
+        liteScanner = new QtumScannerLite(ledger);
+
+        window.__qai = qai;
+        window.__ledger = ledger;
+        window.__scanner = scanner;
+        window.__lite = liteScanner;
+
+        console.log('[Main] Scanners instantiated');
+      } catch (e) {
+        console.error('[Main] Scanner init error:', e);
+        showToast('⚠️ Scanner init error: ' + e.message, 'error');
+        // Continue without scanners – the toggle will still work (but do nothing)
       }
+
+      // ---- Legacy detection ----
+      function isLegacyOS() {
+        var ua = navigator.userAgent || '';
+        var iOS = /iP(hone|od|ad)/.test(ua);
+        var iOSVersion = iOS ? parseFloat((ua.match(/OS (\d+)_/) || [])[1] || '0') : 0;
+        var android = /Android/.test(ua);
+        var androidVersion = android ? parseFloat((ua.match(/Android (\d+\.\d+)/) || [])[1] || '0') : 0;
+        var raspberry = /Raspberry|armv/.test(ua);
+        var noGetUserMedia = !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia;
+        return noGetUserMedia || (iOS && iOSVersion < 13) || (android && androidVersion < 7) || raspberry;
+      }
+
+      // ---- Mode switch function (safe) ----
+      function setMode(lite) {
+        isLite = lite;
+        document.body.classList.toggle('lite-mode', lite);
+        console.log('[Main] setMode:', lite ? 'LITE' : 'FULL');
+
+        // Stop both (if they exist)
+        if (scanner && typeof scanner.stop === 'function') {
+          try { scanner.stop(); } catch (e) { console.warn('Full scanner stop error:', e); }
+        }
+        if (liteScanner && typeof liteScanner.stop === 'function') {
+          try { liteScanner.stop(); } catch (e) { console.warn('Lite scanner stop error:', e); }
+        }
+
+        // Start active
+        if (lite) {
+          if (liteScanner && typeof liteScanner.start === 'function') {
+            try { liteScanner.start(); } catch (e) { console.warn('Lite scanner start error:', e); showToast('Lite camera error', 'error'); }
+          }
+          showToast('⚡ Lite Mode (legacy fallback) – reduced features', 'success');
+        } else {
+          if (scanner && typeof scanner.start === 'function') {
+            try { scanner.start(); } catch (e) { console.warn('Full scanner start error:', e); showToast('Full camera error', 'error'); }
+          }
+          showToast('🚀 Full Mode – ZXing + QAI', 'info');
+        }
+      }
+
+      // ---- Button handlers (no replacement needed) ----
+      var startBtn = document.getElementById('startBtn');
+      var clearBtn = document.getElementById('clearBtn');
+      var uploadBtn = document.getElementById('uploadBtn');
+      var fileInput = document.getElementById('fileInput');
+      var liteToggleBtn = document.getElementById('liteModeBtn');
+
+      // Start
+      if (startBtn) {
+        startBtn.addEventListener('click', function() {
+          if (isLite) {
+            if (liteScanner && typeof liteScanner.start === 'function') liteScanner.start();
+          } else {
+            if (scanner && typeof scanner.start === 'function') scanner.start();
+          }
+        });
+      }
+
+      // Clear
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+          if (isLite) {
+            if (liteScanner && typeof liteScanner.clear === 'function') liteScanner.clear();
+          } else {
+            if (scanner && typeof scanner.clear === 'function') scanner.clear();
+            else document.getElementById('payload').textContent = '';
+          }
+        });
+      }
+
+      // Upload
+      if (uploadBtn && fileInput) {
+        uploadBtn.addEventListener('click', function() { fileInput.click(); });
+        fileInput.addEventListener('change', function(e) {
+          var file = e.target.files[0];
+          if (!file) return;
+          if (isLite) {
+            if (liteScanner && typeof liteScanner.handleFileUpload === 'function') {
+              liteScanner.handleFileUpload(file);
+            }
+          } else {
+            if (scanner && typeof scanner.handleFileUpload === 'function') {
+              scanner.handleFileUpload(file);
+            } else if (scanner && typeof scanner._handleFileUpload === 'function') {
+              scanner._handleFileUpload(e);
+            } else {
+              showToast('File upload not supported', 'error');
+            }
+          }
+          e.target.value = '';
+        });
+      }
+
+      // Lite toggle (the button we care about)
+      if (liteToggleBtn) {
+        liteToggleBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          console.log('[Main] Toggle clicked – current isLite:', isLite);
+          var newMode = !isLite;
+          setMode(newMode);
+          this.textContent = newMode ? '💡 Lite Mode' : '💡 Full Mode';
+        });
+        console.log('[Main] Lite toggle listener attached');
+      } else {
+        console.error('[Main] liteToggleBtn not found');
+      }
+
+      // ---- Auto‑switch based on legacy ----
+      var legacy = isLegacyOS();
+      if (legacy) {
+        setMode(true);
+        if (liteToggleBtn) {
+          liteToggleBtn.textContent = '💡 Lite (forced)';
+          liteToggleBtn.style.opacity = '0.7';
+        }
+      } else {
+        setMode(false);
+        if (liteToggleBtn) {
+          liteToggleBtn.textContent = '💡 Lite Mode';
+        }
+      }
+
+      // ---- Clock ----
+      setInterval(function() {
+        var el = document.getElementById('footerTime');
+        if (el) el.textContent = new Date().toLocaleTimeString();
+      }, 1000);
+
+      // ---- Scan dot ----
+      var dot = document.getElementById('scanDot');
+      var statusEl = document.getElementById('scanStatus');
+      document.addEventListener('scanStart', function() {
+        dot.className = 'dot active';
+        statusEl.textContent = 'Scanning';
+      });
+      document.addEventListener('scanStop', function() {
+        dot.className = 'dot';
+        statusEl.textContent = 'Ready';
+      });
+
+      showToast('🧠 QAI v6.0 Online', 'success');
+      console.log('[Main] QTUM(LOG) Ready');
     });
   </script>
 </body>

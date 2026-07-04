@@ -744,7 +744,47 @@ function capturePhoto() {
 }
 
 // ============================================================================
-//  FILE UPLOAD
+//  FALLBACK PAYLOAD GENERATOR (NO BARCODE CASE)
+// ============================================================================
+async function generateFallbackPayload(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const w = img.width;
+        const h = img.height;
+        const sizeKB = Math.round(file.size / 1024);
+
+        let orientation = 1;
+        try {
+          EXIF.getData(img, function () {
+            orientation = EXIF.getTag(this, 'Orientation') || 1;
+          });
+        } catch (_) {}
+
+        const payload = [
+          "NO_BARCODE_FOUND",
+          `name:${file.name}`,
+          `size:${sizeKB}KB`,
+          `resolution:${w}x${h}`,
+          `orientation:${orientation}`,
+          `timestamp:${Date.now()}`
+        ].join("|");
+
+        resolve(payload);
+      };
+
+      img.src = e.target.result;
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+// ============================================================================
+//  FILE UPLOAD (ALWAYS-DECODE MODE)
 // ============================================================================
 async function handleFileUpload(e) {
   const file = e.target.files[0];
@@ -754,8 +794,23 @@ async function handleFileUpload(e) {
   const url = URL.createObjectURL(file);
   
   try {
-    const result = await state.reader.decodeFromImageUrl(url);
-    await handleScan(result.getText());
+    let result = null;
+
+    try {
+      result = await state.reader.decodeFromImageUrl(url);
+    } catch (_) {
+      // ignore ZXing errors, we'll fallback
+    }
+
+    if (result && result.getText) {
+      await handleScan(result.getText());
+    } else {
+      const fallbackPayload = await generateFallbackPayload(file);
+      await handleScan(fallbackPayload);
+    }
+
+    setStatus('Image processed', 'success');
+
   } catch (err) {
     console.warn(err);
     setStatus('Upload decode failed', 'error');
