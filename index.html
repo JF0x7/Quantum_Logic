@@ -7,10 +7,16 @@
   <title>QTUM(LOG)</title>
   <link rel="icon" href="Q.jpg">
   <link rel="stylesheet" href="style.css">
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
+
+  <!-- jsQR: simple QR decoder that works well on older Safari -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+
+  <!-- Your existing brains (optional on legacy, but kept) -->
   <script defer src="Qai.js"></script>
   <script defer src="ledger.js"></script>
-  <script defer src="scanner.js"></script>
+
+  <!-- Lite scanner for iOS 12 / Pi -->
+  <script defer src="scannerLite.js"></script>
 </head>
 <body>
   <div class="app">
@@ -39,24 +45,18 @@
       <!-- Controls -->
       <div class="controls">
         <button id="startBtn" data-tip="Start camera">📷</button>
-        <button id="flipBtn" data-tip="Flip camera">🔄</button>
+        <button id="stopBtn" data-tip="Stop camera">⏹️</button>
         <button id="uploadBtn" data-tip="Upload image">📁</button>
         <input type="file" id="fileInput" accept="image/*" hidden>
-        <button id="openLinkBtn" data-tip="Open URL">🌐</button>
         <button id="copyBtn" data-tip="Copy payload">📋</button>
-        <button id="sendBtn" data-tip="Send signal">📤</button>
         <button id="clearBtn" data-tip="Clear all">🧹</button>
-        <button id="resetLedgerBtn" data-tip="Reset ledger">🗑️</button>
       </div>
 
       <!-- Output -->
-      <div id="status">🟢 Ready</div>
+      <div id="status">🟢 Ready (Lite)</div>
       <div id="payload"></div>
 
-      <!-- Quick Stats -->
-      <div class="stats"></div>
-
-      <!-- Ledger -->
+      <!-- Ledger (optional, still here) -->
       <div class="ledger">
         <div class="ledger-header">
           <span>📚 Ledger</span>
@@ -65,7 +65,7 @@
         <div id="ledger"></div>
       </div>
 
-      <!-- QAI Results -->
+      <!-- QAI Results (can be filled by Qai.js if you want later) -->
       <div id="qaiResults" style="display:none;">
         <div id="qaiBody"></div>
       </div>
@@ -73,7 +73,7 @@
 
     <!-- Footer -->
     <div class="footer">
-      <span>QAI v6.0</span>
+      <span>QAI v6.0 (Lite)</span>
       <span id="footerTime"></span>
     </div>
   </div>
@@ -82,99 +82,24 @@
   <div id="toast"></div>
 
   <script>
-    // --- Device detection for iOS 12 / Raspberry Pi ---
-    function isLegacyDevice() {
-      const ua = navigator.userAgent;
-      const iOS12 = /iPhone OS 12_/i.test(ua);
-      const raspberry = /Raspberry|armv7l|armv6l/i.test(ua);
-      const oldSafari = /Version\/12|Version\/11|Version\/10/i.test(ua);
-      return iOS12 || raspberry || oldSafari;
+    // Tiny toast helper (no fancy classes)
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      if (!t) return;
+      t.textContent = msg;
+      t.style.display = 'block';
+      clearTimeout(t._hide);
+      t._hide = setTimeout(function () {
+        t.style.display = 'none';
+      }, 2500);
     }
 
-    document.addEventListener("DOMContentLoaded", async () => {
-      try {
-        const qai = new Qai({ enableAztec: true, enableDDN: true, enableMorse: true, enableDeepAnalysis: true });
-        const ledger = new QuantumLedger("ledger");
-        const scanner = new QtumScanner(ledger, qai);
-        window.__qai = qai; window.__ledger = ledger; window.__scanner = scanner;
-
-        // Toast system
-        window.showToast = (msg, type = 'info') => {
-          const t = document.getElementById('toast');
-          if(!t) return;
-          t.textContent = msg;
-          t.className = `toast ${type}`;
-          t.style.display = 'block';
-          clearTimeout(t._hide);
-          t._hide = setTimeout(() => { t.style.display = 'none'; }, 2500);
-        };
-
-        // Tooltips
-        document.querySelectorAll('[data-tip]').forEach(el => {
-          el.addEventListener('mouseenter', () => {
-            showToast(`💡 ${el.getAttribute('data-tip')}`, 'info');
-          });
-        });
-
-        // Clock
-        setInterval(() => {
-          const el = document.getElementById('footerTime');
-          if(el) el.textContent = new Date().toLocaleTimeString();
-        }, 1000);
-
-        // Dot status
-        const dot = document.getElementById('scanDot');
-        const status = document.getElementById('scanStatus');
-        if(dot && status) {
-          document.addEventListener('scanStart', () => {
-            dot.className = 'dot active';
-            status.textContent = 'Scanning';
-          });
-          document.addEventListener('scanStop', () => {
-            dot.className = 'dot';
-            status.textContent = 'Ready';
-          });
-        }
-
-        // --- Legacy fallback ---
-        if (isLegacyDevice()) {
-          showToast('⚙️ Legacy mode enabled (iOS 12 / Pi)', 'warning');
-          const video = document.getElementById('video');
-          const canvas = document.getElementById('canvas');
-          const ctx = canvas.getContext('2d');
-          const payload = document.getElementById('payload');
-
-          async function startLite() {
-            try {
-              const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-              video.srcObject = stream;
-              await video.play();
-              showToast('📷 Lite camera active', 'success');
-              captureLite();
-            } catch (e) {
-              showToast('❌ Camera error: ' + e.message, 'error');
-            }
-          }
-
-          function captureLite() {
-            if (!video || video.paused || video.ended) return;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            // Simple frame sampling (no ZXing)
-            payload.textContent = '📡 Frame captured (Lite mode)';
-            setTimeout(captureLite, 1500);
-          }
-
-          document.getElementById('startBtn').addEventListener('click', startLite);
-        }
-
-        setTimeout(() => showToast('🧠 QAI v6.0 Online', 'success'), 500);
-        console.log('✅ QTUM(LOG) Ready');
-      } catch(e) {
-        console.error('Init failed:', e);
-        document.getElementById('status').textContent = `❌ ${e.message}`;
-      }
+    // Clock
+    document.addEventListener('DOMContentLoaded', function () {
+      setInterval(function () {
+        var el = document.getElementById('footerTime');
+        if (el) el.textContent = new Date().toLocaleTimeString();
+      }, 1000);
     });
   </script>
 </body>
