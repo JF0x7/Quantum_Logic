@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>QTUM(LOG)</title>
   <link rel="icon" href="Q.jpg">
   <link rel="stylesheet" href="style.css">
@@ -16,7 +17,9 @@
     <!-- Header -->
     <div class="header">
       <a href="https://qtum-hub-4048d1.gitlab.io/" target="_blank">
-        <svg width="40" height="40" viewBox="0 0 100 100"><image href="Q.jpg" width="100" height="100"/></svg>
+        <svg width="40" height="40" viewBox="0 0 100 100">
+          <image href="Q.jpg" width="100" height="100"/>
+        </svg>
       </a>
       <h1>QTUM(LOG)</h1>
       <h2>Beler Industries</h2>
@@ -32,7 +35,7 @@
         </div>
       </div>
       <canvas id="canvas" style="display:none;"></canvas>
-      
+
       <!-- Controls -->
       <div class="controls">
         <button id="startBtn" data-tip="Start camera">📷</button>
@@ -49,21 +52,19 @@
       <!-- Output -->
       <div id="status">🟢 Ready</div>
       <div id="payload"></div>
-      
+
       <!-- Quick Stats -->
-      <div class="stats">
-        
+      <div class="stats"></div>
+
+      <!-- Ledger -->
+      <div class="ledger">
+        <div class="ledger-header">
+          <span>📚 Ledger</span>
+          <span id="ledgerCount">777</span>
+        </div>
+        <div id="ledger"></div>
       </div>
 
-       <!-- Ledger -->
-    <div class="ledger">
-      <div class="ledger-header">
-        <span>📚 Ledger</span>
-        <span id="ledgerCount">777</span>
-      </div>
-      <div id="ledger"></div>
-    </div>
-    
       <!-- QAI Results -->
       <div id="qaiResults" style="display:none;">
         <div id="qaiBody"></div>
@@ -72,7 +73,7 @@
 
     <!-- Footer -->
     <div class="footer">
-      <span>QAI v6.0</span>
+      <span>QAI v6.0</span>
       <span id="footerTime"></span>
     </div>
   </div>
@@ -81,13 +82,22 @@
   <div id="toast"></div>
 
   <script>
+    // --- Device detection for iOS 12 / Raspberry Pi ---
+    function isLegacyDevice() {
+      const ua = navigator.userAgent;
+      const iOS12 = /iPhone OS 12_/i.test(ua);
+      const raspberry = /Raspberry|armv7l|armv6l/i.test(ua);
+      const oldSafari = /Version\/12|Version\/11|Version\/10/i.test(ua);
+      return iOS12 || raspberry || oldSafari;
+    }
+
     document.addEventListener("DOMContentLoaded", async () => {
       try {
         const qai = new Qai({ enableAztec: true, enableDDN: true, enableMorse: true, enableDeepAnalysis: true });
         const ledger = new QuantumLedger("ledger");
         const scanner = new QtumScanner(ledger, qai);
         window.__qai = qai; window.__ledger = ledger; window.__scanner = scanner;
-        
+
         // Toast system
         window.showToast = (msg, type = 'info') => {
           const t = document.getElementById('toast');
@@ -98,21 +108,20 @@
           clearTimeout(t._hide);
           t._hide = setTimeout(() => { t.style.display = 'none'; }, 2500);
         };
-        
+
         // Tooltips
         document.querySelectorAll('[data-tip]').forEach(el => {
-          el.addEventListener('mouseenter', (e) => {
-            const tip = el.getAttribute('data-tip');
-            showToast(`💡 ${tip}`, 'info');
+          el.addEventListener('mouseenter', () => {
+            showToast(`💡 ${el.getAttribute('data-tip')}`, 'info');
           });
         });
-        
+
         // Clock
         setInterval(() => {
           const el = document.getElementById('footerTime');
           if(el) el.textContent = new Date().toLocaleTimeString();
         }, 1000);
-        
+
         // Dot status
         const dot = document.getElementById('scanDot');
         const status = document.getElementById('scanStatus');
@@ -126,8 +135,41 @@
             status.textContent = 'Ready';
           });
         }
-        
-        setTimeout(() => showToast('🧠 QAI v6.0 Online', 'success'), 500);
+
+        // --- Legacy fallback ---
+        if (isLegacyDevice()) {
+          showToast('⚙️ Legacy mode enabled (iOS 12 / Pi)', 'warning');
+          const video = document.getElementById('video');
+          const canvas = document.getElementById('canvas');
+          const ctx = canvas.getContext('2d');
+          const payload = document.getElementById('payload');
+
+          async function startLite() {
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+              video.srcObject = stream;
+              await video.play();
+              showToast('📷 Lite camera active', 'success');
+              captureLite();
+            } catch (e) {
+              showToast('❌ Camera error: ' + e.message, 'error');
+            }
+          }
+
+          function captureLite() {
+            if (!video || video.paused || video.ended) return;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            // Simple frame sampling (no ZXing)
+            payload.textContent = '📡 Frame captured (Lite mode)';
+            setTimeout(captureLite, 1500);
+          }
+
+          document.getElementById('startBtn').addEventListener('click', startLite);
+        }
+
+        setTimeout(() => showToast('🧠 QAI v6.0 Online', 'success'), 500);
         console.log('✅ QTUM(LOG) Ready');
       } catch(e) {
         console.error('Init failed:', e);
