@@ -42,7 +42,7 @@ class Qai {
         config: this.config,
         decoders: Object.keys(this.decoders)
       });
-      console.log(`⚛ QAI 🧠  v${this.version} ready with ${Object.keys(this.decoders).length} decoders`);
+      console.log(`QAI 🧠  v${this.version} ready with ${Object.keys(this.decoders).length} decoders`);
     }, 100);
   }
 
