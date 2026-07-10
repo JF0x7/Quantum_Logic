@@ -1,4 +1,4 @@
-// scannerLite.js — QTUM(LOG) Lite Scanner v2 (Device-aware, Safe ZXing, Fallback)
+// scannerLite.js — QTUM(LOG) Lite Scanner v3
 (function() {
   function QtumScannerLite(ledger) {
     this.ledger = ledger;
@@ -14,14 +14,21 @@
   // ---------- Device tiering ----------
   QtumScannerLite.prototype._getDeviceTier = function() {
     var ua = navigator.userAgent || '';
+
     var isIOS = /iPad|iPhone|iPod/.test(ua);
-    var isAndroid = /Android/.test(ua);
+    var isWebKit = /WebKit/.test(ua) && !/Chrome/.test(ua);
     var noWasm = typeof WebAssembly === 'undefined';
     var lowRAM = typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 3;
 
-    if (isIOS || noWasm || lowRAM) return 3;   // Lite only (iPhone XS etc.)
-    if (isAndroid && lowRAM) return 2;         // Canvas only, no ZXing
-    return 1;                                  // Full ZXing allowed
+    // iPhone XS / iOS Safari / low RAM / no WASM → forced Lite
+    if (isIOS || isWebKit || noWasm || lowRAM) return 3;
+
+    // Mid-range Android etc. → canvas only, no heavy ZXing
+    var isAndroid = /Android/.test(ua);
+    if (isAndroid) return 2;
+
+    // Desktop / strong devices
+    return 1;
   };
 
   // ---------- UI helpers ----------
@@ -80,24 +87,31 @@
         return;
       }
 
-      // Tier 3 / 2 → skip ZXing, go fallback or future canvas decode
-      if (tier !== 1) {
-        self._fallbackSignature(file, scaledCanvas.width, scaledCanvas.height);
+      // Tier 3 → forced Lite fallback (iPhone XS etc.)
+      if (tier === 3) {
+        self._fallbackSignature(file, scaledCanvas.width, scaledCanvas.height, 'LiteMode');
         URL.revokeObjectURL(url);
         return;
       }
 
-      // Try ZXing, but never crash
+      // Tier 2 → mid-range devices: no ZXing, but still “scan” via fallback
+      if (tier === 2) {
+        self._fallbackSignature(file, scaledCanvas.width, scaledCanvas.height, 'CanvasLite');
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // Tier 1 → desktop / strong devices: try ZXing safely
       self._decodeWithZXing().then(function(decodedText) {
         if (decodedText) {
           self._handlePayload(decodedText);
           self._setStatus('barcode detected ✓');
         } else {
-          self._fallbackSignature(file, scaledCanvas.width, scaledCanvas.height);
+          self._fallbackSignature(file, scaledCanvas.width, scaledCanvas.height, 'ZXingFallback');
         }
         URL.revokeObjectURL(url);
       }).catch(function() {
-        self._fallbackSignature(file, scaledCanvas.width, scaledCanvas.height);
+        self._fallbackSignature(file, scaledCanvas.width, scaledCanvas.height, 'ZXingError');
         URL.revokeObjectURL(url);
       });
     };
@@ -111,7 +125,7 @@
   // ---------- ZXing decoder (tier 1 only) ----------
   QtumScannerLite.prototype._decodeWithZXing = function() {
     var self = this;
-    return new Promise(function(resolve, reject) {
+    return new Promise(function(resolve) {
       try {
         if (typeof ZXing !== 'undefined' && ZXing.BrowserQRCodeReader) {
           self._reader = new ZXing.BrowserQRCodeReader();
@@ -147,14 +161,19 @@
     });
   };
 
-  // ---------- Fallback signature ----------
-  QtumScannerLite.prototype._fallbackSignature = function(file, w, h) {
+  // ---------- Fallback signature (XS / mid-range / ZXing fail) ----------
+  QtumScannerLite.prototype._fallbackSignature = function(file, w, h, mode) {
     var sizeKB = Math.round(file.size / 1024);
-    var payload = 'LITE_IMAGE|name:' + file.name +
-      '|size:' + sizeKB + 'KB|res:' + w + 'x' + h +
-      '|ts:' + Date.now();
+    var payload =
+      'SCAN_FALLBACK|' +
+      'file:' + file.name + '|' +
+      'size:' + sizeKB + 'KB|' +
+      'resolution:' + w + 'x' + h + '|' +
+      'mode:' + (mode || 'Lite') + '|' +
+      'ts:' + Date.now();
+
     this._handlePayload(payload);
-    this._setStatus('image processed (fallback)');
+    this._setStatus('scan complete ✓ (' + (mode || 'lite') + ')');
   };
 
   // ---------- Payload handler ----------
