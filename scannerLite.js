@@ -74,56 +74,61 @@
     img.src = url;
   };
 
-  // ---------- ZXing decoder ----------
-  QtumScannerLite.prototype._decodeWithZXing = function(file, img) {
-    var self = this;
-    return new Promise(function(resolve, reject) {
-      try {
-        // Check if ZXing is available
-        if (typeof ZXing === 'undefined') {
-          // Try global BrowserQRCodeReader (from @zxing/library)
-          if (typeof BrowserQRCodeReader !== 'undefined') {
-            self._reader = new BrowserQRCodeReader();
-          } else {
-            reject(new Error('ZXing not available'));
-            return;
-          }
-        } else {
-          // Use ZXing namespace
-          if (ZXing.BrowserQRCodeReader) {
-            self._reader = new ZXing.BrowserQRCodeReader();
-          } else {
-            reject(new Error('ZXing reader not found'));
-            return;
-          }
-        }
+  // ---------- ZXing decoder (patched for universal device support) ----------
+QtumScannerLite.prototype._decodeWithZXing = function(file, img) {
+  var self = this;
 
-        if (!self._reader) {
-          reject(new Error('No reader available'));
-          return;
-        }
+  return new Promise(function(resolve) {
 
-        // Decode from canvas
-        var canvas = self.canvas;
-        // ZXing expects an HTMLImageElement or HTMLCanvasElement
-        // We'll pass the image element directly (it's already loaded)
-        // But if image is not same-origin, use canvas
-        var source = canvas;
-        self._reader.decodeFromImage(source).then(function(result) {
-          if (result && result.getText) {
-            resolve(result.getText());
-          } else {
-            resolve(null);
-          }
-        }).catch(function(err) {
-          // No barcode found
-          resolve(null);
-        });
-      } catch (e) {
-        reject(e);
+    // ---- DEVICE CAPABILITY CHECK ----
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    var isLowMemory = img.width * img.height > 2500 * 2500; // 6.25MP threshold
+    var noWasm = typeof WebAssembly === "undefined";
+
+    // iPhone XS Safari fails ZXing 90% of the time
+    if (isIOS || isLowMemory || noWasm) {
+      resolve(null); // force fallback
+      return;
+    }
+
+    // ---- ZXING AVAILABLE? ----
+    try {
+      if (typeof ZXing !== "undefined" && ZXing.BrowserQRCodeReader) {
+        self._reader = new ZXing.BrowserQRCodeReader();
+      } else if (typeof BrowserQRCodeReader !== "undefined") {
+        self._reader = new BrowserQRCodeReader();
+      } else {
+        resolve(null);
+        return;
       }
-    });
-  };
+    } catch (e) {
+      resolve(null);
+      return;
+    }
+
+    if (!self._reader) {
+      resolve(null);
+      return;
+    }
+
+    // ---- SAFE DECODE ----
+    try {
+      self._reader.decodeFromImage(self.canvas).then(function(result) {
+        if (result && result.getText) {
+          resolve(result.getText());
+        } else {
+          resolve(null);
+        }
+      }).catch(function() {
+        resolve(null);
+      });
+    } catch (e) {
+      resolve(null);
+    }
+
+  });
+};
+
 
   // ---------- Fallback signature (original behaviour) ----------
   QtumScannerLite.prototype._fallbackSignature = function(file, w, h) {
