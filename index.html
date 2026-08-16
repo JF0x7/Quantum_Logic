@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>QTUM(LOG)</title>
+  <title>QTUM(LOG) · Lite</title>
   <style>
-    /* ===== RESET ===== */
+    /* ===== RESET + FLAT ===== */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: #061806; /* lite green background */
+      background: #061806;
       color: #c8ffd0;
       font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
       display: flex;
@@ -23,15 +23,9 @@
       flex-direction: column;
       gap: 6px;
     }
-    /* ===== HEADER ===== */
     .header {
       text-align: center;
       padding: 4px 0;
-    }
-    .header svg {
-      width: 40px; height: 40px;
-      border-radius: 50%;
-      border: 2px solid #2fbf2f;
     }
     .header h1 {
       font-size: 16px;
@@ -44,10 +38,9 @@
     }
     .header h2 {
       font-size: 8px;
-      color: #444;
+      color: #555;
       font-weight: 400;
     }
-    /* ===== SCANNER ===== */
     .scanner {
       background: #041204;
       border: 1px solid #145214;
@@ -69,11 +62,10 @@
       color: #c8ffd0;
       cursor: pointer;
       font-size: 10px;
-      transition: all 0.15s;
       min-width: 30px;
+      touch-action: manipulation;
     }
-    .controls button:hover { background: rgba(255,255,255,0.08); transform: scale(1.05); }
-    .controls button:active { transform: scale(0.95); }
+    .controls button:active { background: #1a4a1a; }
     #status {
       padding: 4px 8px;
       font-size: 9px;
@@ -111,12 +103,13 @@
     }
     #qaiBody { font-size: 8px; color: #c8ffd0; max-height: 22px; overflow-y: auto; }
     #qaiBody strong { color: #7cff7c; }
-    /* ===== LEDGER ===== */
+
     .ledger {
       background: #041204;
       border: 1px solid #145214;
       border-radius: 12px;
       padding: 6px 8px;
+      margin-top: 4px;
     }
     .ledger-header {
       display: flex;
@@ -134,114 +127,116 @@
       cursor: pointer;
       font-size: 8px;
       padding: 2px 6px;
+      touch-action: manipulation;
     }
-    .ledger-header button:hover { background: rgba(255,255,255,0.05); }
     #ledger {
       max-height: 320px;
       overflow-y: auto;
       padding-right: 4px;
     }
+    /* ===== FLAT LEDGER ITEMS – no shadows, no transforms, no pseudo ===== */
     .ledgerItem {
-      border-radius: 12px;
-      padding: 14px 16px;
-      margin-bottom: 14px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.5);
-      transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
-      position: relative;
-      overflow: hidden;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
       background: rgba(0,30,0,0.5);
-      border: 1px solid #2a7a2a !important;
-    }
-    .ledgerItem::before {
-      content: ''; position: absolute; top: -10px; right: -10px;
-      width: 100px; height: 100px;
-      background: rgba(0,255,100,0.06) !important;
-      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-      pointer-events: none; transform: rotate(10deg);
-      border: 1px solid rgba(0,255,100,0.08) !important;
-    }
-    .ledgerItem::after {
-      content: ''; position: absolute; bottom: -10px; left: -10px;
-      width: 80px; height: 80px;
-      background: rgba(0,255,100,0.06) !important;
-      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-      pointer-events: none; transform: rotate(-15deg);
-      border: 1px solid rgba(0,255,100,0.08) !important;
-    }
-    .ledgerItem:hover {
-      transform: translateY(-3px) scale(1.01);
-      box-shadow: 0 6px 24px rgba(0,255,100,0.15);
-      background: rgba(20,40,20,0.7);
+      border: 1px solid #2a7a2a;
     }
     .ledgerPayload {
-      font-size: 1em; font-weight: bold; color: #cfffcf;
-      word-break: break-all; margin-bottom: 6px;
+      font-size: 1em;
+      font-weight: bold;
+      color: #cfffcf;
+      word-break: break-all;
+      margin-bottom: 4px;
       font-family: 'Courier New', monospace;
-      padding: 4px 8px; background: rgba(0,0,0,0.2);
-      border-radius: 6px; border-left: 3px solid #2a7a2a !important;
+      padding: 4px 8px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 4px;
+      border-left: 3px solid #2a7a2a;
     }
     .ledgerMeta {
-      display: flex; flex-wrap: wrap; gap: 4px 10px;
-      font-size: 0.75em; color: #b5d8b5;
-      padding: 8px 0; border-top: 1px dashed rgba(255,255,255,0.1);
-      border-bottom: 1px dashed rgba(255,255,255,0.1); margin: 6px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px 8px;
+      font-size: 0.7em;
+      color: #b5d8b5;
+      padding: 4px 0;
+      border-top: 1px dashed rgba(255,255,255,0.08);
+      border-bottom: 1px dashed rgba(255,255,255,0.08);
+      margin: 4px 0;
     }
     .ledgerMeta span {
       background: rgba(255,255,255,0.04);
-      padding: 2px 8px; border-radius: 4px;
-      white-space: nowrap; transition: background 0.2s;
+      padding: 1px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
     }
-    .ledgerMeta span:hover { background: rgba(255,255,255,0.1); }
     .ledgerFooter {
-      display: flex; align-items: center;
-      justify-content: space-between; font-size: 0.7em;
-      color: #8aaa8a; padding-top: 6px;
-      border-top: 1px solid rgba(255,255,255,0.08);
-      flex-wrap: wrap; gap: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.7em;
+      color: #8aaa8a;
+      padding-top: 4px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      flex-wrap: wrap;
+      gap: 4px;
     }
     .ledgerTag {
-      padding: 2px 12px; border-radius: 20px;
-      font-weight: bold; text-transform: uppercase;
-      font-size: 0.8em; letter-spacing: 0.5px;
+      padding: 1px 10px;
+      border-radius: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 0.7em;
     }
     .tag-scan { background: #2a6a2a; color: #8f8; }
-    .tag-lite_scan { background: #2a4a2a; color: #afa; }
+    .tag-file_scan { background: #2a4a2a; color: #afa; }
     .tag-url { background: #2a4a6a; color: #8af; }
     .ledgerTime { color: #889; }
     .ledgerExport { display: flex; gap: 6px; margin-left: auto; }
     .export-btn {
-      padding: 3px 8px; border: 1px solid #2fbf2f;
-      border-radius: 4px; background: rgba(0,0,0,0.3);
-      color: #9cff9c; cursor: pointer; font-size: 11px;
-      transition: all 0.2s;
+      padding: 2px 6px;
+      border: 1px solid #2fbf2f;
+      border-radius: 3px;
+      background: rgba(0,0,0,0.3);
+      color: #9cff9c;
+      cursor: pointer;
+      font-size: 10px;
+      touch-action: manipulation;
     }
-    .export-btn:hover { background: #9cff9c; color: #000; transform: scale(1.05); }
+    .export-btn:active { background: #9cff9c; color: #000; }
     .footer { text-align: center; font-size: 7px; color: #333; padding: 2px 0; }
     #toast {
-      position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; padding: 5px 14px; border-radius: 6px;
-      font-size: 10px; background: #041204; border: 1px solid #2fbf2f;
-      color: #c8ffd0; display: none; max-width: 90%; text-align: center;
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      padding: 5px 14px;
+      border-radius: 6px;
+      font-size: 10px;
+      background: #041204;
+      border: 1px solid #2fbf2f;
+      color: #c8ffd0;
+      display: none;
+      max-width: 90%;
+      text-align: center;
     }
     #toast.success { border-color: #0f0; color: #0f0; }
     #toast.error { border-color: #f00; color: #f00; }
     #toast.info { border-color: #0ff; color: #0ff; }
-    #toast.warning { border-color: #ff0; color: #ff0; }
     @media (max-width:480px){ .app{max-width:100%;} .ledgerMeta span{white-space:normal;} }
   </style>
 </head>
 <body>
 <div class="app">
   <div class="header">
-    <a href="https://jf0x7.github.io/OrbitalMechanics//" target="_blank">
-      <image src="moon.png" alt="moon" style="width:107px; vertical-align:middle; margin-left:6px;">
-    </a>
-    <h1>⚛QTUM(LOG)⚛</h1>
-    <h2>Julius Hirsch &amp; Beler Industries</h2>
+    <h1>⚛ QTUM(LOG) ⚛</h1>
+    <h2>Julius Hirsch &amp; Beler Industries · Lite</h2>
   </div>
 
   <div class="scanner">
-    <div class="controls" id="controlsContainer">
+    <div class="controls">
       <button id="uploadBtn">📁 Upload</button>
       <input type="file" id="fileInput" accept="image/*" hidden>
       <button id="openLinkBtn">🌐</button>
@@ -249,537 +244,395 @@
       <button id="sendBtn">📤</button>
       <button id="clearBtn">🧹</button>
       <button id="resetLedgerBtn">🗑️</button>
-      <button id="liteModeBtn" style="border:2px solid #33aa33;">💡 Lite Mode (active)</button>
     </div>
-    <div id="status">📁 Lite mode – upload any file</div>
+    <div id="status">📁 Upload any file</div>
     <div id="payload"></div>
+    <div id="qaiResults"><div id="qaiBody"></div></div>
     <div class="ledger">
-      <div class="ledger-header"><span>📚 Ledger</span><span id="ledgerCount">0</span></div>
+      <div class="ledger-header">
+        <span>📚 Ledger</span>
+        <span><span id="ledgerCount">0</span> entries</span>
+      </div>
       <div id="ledger"></div>
     </div>
-    <div id="qaiResults"><div id="qaiBody"></div></div>
   </div>
-  <div class="footer"><span>QAI v6.0 · Lite</span><span id="footerTime"></span></div>
+  <div class="footer"><span>QAI v6.0 · Ultra‑Lite</span><span id="footerTime"></span></div>
 </div>
 <div id="toast"></div>
 
 <script>
 // ======================================================================
-//  QUANTUM LEDGER + QAI v6.0 + LITE SCANNER (File upload only)
+//  QTUM(LOG) – ULTRA LITE EDITION (ES5, no crypto/webrtc, capped ledger)
+//  Runs on iOS 9+ and Raspberry Pi
 // ======================================================================
 (function(){
-  // -------- LEDGER ----------------------------------------------------
-  class QuantumLedger {
-    constructor(containerId) {
-      this.container = document.getElementById(containerId);
-      if (!this.container) console.warn('Ledger container missing');
-      this.entries = [];
-      this.networkInfo = null;
-    }
-    async _getNetworkInfo() {
-      if (this.networkInfo) return this.networkInfo;
-      const info = { publicIP: 'unknown', localIP: 'unknown', subnet: 'unknown' };
-      try {
-        const res = await fetch('https://api.ipify.org?format=json');
-        const data = await res.json();
-        info.publicIP = data.ip || 'unknown';
-      } catch(_) {}
-      try {
-        const pc = new RTCPeerConnection({ iceServers: [] });
-        pc.createDataChannel('ping');
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        const candidate = pc.localDescription.sdp;
-        const ipMatch = candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
-        if (ipMatch) {
-          info.localIP = ipMatch[1];
-          const parts = info.localIP.split('.');
-          if (parts.length === 4) info.subnet = parts.slice(0,3).join('.') + '.0/24';
-        }
-        pc.close();
-      } catch(_) {}
-      this.networkInfo = info;
-      return info;
-    }
-    analyzePayload(payload) {
-      const trimmed = payload.trim();
-      const length = trimmed.length;
-      const entropy = this.calculateEntropy(trimmed);
-      const isURL = /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(trimmed);
-      const isJSON = this.tryParseJSON(trimmed);
-      const isHex = /^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0;
-      const isBase64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(trimmed) && trimmed.length >= 4 && (/[+/=]/.test(trimmed) || entropy > 4.5);
-      const isMorse = /^[.\-/\s]+$/.test(trimmed) && /[.\-]/.test(trimmed);
-      let classification = "UNKNOWN SIGNAL";
-      if (isURL) classification = "URL";
-      else if (isJSON) classification = "JSON OBJECT";
-      else if (isHex) classification = "HEX STRING";
-      else if (isBase64) classification = "BASE64 ENCODED";
-      else if (isMorse) classification = "MORSE CODE";
-      else if (length < 8) classification = "SHORT CODE";
-      else if (length > 80) classification = "LONG FORM DATA";
-      const charset = /^[\x00-\x7F]+$/.test(trimmed) ? "ASCII" : /^[\x00-\xFF]+$/.test(trimmed) ? "Extended ASCII" : "Unicode / Binary-like";
-      const entropyClass = parseFloat(entropy) < 3 ? "Low" : parseFloat(entropy) < 4 ? "Medium" : "High";
-      const signalStrength = (length * 0.2 + parseFloat(entropy) * 4) < 20 ? "Weak" : (length * 0.2 + parseFloat(entropy) * 4) < 40 ? "Moderate" : "Strong";
-      const decodedPreview = this.tryDecode(trimmed);
-      const rot13 = this.rot13(trimmed);
-      const altbash = this.altBashDecode(trimmed);
-      const shaFullPromise = this.sha256Full(trimmed);
-      const signalTypes = this.detectSignalTypes(trimmed);
-      const signalLocation = this.detectSignalLocation(trimmed);
-      const clamShell = this.clamShellDecrypt(trimmed);
-      const ddnDecrypt = this.ddnDecrypt(trimmed);
-      const morseDecode = this.morseDecode(trimmed);
-      const qNotes = this.generateQNotes(trimmed, classification, entropy);
-      return { length, entropy, classification, charset, entropyClass, signalStrength, decodedPreview, rot13, altbash, shaFullPromise, clamShell, ddnDecrypt, morseDecode, signalTypes, signalLocation, qNotes };
-    }
-    tryDecode(str) {
-      try {
-        if (/^[0-9a-fA-F]+$/.test(str) && str.length % 2 === 0) {
-          const bytes = str.match(/.{2}/g).map(h => parseInt(h,16));
-          return String.fromCharCode(...bytes).slice(0,60);
-        }
-        if (/^[A-Za-z0-9+/=]+$/.test(str)) return atob(str).slice(0,60);
-        if (/^[.\-/\s]+$/.test(str)) return this.morseDecode(str).slice(0,60);
-      } catch(_) {}
-      return "n/a";
-    }
-    async sha256Full(str) {
-      try {
-        const buffer = new TextEncoder().encode(str);
-        const hash = await crypto.subtle.digest("SHA-256", buffer);
-        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,"0")).join("");
-      } catch { return "n/a"; }
-    }
-    rot13(str) { return str.replace(/[A-Za-z]/g, c => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".charAt("NOPQRSTUVWXYZABCDEFGHIJKLMnopqrstuvwxyzabcdefghijklm".indexOf(c)) ); }
-    altBashDecode(str) {
-      try {
-        if (/^[A-Za-z0-9+/=]+$/.test(str)) return atob(str);
-        if (/^[0-9a-fA-F]+$/.test(str) && str.length % 2 === 0) {
-          const bytes = str.match(/.{2}/g).map(h => parseInt(h,16));
-          return String.fromCharCode(...bytes);
-        }
-        return decodeURIComponent(str);
-      } catch { return "n/a"; }
-    }
-    clamShellDecrypt(str) { try { return str.split("").map(c => String.fromCharCode(c.charCodeAt(0)-1)).join(""); } catch { return "ClamShellSecurity: error"; } }
-    ddnDecrypt(str) {
-      try {
-        let result = str;
-        result = result.split("").map(c => String.fromCharCode(c.charCodeAt(0) ^ 0x5A)).join("");
-        result = result.split("").reverse().join("");
-        const offset = (str.length % 5) + 1;
-        result = result.split("").map(c => {
-          const code = c.charCodeAt(0);
-          if (code >= 65 && code <= 90) return String.fromCharCode(((code - 65 - offset + 26) % 26) + 65);
-          if (code >= 97 && code <= 122) return String.fromCharCode(((code - 97 - offset + 26) % 26) + 97);
-          return c;
-        }).join("");
-        if (/^[A-Za-z0-9+/=]+$/.test(result)) try { result = atob(result); } catch(_) {}
-        result = result.replace(/DDN_ENC::/g,"").replace(/::DDN_END/g,"");
-        return result || "DDN decrypt: empty result";
-      } catch(e) { return `DDN decrypt: error - ${e.message}`; }
-    }
-    morseDecode(str) {
-      const morseMap = {
-        '.-':'A','-...':'B','-.-.':'C','-..':'D','.':'E','..-.':'F','--.':'G','....':'H','..':'I','.---':'J',
-        '-.-':'K','.-..':'L','--':'M','-.':'N','---':'O','.--.':'P','--.-':'Q','.-.':'R','...':'S','-':'T',
-        '..-':'U','...-':'V','.--':'W','-..-':'X','-.--':'Y','--..':'Z',
-        '-----':'0','.----':'1','..---':'2','...--':'3','....-':'4','.....':'5','-....':'6','--...':'7','---..':'8','----.':'9',
-        '.-.-.-':'.','--..--':',','..--..':'?','.----.':"'",'-.-.--':'!','-..-.':'/','-.--.':'(',
-        '-.--.-':')','.-...':'&','---...':':','-.-.-.':';','-...-':'=','.-.-.':'+','-....-':'-','..--.-':'_','.-..-.':'"','...-..-':'$','.--.-.':'@'
-      };
-      try {
-        let normalized = str.replace(/\\/g,'/').replace(/\[space\]/g,' ').replace(/\[slash\]/g,'/');
-        const words = normalized.split('/');
-        let result = [];
-        for (const word of words) {
-          const letters = word.trim().split(' ');
-          let decodedWord = '';
-          for (const letter of letters) {
-            if (letter === '') continue;
-            if (letter === '...---...') decodedWord += 'SOS';
-            else if (morseMap[letter]) decodedWord += morseMap[letter];
-            else {
-              const binary = letter.replace(/\./g,'0').replace(/\-/g,'1');
-              if (/^[01]+$/.test(binary) && binary.length === 8) {
-                const charCode = parseInt(binary,2);
-                if (charCode >= 32 && charCode <= 126) decodedWord += String.fromCharCode(charCode);
-              } else decodedWord += '?';
-            }
-          }
-          result.push(decodedWord);
-        }
-        return result.join(' ') || 'Morse decode: no valid pattern';
-      } catch(e) { return `Morse decode error: ${e.message}`; }
-    }
-    detectSignalTypes(str) {
-      const types = [];
-      if (/^QTUM_/.test(str)) types.push("QTUM");
-      if (/^0x[a-fA-F0-9]{40}$/.test(str)) types.push("Ethereum");
-      if (/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(str)) types.push("Bitcoin");
-      if (/^https?:\/\//.test(str)) types.push("URL");
-      if (this.tryParseJSON(str)) types.push("JSON");
-      if (/^[0-9a-fA-F]+$/.test(str)) types.push("HEX");
-      if (/^[A-Za-z0-9+/=]+$/.test(str)) types.push("BASE64");
-      if (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str)) types.push("MORSE");
-      if (/DDN_ENC::/.test(str)) types.push("DDN_ENCRYPTED");
-      return types.length ? types.join(", ") : "None detected";
-    }
-    detectSignalLocation(str) {
-      const m = str.match(/https?:\/\/([^\/]+)/);
-      if (m) return `Web domain: ${m[1]}`;
-      if (/QTUM_/.test(str)) return "QTUM protocol space";
-      if (/^0x/.test(str)) return "Ethereum network";
-      if (/^[13]/.test(str)) return "Bitcoin network";
-      if (this.tryParseJSON(str)) return "JSON API payload";
-      if (/DDN_ENC::/.test(str)) return "DDN encrypted network";
-      return "Unknown / local-only";
-    }
-    generateQNotes(str, classification, entropy) {
-      const notes = [];
-      notes.push(`Signal classified as ${classification}.`);
-      notes.push(`Entropy suggests ${entropy < 3 ? "simple" : entropy < 4 ? "moderate" : "complex"} structure.`);
-      if (/QTUM_/.test(str)) notes.push("QTUM signature detected.");
-      if (/^0x/.test(str)) notes.push("Ethereum-style address.");
-      if (/^[13]/.test(str)) notes.push("Bitcoin-style address.");
-      if (this.tryParseJSON(str)) notes.push("JSON payload indicates structured data.");
-      if (/https?:\/\//.test(str)) notes.push("Likely web resource or API endpoint.");
-      if (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str)) {
-        notes.push("Morse code detected - decoding in progress.");
-        const decoded = this.morseDecode(str);
-        if (decoded && !decoded.includes("error")) notes.push(`Morse decoded: "${decoded.substring(0,30)}${decoded.length>30?'...':''}"`);
-      }
-      if (/DDN_ENC::/.test(str)) {
-        notes.push("DDN encrypted payload detected - multi-layer decryption applied.");
-        const decrypted = this.ddnDecrypt(str);
-        if (decrypted && !decrypted.includes("error")) notes.push(`DDN decrypted: "${decrypted.substring(0,30)}${decrypted.length>30?'...':''}"`);
-      }
-      if (/^[A-Za-z\s!?.]+$/.test(str) && str.length <= 20 && entropy < 3.5) {
-        const greetings = ["Yo!","What's up","Howdy","What's Gucii","Hello","Hi","What's Gravy"];
-        notes.push(`AI interprets this as a greeting → ${greetings[Math.floor(Math.random()*greetings.length)]}`);
-      }
-      if (str.length > 20 && entropy > 3.8) notes.push("Encryption reaction → JEEEZ!");
-      if (str.includes("AZTEC") || str.includes("AZTEC_ENC")) notes.push("Aztec reaction → SHeesh!");
-      if (/DDN_ENC::/.test(str)) notes.push("DDN encryption detected → DDN - Dynamic Data Network!");
-      if (/^[.\-/\s]+$/.test(str) && /[.\-]/.test(str)) notes.push("Morse code detected → Morse transmission received!");
-      return notes.join(" ");
-    }
-    calculateEntropy(str) {
-      if (!str) return "0.00";
-      const map = {};
-      for (const char of str) map[char] = (map[char] || 0) + 1;
-      let entropy = 0;
-      const len = str.length;
-      for (const char in map) { const p = map[char]/len; entropy -= p * Math.log2(p); }
-      return entropy.toFixed(2);
-    }
-    tryParseJSON(str) { if (!str.startsWith("{") && !str.startsWith("[")) return false; try { JSON.parse(str); return true; } catch { return false; } }
-    async addEntry(payload, tag = "SCAN", extraMeta = {}) {
-      if (!this.container) return;
-      const meta = this.analyzePayload(payload);
-      const hash = "n/a";
-      const shaFull = await meta.shaFullPromise;
-      const aztec = "Aztec decode: (offline fallback) SHeesh!";
-      const greetingDecoded = meta.qNotes.includes("AI interprets this as a greeting") ? meta.qNotes.split("→")[1].trim() : "None";
-      const time = new Date().toLocaleTimeString();
-      const timestamp = new Date().toISOString();
-      const network = await this._getNetworkInfo();
-      const entryData = { timestamp, time, payload, tag, ...meta, hash, shaFull, aztec, greetingDecoded, network, ...extraMeta };
-      this.entries.push(entryData);
-      const item = document.createElement("div");
-      item.className = "ledgerItem";
-      item.dataset.entryId = this.entries.length - 1;
-      const payloadEl = document.createElement("div");
-      payloadEl.className = "ledgerPayload";
-      payloadEl.textContent = payload;
-      const metaEl = document.createElement("div");
-      metaEl.className = "ledgerMeta";
-      metaEl.innerHTML = `
-        <span><strong>Len:</strong> ${meta.length}</span><span><strong>Entropy:</strong> ${meta.entropy}</span>
-        <span><strong>Type:</strong> ${meta.classification}</span><span><strong>Charset:</strong> ${meta.charset}</span>
-        <span><strong>Entropy Class:</strong> ${meta.entropyClass}</span><span><strong>Strength:</strong> ${meta.signalStrength}</span>
-        <span><strong>Decoded:</strong> ${meta.decodedPreview}</span><span><strong>ROT13:</strong> ${meta.rot13}</span>
-        <span><strong>Aztec:</strong> ${aztec}</span><span><strong>AltBash:</strong> ${meta.altbash}</span>
-        <span><strong>SHA256 Full:</strong> ${shaFull}</span><span><strong>ClamShell:</strong> ${meta.clamShell}</span>
-        <span><strong>DDN Decrypt:</strong> ${meta.ddnDecrypt}</span><span><strong>Morse Decode:</strong> ${meta.morseDecode}</span>
-        <span><strong>Signal Types:</strong> ${meta.signalTypes}</span><span><strong>Location:</strong> ${meta.signalLocation}</span>
-        <span style="flex:1 1 100%"><strong>Q‑Notes:</strong> ${meta.qNotes}</span>
-        <span><strong>Greeting:</strong> ${greetingDecoded}</span>
-        <span><strong>Public IP:</strong> ${network.publicIP}</span><span><strong>Local IP:</strong> ${network.localIP}</span><span><strong>Subnet:</strong> ${network.subnet}</span>
-      `;
-      const footerEl = document.createElement("div");
-      footerEl.className = "ledgerFooter";
-      const tagEl = document.createElement("span");
-      tagEl.className = `ledgerTag tag-${tag.toLowerCase()}`;
-      tagEl.textContent = tag;
-      const timeEl = document.createElement("span");
-      timeEl.className = "ledgerTime";
-      timeEl.textContent = time;
-      const exportContainer = document.createElement("div");
-      exportContainer.className = "ledgerExport";
-      exportContainer.style.cssText = "display:flex; gap:8px; margin-left:auto;";
-      const copyBtn = document.createElement("button");
-      copyBtn.textContent = "📋 Copy";
-      copyBtn.style.cssText = "padding:4px 8px; border:1px solid #2fbf2f; border-radius:4px; background:#0b260b; color:#9cff9c; cursor:pointer; font-size:12px;";
-      copyBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const index = parseInt(item.dataset.entryId);
-        await this.exportEntry(index, 'copy');
-      });
-      const shareBtn = document.createElement("button");
-      shareBtn.textContent = "📤 Share";
-      shareBtn.style.cssText = "padding:4px 8px; border:1px solid #2fbf2f; border-radius:4px; background:#0b260b; color:#9cff9c; cursor:pointer; font-size:12px;";
-      shareBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const index = parseInt(item.dataset.entryId);
-        await this.exportEntry(index, 'share');
-      });
-      const downloadBtn = document.createElement("button");
-      downloadBtn.textContent = "💾 Download";
-      downloadBtn.style.cssText = "padding:4px 8px; border:1px solid #2fbf2f; border-radius:4px; background:#0b260b; color:#9cff9c; cursor:pointer; font-size:12px;";
-      downloadBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const index = parseInt(item.dataset.entryId);
-        await this.exportEntry(index, 'download');
-      });
-      exportContainer.appendChild(copyBtn);
-      exportContainer.appendChild(shareBtn);
-      exportContainer.appendChild(downloadBtn);
-      footerEl.appendChild(tagEl);
-      footerEl.appendChild(timeEl);
-      footerEl.appendChild(exportContainer);
-      item.appendChild(payloadEl);
-      item.appendChild(metaEl);
-      item.appendChild(footerEl);
-      this.container.prepend(item);
-    }
-    async exportEntry(index, action = 'copy') {
-      if (index < 0 || index >= this.entries.length) return;
-      const entry = this.entries[index];
-      const jsonString = JSON.stringify({ exportTime: new Date().toISOString(), source: "QuantumLedger", version: "1.0", entry }, null, 2);
-      try {
-        if (action === 'copy') { await navigator.clipboard.writeText(jsonString); this.showToast('📋 Copied!','#9cff9c'); }
-        else if (action === 'download') {
-          const blob = new Blob([jsonString], {type:'application/json'});
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a'); a.href = url; a.download = `entry_${index+1}.json`;
-          document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-          this.showToast('💾 Downloaded!','#9cff9c');
-        } else if (action === 'share') {
-          if (navigator.share) {
-            try { await navigator.share({ title: `Ledger Entry ${index+1}`, text: jsonString }); this.showToast('📤 Shared!','#9cff9c'); return; } catch(_) {}
-          }
-          await navigator.clipboard.writeText(jsonString);
-          this.showToast('📋 Copied (share fallback)','#9cff9c');
-        }
-      } catch(e) { this.showToast(`❌ ${e.message}`,'#f00'); }
-    }
-    showToast(message, color = '#9cff9c') {
-      const existing = document.querySelectorAll('.quantum-toast');
-      existing.forEach(t => t.remove());
-      const toast = document.createElement('div');
-      toast.className = 'quantum-toast';
-      toast.style.cssText = `
-        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-        padding: 12px 24px; background: #041204; color: ${color};
-        border: 1px solid ${color}; border-radius: 8px;
-        font-family: 'Courier New', monospace; font-size: 14px;
-        z-index: 9999; box-shadow: 0 0 20px rgba(0,255,0,0.3);
-        animation: slideUp 0.3s ease-out; max-width: 90%; text-align: center;
-      `;
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      if (!document.getElementById('quantum-toast-styles')) {
-        const style = document.createElement('style');
-        style.id = 'quantum-toast-styles';
-        style.textContent = `@keyframes slideUp { from { opacity:0; transform:translateX(-50%) translateY(20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`;
-        document.head.appendChild(style);
-      }
-      setTimeout(() => { toast.style.opacity='0'; setTimeout(()=>toast.remove(),300); }, 3000);
-    }
-    clear() { if (!this.container) return; if (this.entries.length && !confirm(`Clear ${this.entries.length} entries?`)) return; this.container.innerHTML=""; this.entries=[]; this.showToast('🧹 Cleared','#9cff9c'); }
-    count() { return this.entries.length; }
+  // -------- HELPERS ----------------------------------------------------
+  function showToast(msg, color) {
+    color = color || '#9cff9c';
+    var old = document.querySelector('.quantum-toast');
+    if (old) old.parentNode.removeChild(old);
+    var t = document.createElement('div');
+    t.className = 'quantum-toast';
+    t.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); padding:8px 18px; background:#041204; color:'+color+'; border:1px solid '+color+'; border-radius:6px; font-family:monospace; font-size:12px; z-index:9999; max-width:90%; text-align:center;';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 300); }, 2500);
   }
 
-  // -------- QAI v6.0 -------------------------------------------------
-  class Qai {
-    constructor(config = {}) {
-      this.version = "6.0-enhanced";
-      this.config = { enableAztec: true, enableDDN: true, enableMorse: true, enableDeepAnalysis: true, cacheSize: 300, ...config };
-      this.cache = new Map();
-      this._ready = true;
-    }
-    async process(text) {
-      const clean = text.trim();
-      const core = { raw: clean, length: clean.length, entropy: this.calcEntropy(clean), type: null };
-      if (/^https?:\/\//i.test(clean)) core.type = 'URL';
-      else if (/^0x[a-fA-F0-9]{40}$/.test(clean)) core.type = 'Ethereum';
-      else if (/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(clean)) core.type = 'Bitcoin';
-      else if (/^QTUM_/.test(clean)) core.type = 'QTUM';
-      else if (/DDN_ENC::/.test(clean)) core.type = 'DDN';
-      else if (/^[.\-/\s]+$/.test(clean) && /[.\-]/.test(clean)) core.type = 'Morse';
-      else if (/^[0-9a-fA-F]+$/.test(clean)) core.type = 'Hex';
-      else if (/^[A-Za-z0-9+/=]+$/.test(clean)) core.type = 'Base64';
-      else if (/^\{/.test(clean) || /^\[/.test(clean)) core.type = 'JSON';
-      else core.type = 'Plain text';
-      const classification = { primary: core.type, secondary: [], category: core.type };
-      const item = { label: core.type, category: core.type, confidence: 0.7, risk: 'low', suggestedAction: 'analyze' };
-      const security = { score: 70, level: 'medium', issues: ['No issues detected'], recommendations: ['Standard processing'] };
-      const qnotes = [`Signal classified as ${core.type}.`];
-      return { ...core, classification, item, security, qnotes, processedAt: new Date().toISOString(), version: this.version };
-    }
-    calcEntropy(text) {
-      if (!text.length) return 0;
-      const freq = {};
-      for (const char of text) freq[char] = (freq[char] || 0) + 1;
-      let entropy = 0; const len = text.length;
-      for (const char in freq) { const p = freq[char]/len; entropy -= p * Math.log2(p); }
-      return parseFloat(entropy.toFixed(3));
-    }
-    clearCache() { this.cache.clear(); }
+  function calcEntropy(str) {
+    if (!str || str.length === 0) return '0.00';
+    var freq = {};
+    var i, ch, p, entropy = 0, len = str.length;
+    for (i=0; i<len; i++) { ch = str.charAt(i); freq[ch] = (freq[ch]||0) + 1; }
+    for (ch in freq) { p = freq[ch] / len; entropy -= p * Math.log2(p); }
+    return entropy.toFixed(2);
   }
 
-  // -------- LITE SCANNER (file upload only) --------------------------
-  const CONFIG = { cooldown: 2500, maxPayloadLength: 500 };
+  function tryParseJSON(str) {
+    if (str.charAt(0) !== '{' && str.charAt(0) !== '[') return false;
+    try { JSON.parse(str); return true; } catch(e) { return false; }
+  }
 
-  const el = {
-    payload: document.getElementById("payload"),
-    status: document.getElementById("status"),
-    upload: document.getElementById("uploadBtn"),
-    fileInput: document.getElementById("fileInput"),
-    send: document.getElementById("sendBtn"),
-    openLink: document.getElementById("openLinkBtn"),
-    copyBtn: document.getElementById("copyBtn"),
-    clearBtn: document.getElementById("clearBtn"),
-    resetLedger: document.getElementById("resetLedgerBtn"),
-    liteBtn: document.getElementById("liteModeBtn"),
-    qaiResults: document.getElementById("qaiResults"),
-    qaiBody: document.getElementById("qaiBody"),
-    ledgerCount: document.getElementById("ledgerCount"),
+  function rot13(str) {
+    return str.replace(/[A-Za-z]/g, function(c) {
+      return 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.charAt(
+        'NOPQRSTUVWXYZABCDEFGHIJKLMnopqrstuvwxyzabcdefghijklm'.indexOf(c)
+      );
+    });
+  }
+
+  function simpleDecode(str) {
+    // Try hex, then base64, else fallback
+    var hexMatch = /^[0-9a-fA-F]+$/.test(str);
+    if (hexMatch && str.length % 2 === 0) {
+      try {
+        var bytes = str.match(/.{2}/g).map(function(h){ return parseInt(h,16); });
+        return String.fromCharCode.apply(null, bytes).substring(0, 40);
+      } catch(e) {}
+    }
+    var b64Match = /^[A-Za-z0-9+/=]+$/.test(str);
+    if (b64Match && str.length >= 4) {
+      try { return atob(str).substring(0,40); } catch(e) {}
+    }
+    return 'n/a';
+  }
+
+  // -------- LEDGER (constructor, no class) ----------------------------
+  function QuantumLedger(containerId) {
+    this.container = document.getElementById(containerId);
+    this.entries = [];
+    this.MAX_ENTRIES = 50;
+  }
+
+  QuantumLedger.prototype.analyzePayload = function(payload) {
+    var trimmed = payload.trim();
+    var len = trimmed.length;
+    var entropy = calcEntropy(trimmed);
+    var isURL = /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(trimmed);
+    var isJSON = tryParseJSON(trimmed);
+    var isHex = /^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0;
+    var isBase64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(trimmed) && trimmed.length >= 4;
+    var classification = 'UNKNOWN';
+    if (isURL) classification = 'URL';
+    else if (isJSON) classification = 'JSON';
+    else if (isHex) classification = 'HEX';
+    else if (isBase64) classification = 'BASE64';
+    else if (len < 8) classification = 'SHORT';
+    else if (len > 80) classification = 'LONG';
+    var charset = /^[\x00-\x7F]+$/.test(trimmed) ? 'ASCII' : 'Extended';
+    var decodedPreview = simpleDecode(trimmed);
+    var rot = rot13(trimmed);
+    // Q‑notes
+    var notes = 'Signal: ' + classification + '. Entropy: ' + entropy + '.';
+    if (isURL) notes += ' Web link.';
+    if (isJSON) notes += ' JSON payload.';
+    return {
+      length: len,
+      entropy: entropy,
+      classification: classification,
+      charset: charset,
+      decodedPreview: decodedPreview,
+      rot13: rot,
+      qNotes: notes
+    };
   };
 
-  const ledger = new QuantumLedger("ledger");
-  const brain = new Qai();
-  let cooldown = false;
-  let lastPayload = null;
-  let currentPayload = null;
+  QuantumLedger.prototype.addEntry = function(payload, tag, extra) {
+    if (!this.container) return;
+    var meta = this.analyzePayload(payload);
+    var time = new Date().toLocaleTimeString();
+    var timestamp = new Date().toISOString();
+    var entryData = { timestamp: timestamp, time: time, payload: payload, tag: tag || 'SCAN', meta: meta };
+    // keep extra fields if any
+    for (var k in extra) { if (extra.hasOwnProperty(k)) entryData[k] = extra[k]; }
+    this.entries.push(entryData);
 
-  function setStatus(msg, type = "neutral") {
-    if (el.status) el.status.textContent = `Status: ${msg}`;
+    // Cap ledger
+    if (this.entries.length > this.MAX_ENTRIES) {
+      var removeCount = this.entries.length - this.MAX_ENTRIES;
+      this.entries.splice(0, removeCount);
+    }
+
+    // Render
+    var item = document.createElement('div');
+    item.className = 'ledgerItem';
+
+    var payloadEl = document.createElement('div');
+    payloadEl.className = 'ledgerPayload';
+    payloadEl.textContent = payload;
+    item.appendChild(payloadEl);
+
+    var metaEl = document.createElement('div');
+    metaEl.className = 'ledgerMeta';
+    metaEl.innerHTML = '<span><strong>Len:</strong> '+meta.length+'</span><span><strong>Entropy:</strong> '+meta.entropy+'</span><span><strong>Type:</strong> '+meta.classification+'</span><span><strong>Charset:</strong> '+meta.charset+'</span><span><strong>Decoded:</strong> '+meta.decodedPreview+'</span><span><strong>ROT13:</strong> '+meta.rot13+'</span><span style="flex:1 1 100%;"><strong>Q‑Notes:</strong> '+meta.qNotes+'</span>';
+    item.appendChild(metaEl);
+
+    var footer = document.createElement('div');
+    footer.className = 'ledgerFooter';
+    var tagSpan = document.createElement('span');
+    tagSpan.className = 'ledgerTag tag-'+tag.toLowerCase().replace(/_/g,'');
+    tagSpan.textContent = tag;
+    var timeSpan = document.createElement('span');
+    timeSpan.className = 'ledgerTime';
+    timeSpan.textContent = time;
+    var exp = document.createElement('div');
+    exp.className = 'ledgerExport';
+    var copyBtn = document.createElement('button');
+    copyBtn.className = 'export-btn';
+    copyBtn.textContent = '📋';
+    copyBtn.setAttribute('data-index', this.entries.length - 1);
+    copyBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var idx = parseInt(this.getAttribute('data-index'), 10);
+      var entry = that.entries[idx];
+      if (entry) {
+        var str = JSON.stringify({ entry: entry, exported: new Date().toISOString() });
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(str).then(function(){ showToast('📋 Copied!'); })['catch'](function(){ showToast('Copy failed','#f00'); });
+        } else {
+          // fallback
+          var ta = document.createElement('textarea');
+          ta.value = str;
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); showToast('📋 Copied!'); } catch(e) { showToast('Copy failed','#f00'); }
+          document.body.removeChild(ta);
+        }
+      }
+    });
+    exp.appendChild(copyBtn);
+    footer.appendChild(tagSpan);
+    footer.appendChild(timeSpan);
+    footer.appendChild(exp);
+    item.appendChild(footer);
+
+    // Prepend
+    this.container.insertBefore(item, this.container.firstChild);
+
+    // Trim DOM if too many
+    while (this.container.children.length > this.MAX_ENTRIES) {
+      this.container.removeChild(this.container.lastChild);
+    }
+    var that = this;
+  };
+
+  QuantumLedger.prototype.clear = function() {
+    if (this.entries.length > 0 && !confirm('Clear '+this.entries.length+' entries?')) return;
+    this.container.innerHTML = '';
+    this.entries = [];
+    showToast('🧹 Cleared');
+  };
+
+  QuantumLedger.prototype.count = function() {
+    return this.entries.length;
+  };
+
+  // -------- QAI (lightweight) -----------------------------------------
+  function Qai() {
+    this.version = '6.0-lite';
   }
+
+  Qai.prototype.process = function(text) {
+    var clean = text.trim();
+    var type = 'Plain text';
+    if (/^https?:\/\//i.test(clean)) type = 'URL';
+    else if (/^0x[a-fA-F0-9]{40}$/.test(clean)) type = 'Ethereum';
+    else if (/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(clean)) type = 'Bitcoin';
+    else if (/^QTUM_/.test(clean)) type = 'QTUM';
+    else if (/^[0-9a-fA-F]+$/.test(clean)) type = 'Hex';
+    else if (/^[A-Za-z0-9+/=]+$/.test(clean)) type = 'Base64';
+    else if (/^\{/.test(clean) || /^\[/.test(clean)) type = 'JSON';
+    var entropy = calcEntropy(clean);
+    var notes = ['Signal: '+type, 'Entropy: '+entropy];
+    return {
+      type: type,
+      entropy: parseFloat(entropy),
+      qnotes: notes,
+      processedAt: new Date().toISOString(),
+      version: this.version
+    };
+  };
+
+  // -------- APP ------------------------------------------------------
+  var CONFIG = { cooldown: 2000, maxPayload: 400 };
+
+  var el = {
+    payload: document.getElementById('payload'),
+    status: document.getElementById('status'),
+    upload: document.getElementById('uploadBtn'),
+    fileInput: document.getElementById('fileInput'),
+    send: document.getElementById('sendBtn'),
+    openLink: document.getElementById('openLinkBtn'),
+    copyBtn: document.getElementById('copyBtn'),
+    clearBtn: document.getElementById('clearBtn'),
+    resetLedger: document.getElementById('resetLedgerBtn'),
+    qaiResults: document.getElementById('qaiResults'),
+    qaiBody: document.getElementById('qaiBody'),
+    ledgerCount: document.getElementById('ledgerCount')
+  };
+
+  var ledger = new QuantumLedger('ledger');
+  var brain = new Qai();
+  var cooldown = false;
+  var lastPayload = null;
+  var currentPayload = null;
+
+  function setStatus(msg) {
+    if (el.status) el.status.textContent = 'Status: ' + msg;
+  }
+
   function setPayload(data) {
     if (!el.payload) return;
-    const display = data.length > CONFIG.maxPayloadLength ? data.substring(0, CONFIG.maxPayloadLength) + '…' : data;
+    var display = data.length > CONFIG.maxPayload ? data.substring(0, CONFIG.maxPayload) + '…' : data;
     el.payload.textContent = display;
     el.payload.title = data;
   }
-  function updateLedgerCount() { if (el.ledgerCount) el.ledgerCount.textContent = ledger.count(); }
 
-  async function handleScan(data) {
+  function updateCount() {
+    if (el.ledgerCount) el.ledgerCount.textContent = ledger.count();
+  }
+
+  function handleScan(data) {
     if (cooldown && data === lastPayload) return;
-    cooldown = true; lastPayload = data; currentPayload = data;
+    cooldown = true;
+    lastPayload = data;
+    currentPayload = data;
     setPayload(data);
-    setStatus("✅ Decoded! Analyzing…", "success");
+    setStatus('Decoding…');
+
     try {
-      const analysis = await brain.process(data);
+      var analysis = brain.process(data);
       if (el.qaiResults) {
         el.qaiResults.style.display = 'block';
         if (el.qaiBody) {
-          const type = analysis.type || 'unknown';
-          const entropy = analysis.entropy || 0;
-          const notes = analysis.qnotes ? analysis.qnotes.join(' | ') : '';
-          el.qaiBody.innerHTML = `<strong>🧠 QAI:</strong> ${type} | entropy ${entropy} | ${notes}`;
+          var notes = analysis.qnotes ? analysis.qnotes.join(' | ') : '';
+          el.qaiBody.innerHTML = '<strong>🧠 QAI:</strong> ' + analysis.type + ' | entropy ' + analysis.entropy + ' | ' + notes;
         }
       }
-      ledger.addEntry(data, "FILE_SCAN", { type: analysis.type });
+      ledger.addEntry(data, 'FILE_SCAN', { type: analysis.type });
     } catch(e) {
-      ledger.addEntry(data, "FILE_SCAN", { error: e.message });
+      ledger.addEntry(data, 'FILE_SCAN', { error: e.message });
     }
-    updateLedgerCount();
-    setTimeout(() => { cooldown = false; }, CONFIG.cooldown);
+    updateCount();
+    setStatus('✅ Done');
+    setTimeout(function(){ cooldown = false; }, CONFIG.cooldown);
   }
 
-  // File upload – ALWAYS processes the file, even without a barcode
   function handleFileUpload(file) {
     if (!file) return;
-    setStatus("Processing file…");
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const img = new Image();
-      img.onload = () => {
-        // Rich payload: file metadata + QAI-ready string
-        const payload = `FILE_SCAN|${file.name}|${Math.round(file.size/1024)}KB|${img.width}x${img.height}|${Date.now()}`;
+    setStatus('Reading file…');
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var payload = 'FILE|' + file.name + '|' + Math.round(file.size/1024) + 'KB|' + img.width + 'x' + img.height + '|' + Date.now();
         handleScan(payload);
-        setStatus("✅ File processed – entry added to ledger");
+        setStatus('✅ File processed');
       };
-      img.onerror = () => {
-        // Fallback for non-image files (still generate a payload)
-        const payload = `FILE_SCAN|${file.name}|${Math.round(file.size/1024)}KB|non-image|${Date.now()}`;
+      img.onerror = function() {
+        var payload = 'FILE|' + file.name + '|' + Math.round(file.size/1024) + 'KB|non-image|' + Date.now();
         handleScan(payload);
-        setStatus("✅ File processed (non-image) – entry added to ledger");
+        setStatus('✅ File processed (non-image)');
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   }
 
-  // -------- UI EVENTS ------------------------------------------------
+  // -------- BIND EVENTS (ES5 style) ----------------------------------
   function bindEvents() {
     if (el.upload && el.fileInput) {
-      el.upload.addEventListener('click', ()=>el.fileInput.click());
-      el.fileInput.addEventListener('change', (e)=> {
-        const file = e.target.files[0];
+      el.upload.addEventListener('click', function() { el.fileInput.click(); });
+      el.fileInput.addEventListener('change', function(e) {
+        var file = e.target.files[0];
         if (file) handleFileUpload(file);
         e.target.value = '';
       });
     }
-    if (el.send) el.send.addEventListener('click', ()=>{
-      const data = el.payload?.textContent || '';
-      if (data) handleScan(data);
-      else setStatus("No payload to send", "error");
-    });
-    if (el.openLink) el.openLink.addEventListener('click', ()=>{
-      const data = currentPayload || el.payload?.textContent || '';
-      if (!data) return setStatus("No payload", "error");
-      if (/^https?:\/\//i.test(data)) { window.open(data, '_blank'); setStatus("🌐 Opened"); }
-      else {
-        const search = confirm(`Search Google for "${data.substring(0,40)}…"?`);
-        if (search) window.open(`https://www.google.com/search?q=${encodeURIComponent(data)}`, '_blank');
-      }
-    });
-    if (el.copyBtn) el.copyBtn.addEventListener('click', async ()=>{
-      const data = currentPayload || el.payload?.textContent || '';
-      if (!data) return setStatus("Nothing to copy", "error");
-      try { await navigator.clipboard.writeText(data); setStatus("📋 Copied!"); } catch(e) { setStatus("Copy failed", "error"); }
-    });
-    if (el.clearBtn) el.clearBtn.addEventListener('click', ()=>{
-      if (el.payload) el.payload.textContent = '';
-      if (el.qaiResults) el.qaiResults.style.display = 'none';
-      currentPayload = null; setStatus("🧹 Cleared");
-    });
-    if (el.resetLedger) el.resetLedger.addEventListener('click', ()=> { ledger.clear(); updateLedgerCount(); });
-    if (el.liteBtn) {
-      // Toggle is just for theme – camera never starts
-      el.liteBtn.addEventListener('click', ()=>{
-        document.body.classList.toggle('lite-mode');
-        el.liteBtn.textContent = document.body.classList.contains('lite-mode') ? '💡 Lite Mode (active)' : '💡 Full Mode (lite)';
+    if (el.send) {
+      el.send.addEventListener('click', function() {
+        var data = el.payload ? el.payload.textContent : '';
+        if (data && data !== '') handleScan(data);
+        else setStatus('No payload to send');
+      });
+    }
+    if (el.openLink) {
+      el.openLink.addEventListener('click', function() {
+        var data = currentPayload || (el.payload ? el.payload.textContent : '');
+        if (!data || data === '') { setStatus('No payload'); return; }
+        if (/^https?:\/\//i.test(data)) {
+          window.open(data, '_blank');
+          setStatus('🌐 Opened');
+        } else {
+          if (confirm('Search Google for "' + data.substring(0,40) + '…"?')) {
+            window.open('https://www.google.com/search?q=' + encodeURIComponent(data), '_blank');
+          }
+        }
+      });
+    }
+    if (el.copyBtn) {
+      el.copyBtn.addEventListener('click', function() {
+        var data = currentPayload || (el.payload ? el.payload.textContent : '');
+        if (!data || data === '') { setStatus('Nothing to copy'); return; }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(data).then(function(){ setStatus('📋 Copied!'); })['catch'](function(){ setStatus('Copy failed'); });
+        } else {
+          var ta = document.createElement('textarea');
+          ta.value = data;
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); setStatus('📋 Copied!'); } catch(e) { setStatus('Copy failed'); }
+          document.body.removeChild(ta);
+        }
+      });
+    }
+    if (el.clearBtn) {
+      el.clearBtn.addEventListener('click', function() {
+        if (el.payload) el.payload.textContent = '';
+        if (el.qaiResults) el.qaiResults.style.display = 'none';
+        currentPayload = null;
+        setStatus('🧹 Cleared');
+      });
+    }
+    if (el.resetLedger) {
+      el.resetLedger.addEventListener('click', function() {
+        ledger.clear();
+        updateCount();
       });
     }
   }
 
   // -------- BOOT ----------------------------------------------------
-  document.addEventListener('DOMContentLoaded', ()=>{
+  document.addEventListener('DOMContentLoaded', function() {
     bindEvents();
-    updateLedgerCount();
-    setStatus("📁 Lite mode – upload any file to decode");
-    document.body.classList.add('lite-mode');
-    // footer time
-    setInterval(()=>{
-      const ft = document.getElementById('footerTime');
+    updateCount();
+    setStatus('📁 Upload any file');
+    setInterval(function() {
+      var ft = document.getElementById('footerTime');
       if (ft) ft.textContent = new Date().toLocaleTimeString();
     }, 1000);
   });
+
   window.__ledger = ledger;
   window.__qai = brain;
 })();
